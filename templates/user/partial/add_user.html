@@ -1,0 +1,84 @@
+{% load widget_tweaks %}
+<form hx-post="{%  url 'user:ajouter-superadmin' %}">
+    {% csrf_token %}
+    <div class="card">
+        <div class="card-body p-5">
+            <div class="login-userheading">
+                <h3>Enregistrez - vous</h3>
+                <h4>Creation d'un compte Super Admin</h4>
+            </div>
+
+
+            <div class="mb-3">
+                <div class="row">
+                    <div class="col-12 col-md-5">
+                        <label class="form-label">Prénom <span class="text-danger"> *</span></label>
+                        <div class="input-group">
+                            {% render_field form.first_name class="form-control border-end-0" type="text" %}
+                            <span class="input-group-text border-start-0">
+                                <i class="ti ti-user"></i>
+                            </span>
+                            {% if form.first_name.errors %}
+                            {% for error in form.first_name.errors %}
+                            <div class="alert alert-danger">{{ error }}</div>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-7">
+                        <label class="form-label">Noms <span class="text-danger"> *</span></label>
+                        <div class="input-group">
+                            {% render_field form.last_name class="form-control border-end-0" type="text" %}
+                            <span class="input-group-text border-start-0">
+                                <i class="ti ti-user"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email <span class="text-danger"> *</span></label>
+                <div class="input-group">
+                    {% render_field form.email class="form-control border-end-0" type="email" %}
+                    <span class="input-group-text border-start-0">
+                        <i class="ti ti-mail"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Mot de passe <span class="text-danger"> *</span></label>
+                <div class="pass-group">
+                    {% render_field form.password1 class="pass-inputs form-control" type="password" %}
+                    <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+                </div>
+
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Confirmation mot de passe <span class="text-danger">*</span></label>
+                <div class="pass-group">
+                    {% render_field form.password2 class="pass-inputs form-control" type="password" %}
+                    <span class="ti toggle-passwords ti-eye-off text-gray-9"></span>
+                </div>
+
+            </div>
+            <div class="form-login authentication-check">
+                <div class="row">
+                    <div class="col-sm-8">
+                        <div class="custom-control custom-checkbox justify-content-start">
+                            <div class="custom-control custom-checkbox">
+                                <label class="checkboxs ps-4 mb-0 pb-0 line-height-1">
+                                    {% render_field form.acceptez type="checkbox" %}
+                                    <span class="checkmarks"></span>Acceptez <a href="#" class="text-primary">les termes
+                                        & conditions d'utilisations</a>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-login">
+                <button type="submit" class="btn btn-login">Sign Up</button>
+            </div>
+        </div>
+    </div>
+</form>

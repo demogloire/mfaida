@@ -1,0 +1,79 @@
+{% load widget_tweaks %}
+<div class="card-header">
+    <h4 class="fw-bold mb-1">Catégories</h4>
+    <p class="text-muted mb-0 small">Organisez vos produits en catégories principales.</p>
+</div>
+
+<div class="card-body">
+    <div class="row g-3">
+        {# ── Tableau ── #}
+        <div class="col-lg-7">
+            {% if categories %}
+            <div class="table-responsive">
+                <table class="table table-hover border mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Entreprise</th>
+                            <th>Catégorie</th>
+                            <th class="text-center">Sous-cat.</th>
+                            <th class="text-center">Produits</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr>
+                            <td class="small text-muted">{{ cat.entreprise.nom }}</td>
+                            <td>
+                                <div class="fw-medium">{{ cat.nom }}</div>
+                                {% if cat.description %}
+                                <div class="text-muted small">{{ cat.description|truncatechars:50 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">{{ cat.nb_sous }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ cat.nb_produits }}</span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <button class="btn btn-outline-secondary btn-sm"
+                                            hx-get="{% url 'produit:categorie-modifier' cat.pk %}"
+                                            hx-target="#cat-panel"
+                                            hx-swap="innerHTML"
+                                            title="Modifier">
+                                        <i class="ti ti-edit"></i>
+                                    </button>
+                                    <form hx-post="{% url 'produit:categorie-supprimer' cat.pk %}"
+                                          hx-target="body"
+                                          hx-confirm="Supprimer « {{ cat.nom }} » ? Cette action est irréversible."
+                                          class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Supprimer">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="ti ti-category" style="font-size:3rem;opacity:.3;"></i>
+                <p class="mt-2">Aucune catégorie. Créez-en une.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {# ── Panneau formulaire ── #}
+        <div class="col-lg-5">
+            <div id="cat-panel">
+                {% include 'produit/categories/partial/form_add.html' %}
+            </div>
+        </div>
+    </div>
+</div>

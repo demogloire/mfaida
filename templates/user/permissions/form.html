@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="add-item d-flex">
+            <div class="page-title">
+                <h4 class="fw-bold">{{ titre }}</h4>
+                <h6>Réservé aux administrateurs</h6>
+            </div>
+        </div>
+        <ul class="table-top-head">
+            <li>
+                <a data-bs-toggle="tooltip" data-bs-placement="top" title="Réduire" id="collapse-header">
+                    <i class="ti ti-chevron-up"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% if permission %}
+                    {% include 'Utilities/user/sidebar-conf.html' with actif='modifier-permission' actif_section='permissions' %}
+                {% else %}
+                    {% include 'Utilities/user/sidebar-conf.html' with actif='creer-permission' actif_section='permissions' %}
+                {% endif %}
+
+                <div class="flex-fill d-flex flex-column gap-3">
+
+                    {# ── Bandeau admin-only ── #}
+                    <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2">
+                        <i class="ti ti-shield-lock fs-5"></i>
+                        <span class="small">
+                            <strong>Zone réservée aux administrateurs.</strong>
+                            Les permissions sont les briques de base du contrôle d'accès — assignez-les aux rôles après création.
+                        </span>
+                    </div>
+
+                    <div class="row g-3 align-items-start">
+
+                        {# ── Formulaire ── #}
+                        <div class="col-lg-7">
+                            <div class="card mb-0">
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="d-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10 text-warning"
+                                              style="width:40px;height:40px;">
+                                            <i class="ti ti-lock-square fs-5"></i>
+                                        </span>
+                                        <div>
+                                            <h6 class="fw-bold mb-0">
+                                                {% if permission %}Modifier la permission{% else %}Nouvelle permission{% endif %}
+                                            </h6>
+                                            <p class="text-muted small mb-0">
+                                                {% if permission %}{{ permission.nom }}{% else %}Définir un nouveau droit d'accès{% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <a href="{% url 'user:liste-permissions' %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="ti ti-arrow-left me-1"></i>Retour
+                                    </a>
+                                </div>
+                                <div class="card-body p-4">
+                                    <form method="post"
+                                          hx-post="{{ request.path }}"
+                                          hx-target="#form-perm"
+                                          hx-swap="innerHTML">
+                                        {% csrf_token %}
+                                        <div id="form-perm">
+                                            {% include 'user/permissions/partial/form.html' %}
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# ── Panneau info droite ── #}
+                        <div class="col-lg-5">
+
+                            {% if permission %}
+                            {# Résumé de la permission en modification #}
+                            <div class="card border-warning border-opacity-25 mb-3">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-warning mb-3">
+                                        <i class="ti ti-info-circle me-1"></i>Utilisation actuelle
+                                    </h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted small">Rôles utilisant cette permission</span>
+                                        <span class="badge bg-warning text-dark">{{ permission.roles.count }}</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        {% for rp in permission.roles.all %}
+                                            <span class="badge bg-light text-dark border me-1 mb-1">{{ rp.role.nom }}</span>
+                                        {% empty %}
+                                            <span class="text-muted small">Aucun rôle ne l'utilise encore.</span>
+                                        {% endfor %}
+                                    </div>
+                                    <hr class="my-2">
+                                    <div class="small text-muted">
+                                        Code actuel : <code class="text-dark">{{ permission.code }}</code>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {# Conventions de nommage #}
+                            <div class="card bg-light border-0 mb-3">
+                                <div class="card-body">
+                                    <h6 class="fw-bold mb-3">
+                                        <i class="ti ti-bulb me-1 text-warning"></i>Conventions de nommage
+                                    </h6>
+                                    <p class="small text-muted mb-2">Le <strong>code</strong> suit le format :</p>
+                                    <code class="d-block p-2 bg-white border rounded mb-3 text-center">
+                                        verbe_module
+                                    </code>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-borderless mb-0 small">
+                                            <thead class="text-muted">
+                                                <tr><th>Nom</th><th>Code</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td>Voir la finance</td><td><code>voir_finance</code></td></tr>
+                                                <tr><td>Modifier le stock</td><td><code>modifier_stock</code></td></tr>
+                                                <tr><td>Supprimer une facture</td><td><code>supprimer_facture</code></td></tr>
+                                                <tr><td>Créer un bon d'achat</td><td><code>creer_achat</code></td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

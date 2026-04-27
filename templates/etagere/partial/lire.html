@@ -1,0 +1,64 @@
+<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">Étagères</h4>
+        <p class="text-muted mb-0">Organisez les emplacements de stockage de la branche.</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a hx-get="{% url 'entreprise:branche-liste'%}" hx-target="body" hx-push-url="true" class="btn btn-outline-secondary">
+            Retour
+        </a>
+        <a hx-get="{% url 'entreprise:branche-excel-upload-etagere'  pk %}" hx-target="body" hx-push-url="true" class="btn btn-outline-success">
+            <i class="ti ti-upload me-1"></i>
+            Charger fichier
+        </a>
+        <a hx-get="{% url 'entreprise:etagere-ajouter' pk %}" hx-target="body" hx-push-url="true" class="btn btn-primary">
+            <i class="ti ti-circle-plus me-1"></i>
+            Ajouter étagère
+        </a>
+    </div>
+</div>
+
+<div class="card-body pb-0">
+    <div class="row">
+        <div class="table-responsive mb-4">
+            <table class="table table-hover border mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Init. </th>
+                        <th>Réfé.</th>
+                        <th>Code </th>
+                        <th>Capacité</th>
+                        <th class="no-sort"></th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    {%for eta in locations%}
+                    <tr>
+
+                        <td>
+                            {{eta.initiale}}
+                        </td>
+                        <td>
+                            {{eta.reference}}
+                        </td>
+                        <td>{{eta.code}}</td>
+                        <td>{{eta.capacite}} Kg</td>
+
+                        <td class="action-table-data">
+                            <div class="edit-delete-action">
+                                <a href="{% url 'entreprise:etagere-mod' branche_id=pk pk=eta.id  %}" hx-target="body" hx-push-url="true">
+                                    <i data-feather="edit" class="feather-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {%endfor%}
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+

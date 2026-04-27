@@ -1,0 +1,68 @@
+<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">Produits</h4>
+        <p class="text-muted mb-0 small">
+            {{ produits.paginator.count }} produit{{ produits.paginator.count|pluralize }} au total
+        </p>
+    </div>
+    <a hx-get="{% url 'produit:creer' %}" hx-target="body" hx-push-url="true"
+       class="btn btn-primary">
+        <i class="ti ti-circle-plus me-1"></i>Nouveau produit
+    </a>
+</div>
+
+{# ── Filtres ── #}
+<div class="card-body border-bottom pb-3 pt-3">
+    <form hx-get="{% url 'produit:liste' %}"
+          hx-target="#produits-table"
+          hx-push-url="true"
+          hx-trigger="change, submit"
+          class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="ti ti-search"></i></span>
+                <input type="search" name="q" class="form-control" placeholder="Nom, code-barres…"
+                       value="{{ q|default:'' }}"
+                       hx-get="{% url 'produit:liste' %}"
+                       hx-target="#produits-table"
+                       hx-push-url="true"
+                       hx-trigger="keyup changed delay:400ms, search">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="cat" class="form-select">
+                <option value="">Toutes catégories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.pk }}" {% if cat_id == cat.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ cat.nom }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="statut" class="form-select">
+                <option value="">Tous statuts</option>
+                <option value="1" {% if statut == '1' %}selected{% endif %}>Actifs</option>
+                <option value="0" {% if statut == '0' %}selected{% endif %}>Inactifs</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-secondary w-100">
+                <i class="ti ti-filter me-1"></i>Filtrer
+            </button>
+        </div>
+        {% if q or cat_id or statut %}
+        <div class="col-md-1">
+            <a hx-get="{% url 'produit:liste' %}" hx-target="#produits-table" hx-push-url="true"
+               class="btn btn-outline-danger w-100" title="Effacer les filtres">
+                <i class="ti ti-x"></i>
+            </a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{# ── Tableau ── #}
+<div id="produits-table">
+    {% include 'produit/produits/partial/liste.html' with table_only=True %}
+</div>

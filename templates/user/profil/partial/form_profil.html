@@ -1,0 +1,43 @@
+{% load widget_tweaks %}
+
+{% if success %}
+<div class="alert alert-success">
+    <i class="ti ti-check me-1"></i>Profil mis à jour avec succès.
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <div class="col-sm-6">
+        <label class="form-label">Prénom <span class="text-danger">*</span></label>
+        {% render_field form.first_name class="form-control" %}
+        {% if form.first_name.errors %}<div class="text-danger small">{{ form.first_name.errors.0 }}</div>{% endif %}
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label">Nom <span class="text-danger">*</span></label>
+        {% render_field form.last_name class="form-control" %}
+        {% if form.last_name.errors %}<div class="text-danger small">{{ form.last_name.errors.0 }}</div>{% endif %}
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label">E-mail <span class="text-danger">*</span></label>
+        {% render_field form.email class="form-control" %}
+        {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors.0 }}</div>{% endif %}
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label">Téléphone</label>
+        {% render_field form.telephone class="form-control" %}
+    </div>
+    <div class="col-12">
+        <label class="form-label">Adresse</label>
+        {% render_field form.adresse class="form-control" rows="2" %}
+    </div>
+    <div class="col-12">
+        <label class="form-label">Photo de profil</label>
+        {% render_field form.photo class="form-control" %}
+    </div>
+</div>
+<div class="mt-4 d-flex justify-content-end gap-2">
+    <a href="{% url 'user:mon-profil' %}" class="btn btn-outline-secondary">Annuler</a>
+    <button type="submit" class="btn btn-primary">
+        <i class="ti ti-device-floppy me-1"></i>Enregistrer
+    </button>
+</div>

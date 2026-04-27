@@ -1,0 +1,113 @@
+<div class="settings-sidebar" id="sidebar2">
+    <div class="sidebar-inner slimscroll">
+        <div id="sidebar-menu5" class="sidebar-menu">
+            <div class="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom">
+                <h4 class="fw-bold fs-18 mb-0">Utilisateurs</h4>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle"
+                      style="font-size:.65rem;">Admin</span>
+            </div>
+            <ul>
+                <li class="submenu-open">
+                    <ul>
+
+                        {# ── Utilisateurs ── #}
+                        <li class="submenu">
+                            <a href="javascript:void(0);"
+                               class="{% if actif_section == 'utilisateurs' %}active subdrop{% endif %}">
+                                <i class="ti ti-users fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Utilisateurs</span>
+                                <span class="menu-arrow"></span>
+                            </a>
+                            <ul>
+                                <li>
+                                    <a hx-get="{% url 'user:liste-utilisateurs' %}"
+                                       hx-target="body"
+                                       hx-push-url="true"
+                                       class="{% if actif == 'liste-utilisateurs' %}active{% endif %}">
+                                        Liste
+                                    </a>
+                                </li>
+                                <li>
+                                    <a hx-get="{% url 'user:creer-utilisateur' %}"
+                                       hx-target="body"
+                                       hx-push-url="true"
+                                       class="{% if actif == 'creer-utilisateur' %}active{% endif %}">
+                                        Créer un utilisateur
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        {# ── Rôles ── #}
+                        <li class="submenu">
+                            <a href="javascript:void(0);"
+                               class="{% if actif_section == 'roles' %}active subdrop{% endif %}">
+                                <i class="ti ti-shield-half fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Rôles</span>
+                                <span class="menu-arrow"></span>
+                            </a>
+                            <ul>
+                                <li>
+                                    <a hx-get="{% url 'user:liste-roles' %}"
+                                       hx-target="body"
+                                       hx-push-url="true"
+                                       class="{% if actif == 'liste-roles' %}active{% endif %}">
+                                        Liste des rôles
+                                    </a>
+                                </li>
+                                <li>
+                                    <a hx-get="{% url 'user:creer-role' %}"
+                                       hx-target="body"
+                                       hx-push-url="true"
+                                       class="{% if actif == 'creer-role' %}active{% endif %}">
+                                        Créer un rôle
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        {# ── Permissions ── #}
+                        <li class="submenu">
+                            <a href="javascript:void(0);"
+                               class="{% if actif_section == 'permissions' %}active subdrop{% endif %}">
+                                <i class="ti ti-lock-square fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Permissions</span>
+                                <span class="menu-arrow"></span>
+                            </a>
+                            <ul>
+                                <li>
+                                    <a hx-get="{% url 'user:liste-permissions' %}"
+                                       hx-target="body"
+                                       hx-push-url="true"
+                                       class="{% if actif == 'liste-permissions' %}active{% endif %}">
+                                        Liste des permissions
+                                    </a>
+                                </li>
+                                <li>
+                                    <a hx-get="{% url 'user:creer-permission' %}"
+                                       hx-target="body"
+                                       hx-push-url="true"
+                                       class="{% if actif == 'creer-permission' %}active{% endif %}">
+                                        Créer une permission
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        {# ── Journal ── #}
+                        <li>
+                            <a hx-get="{% url 'user:journal-connexions' %}"
+                               hx-target="body"
+                               hx-push-url="true"
+                               class="{% if actif == 'journal-connexions' %}active{% endif %}">
+                                <i class="ti ti-history fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Journal des connexions</span>
+                            </a>
+                        </li>
+
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,21 @@
+{% extends 'baseout.html' %}
+
+
+{% block content %}
+<div class="account-content">
+    <div class="login-wrapper login-new">
+        <div class="row w-100">
+            <div class="col-lg-5 mx-auto">
+                <div class="login-content user-login">
+  
+                    {% include 'user/partial/add_user.html' %}
+                </div>
+                <div class="my-4 d-flex justify-content-center align-items-center copyright-text">
+                    <p>Copyright &copy; 2025 DreamsPOS</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="add-item d-flex">
+            <div class="page-title">
+                <h4 class="fw-bold">Réinitialiser le mot de passe</h4>
+                <h6>Gestion des comptes utilisateurs</h6>
+            </div>
+        </div>
+        <ul class="table-top-head">
+            <li>
+                <a href="{% url 'user:liste-utilisateurs' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-arrow-left me-1"></i>Retour
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% include 'Utilities/user/sidebar-conf.html' with actif='liste-utilisateurs' actif_section='utilisateurs' %}
+
+                <div class="card flex-fill mb-0">
+                    <div class="card-body d-flex align-items-center justify-content-center" style="min-height:300px;">
+                        <div class="text-center">
+                            <div class="avatar avatar-xl bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4" style="width:80px;height:80px;">
+                                <i class="ti ti-key text-warning fs-1"></i>
+                            </div>
+                            <h5 class="fw-bold mb-1">Réinitialiser le mot de passe</h5>
+                            <p class="text-muted mb-1">Générer un nouveau mot de passe temporaire pour</p>
+                            <p class="fw-bold fs-5 mb-1">{{ utilisateur.get_full_name }}</p>
+                            <p class="text-muted small mb-4">{{ utilisateur.email }}</p>
+                            <p class="text-warning small mb-4">Le mot de passe actuel sera invalidé immédiatement.</p>
+                            <div class="d-flex justify-content-center gap-3">
+                                <a href="{% url 'user:liste-utilisateurs' %}" class="btn btn-outline-secondary">Annuler</a>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="ti ti-key me-1"></i>Réinitialiser
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

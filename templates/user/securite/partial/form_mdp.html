@@ -1,0 +1,35 @@
+{% load widget_tweaks %}
+
+{% if success %}
+<div class="alert alert-success py-2"><i class="ti ti-check me-1"></i>Mot de passe modifié avec succès.</div>
+{% endif %}
+
+<div class="mb-3">
+    <label class="form-label">Mot de passe actuel <span class="text-danger">*</span></label>
+    <div class="pass-group">
+        {% render_field form_mdp.old_password class="form-control pass-inputs" type="password" %}
+        <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+    </div>
+    {% if form_mdp.old_password.errors %}<div class="text-danger small mt-1">{{ form_mdp.old_password.errors.0 }}</div>{% endif %}
+</div>
+<div class="mb-3">
+    <label class="form-label">Nouveau mot de passe <span class="text-danger">*</span></label>
+    <div class="pass-group">
+        {% render_field form_mdp.new_password1 class="form-control pass-inputs" type="password" %}
+        <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+    </div>
+    {% if form_mdp.new_password1.errors %}<div class="text-danger small mt-1">{{ form_mdp.new_password1.errors.0 }}</div>{% endif %}
+</div>
+<div class="mb-4">
+    <label class="form-label">Confirmer le nouveau mot de passe <span class="text-danger">*</span></label>
+    <div class="pass-group">
+        {% render_field form_mdp.new_password2 class="form-control pass-inputs" type="password" %}
+        <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+    </div>
+    {% if form_mdp.new_password2.errors %}<div class="text-danger small mt-1">{{ form_mdp.new_password2.errors.0 }}</div>{% endif %}
+</div>
+<div class="d-flex justify-content-end">
+    <button type="submit" class="btn btn-warning">
+        <i class="ti ti-lock me-1"></i>Modifier le mot de passe
+    </button>
+</div>

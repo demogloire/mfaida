@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Mon audit</h4>
+            <h6>Historique complet de toutes vos actions dans le système</h6>
+        </div>
+    </div>
+
+    {% include 'user/parametres/nav.html' with actif='audit' %}
+
+    {# ── Statistiques ── #}
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-0 bg-primary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="ti ti-activity fs-2 text-primary mb-2 d-block"></i>
+                    <div class="fs-13 text-muted">Total actions</div>
+                    <div class="fw-bold fs-4">{{ total_actions }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-0 bg-success bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="ti ti-login fs-2 text-success mb-2 d-block"></i>
+                    <div class="fs-13 text-muted">Connexions réussies</div>
+                    <div class="fw-bold fs-4">{{ connexions_succes }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-0 bg-danger bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="ti ti-lock-access fs-2 text-danger mb-2 d-block"></i>
+                    <div class="fs-13 text-muted">Tentatives échouées</div>
+                    <div class="fw-bold fs-4">{{ connexions_echec }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-0 bg-info bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="ti ti-history fs-2 text-info mb-2 d-block"></i>
+                    <div class="fs-13 text-muted">Total connexions</div>
+                    <div class="fw-bold fs-4">{{ total_connexions }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Journal des actions ── #}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-clipboard-list text-primary fs-5"></i>
+                <h5 class="card-title mb-0">Journal des actions</h5>
+            </div>
+            <form hx-get="{% url 'user:audit-personnel' %}"
+                  hx-target="#audit-container"
+                  hx-push-url="true"
+                  class="d-flex gap-2 flex-wrap">
+                <select name="verbe" class="form-select form-select-sm" style="width:auto;">
+                    <option value="">Toutes les actions</option>
+                    {% for code, label in verbe_choices %}
+                        <option value="{{ code }}" {% if verbe == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="module" value="{{ module }}" class="form-control form-control-sm"
+                       placeholder="Module..." style="width:120px;">
+                <input type="date" name="date_debut" value="{{ date_debut }}" class="form-control form-control-sm" style="width:140px;">
+                <input type="date" name="date_fin" value="{{ date_fin }}" class="form-control form-control-sm" style="width:140px;">
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <i class="ti ti-filter"></i>
+                </button>
+            </form>
+        </div>
+        <div class="card-body p-0" id="audit-container">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date / Heure</th>
+                            <th>Action</th>
+                            <th>Module</th>
+                            <th>Description</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in page_actions %}
+                        <tr>
+                            <td class="text-nowrap">{{ a.date_heure|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {% if a.verbe == 'creation' %}
+                                    <span class="badge bg-success">{{ a.get_verbe_display }}</span>
+                                {% elif a.verbe == 'suppression' %}
+                                    <span class="badge bg-danger">{{ a.get_verbe_display }}</span>
+                                {% elif a.verbe == 'modification' %}
+                                    <span class="badge bg-warning text-dark">{{ a.get_verbe_display }}</span>
+                                {% elif a.verbe == 'connexion' %}
+                                    <span class="badge bg-primary">{{ a.get_verbe_display }}</span>
+                                {% elif a.verbe == 'deconnexion' %}
+                                    <span class="badge bg-secondary">{{ a.get_verbe_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ a.get_verbe_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td><code class="small">{{ a.module|default:"—" }}</code></td>
+                            <td>{{ a.description|default:"—"|truncatechars:80 }}</td>
+                            <td>{{ a.adresse_ip|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="ti ti-clipboard-off fs-3 d-block mb-2"></i>
+                                Aucune action enregistrée pour les critères sélectionnés.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if page_actions.has_other_pages %}
+            <div class="d-flex justify-content-center py-3">
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_actions.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page_a={{ page_actions.previous_page_number }}&verbe={{ verbe }}&module={{ module }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">&laquo;</a>
+                        </li>
+                        {% endif %}
+                        <li class="page-item disabled">
+                            <span class="page-link">{{ page_actions.number }} / {{ page_actions.paginator.num_pages }}</span>
+                        </li>
+                        {% if page_actions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page_a={{ page_actions.next_page_number }}&verbe={{ verbe }}&module={{ module }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">&raquo;</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ── Historique des connexions ── #}
+    <div class="card">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="ti ti-login text-success fs-5"></i>
+            <h5 class="card-title mb-0">Historique des connexions</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date / Heure</th>
+                            <th>IP</th>
+                            <th>Navigateur</th>
+                            <th>Résultat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for j in page_connexions %}
+                        <tr>
+                            <td class="text-nowrap">{{ j.date_heure|date:"d/m/Y H:i" }}</td>
+                            <td>{{ j.adresse_ip|default:"—" }}</td>
+                            <td class="text-truncate" style="max-width:300px;" title="{{ j.user_agent }}">
+                                {{ j.user_agent|truncatechars:60|default:"—" }}
+                            </td>
+                            <td>
+                                {% if j.succes %}
+                                    <span class="badge bg-success">Succès</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Échec</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                <i class="ti ti-history-off fs-3 d-block mb-2"></i>Aucune connexion enregistrée.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if page_connexions.has_other_pages %}
+            <div class="d-flex justify-content-center py-3">
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_connexions.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page_c={{ page_connexions.previous_page_number }}">&laquo;</a></li>
+                        {% endif %}
+                        <li class="page-item disabled">
+                            <span class="page-link">{{ page_connexions.number }} / {{ page_connexions.paginator.num_pages }}</span>
+                        </li>
+                        {% if page_connexions.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page_c={{ page_connexions.next_page_number }}">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock content %}

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Mon profil</h4>
+            <h6>Informations personnelles</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'user:modifier-profil' %}" class="btn btn-primary me-2">
+                <i class="ti ti-edit me-1"></i>Modifier
+            </a>
+            <a href="{% url 'user:changer-mot-de-passe' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-lock me-1"></i>Changer le mot de passe
+            </a>
+        </div>
+    </div>
+
+    {% include 'user/parametres/nav.html' with actif='profil' %}
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card text-center">
+                <div class="card-body pt-4">
+                    {% if profil.photo %}
+                        <img src="{{ profil.photo.url }}" alt="Photo" class="rounded-circle mb-3" style="width:120px;height:120px;object-fit:cover;">
+                    {% else %}
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto mb-3" style="width:120px;height:120px;">
+                            <span class="text-white fs-1 fw-bold">{{ profil.first_name|first|upper }}{{ profil.last_name|first|upper }}</span>
+                        </div>
+                    {% endif %}
+                    <h5 class="fw-bold">{{ profil.get_full_name }}</h5>
+                    <p class="text-muted mb-1">{{ profil.email }}</p>
+                    {% if profil.role %}
+                        <span class="badge bg-primary">{{ profil.role.nom }}</span>
+                    {% endif %}
+                    {% if profil.admin %}
+                        <span class="badge bg-danger ms-1">Administrateur</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Détails du compte</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Prénom</label>
+                            <p class="fw-medium">{{ profil.first_name|default:"—" }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Nom</label>
+                            <p class="fw-medium">{{ profil.last_name|default:"—" }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">E-mail</label>
+                            <p class="fw-medium">{{ profil.email|default:"—" }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Téléphone</label>
+                            <p class="fw-medium">{{ profil.telephone|default:"—" }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Branche</label>
+                            <p class="fw-medium">{{ profil.branche|default:"—" }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Membre depuis</label>
+                            <p class="fw-medium">{{ profil.date_joined|date:"d/m/Y" }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Adresse</label>
+                            <p class="fw-medium">{{ profil.adresse|default:"—" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Dernières connexions</h5>
+                    <a href="{% url 'user:activite-utilisateur' profil.pk %}" class="btn btn-sm btn-outline-primary">Voir tout</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>IP</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for j in journal %}
+                                <tr>
+                                    <td>{{ j.date_heure|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ j.adresse_ip|default:"—" }}</td>
+                                    <td>
+                                        {% if j.succes %}
+                                            <span class="badge bg-success">Succès</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Échec</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center text-muted py-3">Aucune connexion enregistrée</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

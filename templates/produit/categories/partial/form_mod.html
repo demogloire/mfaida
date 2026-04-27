@@ -1,0 +1,47 @@
+{% load widget_tweaks %}
+<div class="card border-warning border-opacity-50 h-100 mb-0">
+    <div class="card-header bg-warning bg-opacity-10 border-warning border-opacity-25 d-flex align-items-center justify-content-between">
+        <h6 class="fw-bold mb-0 text-warning">
+            <i class="ti ti-edit me-2"></i>Modifier — {{ categorie.nom }}
+        </h6>
+        <button class="btn btn-sm btn-outline-secondary"
+                hx-get="{% url 'produit:categories' %}"
+                hx-target="#cat-panel"
+                hx-swap="innerHTML"
+                title="Annuler">
+            <i class="ti ti-x"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <form hx-post="{% url 'produit:categorie-modifier' categorie.pk %}"
+              hx-target="#cat-contenu"
+              hx-swap="innerHTML">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label fw-medium">Entreprise <span class="text-danger">*</span></label>
+                {% render_field form.entreprise %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-medium">Nom <span class="text-danger">*</span></label>
+                {% render_field form.nom %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-medium">Description</label>
+                {% render_field form.description %}
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning flex-fill">
+                    <i class="ti ti-check me-1"></i>Mettre à jour
+                </button>
+                <button type="button" class="btn btn-outline-secondary"
+                        hx-get="{% url 'produit:categories' %}"
+                        hx-target="#cat-panel"
+                        hx-swap="innerHTML">
+                    Annuler
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

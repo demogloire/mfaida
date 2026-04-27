@@ -1,0 +1,23 @@
+{% load widget_tweaks %}
+<form hx-post="{% url 'entreprise:branche-excel-upload-etagere'  pk %}"  hx-encoding="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="custom-file-container" data-upload-id="myFirstImage">
+        <label>Charger fichier <a href="javascript:void(0)" class="custom-file-container__image-clear"
+                title="Clear Image">x</a></label>
+        <label class="custom-file-container__custom-file">
+            {% render_field form.file_excel class="custom-file-container__custom-file__custom-file-input" %}
+            <input type="hidden" name="MAX_FILE_SIZE" value="10485760">
+            <span class="custom-file-container__custom-file__custom-file-control"></span>
+        </label>
+        <div class="custom-file-container__image-preview"></div>
+    </div>
+
+    <div class="text-end settings-bottom-btn mt-0">
+        <a hx-get="{% url 'entreprise:etagere-liste' pk %}" 
+            hx-target="body" 
+            hx-push-url="true"
+            class="btn btn-secondary me-2">Annuler</a>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+</form>

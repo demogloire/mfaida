@@ -1,0 +1,81 @@
+{% load widget_tweaks %}
+
+{% if success %}
+<div class="alert alert-success d-flex align-items-center gap-2">
+    <i class="ti ti-circle-check fs-5"></i>
+    <span>Permission <strong>{% if permission %}{{ permission.nom }}{% endif %}</strong> enregistrée avec succès.</span>
+</div>
+{% endif %}
+
+{% for field in form %}
+    {% if field.errors %}
+    <div class="alert alert-danger py-2 small">
+        {% for error in field.errors %}<div><i class="ti ti-alert-circle me-1"></i>{{ error }}</div>{% endfor %}
+    </div>
+    {% endif %}
+{% endfor %}
+
+<div class="mb-4">
+    <label class="form-label fw-semibold" for="{{ form.nom.id_for_label }}">
+        Nom de la permission <span class="text-danger">*</span>
+    </label>
+    {% render_field form.nom class="form-control form-control-lg" id="perm-nom" placeholder="ex : Voir la finance, Modifier le stock…" autocomplete="off" %}
+    <div class="form-text">Nom lisible, affiché aux administrateurs.</div>
+</div>
+
+<div class="mb-4">
+    <label class="form-label fw-semibold" for="{{ form.code.id_for_label }}">
+        Code technique <span class="text-danger">*</span>
+    </label>
+    <div class="input-group">
+        <span class="input-group-text bg-light text-muted font-monospace small">@</span>
+        {% render_field form.code class="form-control font-monospace" id="perm-code" placeholder="ex : voir_finance" autocomplete="off" %}
+    </div>
+    <div class="form-text">
+        Rempli automatiquement depuis le nom. Ce code sert à identifier la permission dans le système — 
+        vous n'avez pas besoin de le modifier manuellement.
+    </div>
+</div>
+
+<div class="d-flex justify-content-end gap-2 pt-2 border-top mt-2">
+    <a href="{% url 'user:liste-permissions' %}" class="btn btn-outline-secondary">
+        <i class="ti ti-x me-1"></i>Annuler
+    </a>
+    <button type="submit" class="btn btn-primary px-4">
+        <i class="ti ti-device-floppy me-1"></i>Enregistrer la permission
+    </button>
+</div>
+
+<script>
+/* Génération automatique du code depuis le nom (seulement si code est vide ou n'a pas été édité manuellement) */
+(function () {
+    var nomEl  = document.getElementById('perm-nom');
+    var codeEl = document.getElementById('perm-code');
+    if (!nomEl || !codeEl) return;
+
+    var userEditedCode = codeEl.value.trim() !== '';
+
+    function slugify(str) {
+        return str
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') /* remove accents */
+            .replace(/[^a-z0-9\s_]/g, '')
+            .trim()
+            .replace(/\s+/g, '_');
+    }
+
+    nomEl.addEventListener('input', function () {
+        if (!userEditedCode) {
+            codeEl.value = slugify(this.value);
+        }
+    });
+
+    codeEl.addEventListener('input', function () {
+        userEditedCode = this.value.trim() !== '';
+        /* Forcer minuscules + underscore en temps réel */
+        var pos = this.selectionStart;
+        this.value = slugify(this.value.replace(/_/g, ' ')).replace(/ /g, '_');
+        this.setSelectionRange(pos, pos);
+    });
+})();
+</script>

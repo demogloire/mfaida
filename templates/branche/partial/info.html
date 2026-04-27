@@ -1,0 +1,149 @@
+{% load widget_tweaks %}
+<div class="card flex-fill mb-0">
+<div class="card-header">
+    <h4 class="fs-18 fw-bold">Information de la branche</h4>
+</div>
+<div class="card-body">
+    <form hx-post="{% url 'entreprise:entreprise-branche' %}" >
+        {% csrf_token %}
+        <div class="border-bottom mb-3 pb-3">
+            <div class="card-title-head">
+                <h6 class="fs-16 fw-bold mb-2">
+                    <span class="fs-16 me-2"><i class="ti ti ti-building-store"></i></span>
+                    Details
+                </h6>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-1">
+                        <label class="form-label">
+                            Code de branche
+                            <span class="text-danger">*</span>
+                        </label>
+                        {% render_field form.code_branche class="form-control " %}
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="mb-1">
+                        <label class="form-label">
+                            Nom de la branche
+                            <span class="text-danger">*</span>
+                        </label>
+                        {% render_field form.nom class="form-control " %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-1">
+                        <label class="form-label">
+                            Ville de la branche
+                            <span class="text-danger">*</span>
+                        </label>
+                        {% render_field form.ville class="form-control " %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-1">
+                        <label class="form-label">
+                            Entreprise
+                            <span class="text-danger">*</span>
+                        </label>
+                        {% render_field form.entreprise class="form-control select" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="border-bottom mb-3 pb-3">
+            <div class="card-title-head">
+                <h6 class="fs-16 fw-bold mb-2">
+                    <span class="fs-16 me-2"><i class="ti ti-settings"></i></span>
+                    Initialisation
+                </h6>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Init. Facture
+                            <span class="text-danger">*</span>
+                        </label>
+                        {% render_field form.init_facture class="form-control " %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Init. Proforma
+                        </label>
+                        {% render_field form.init_proforma class="form-control " %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Init. BD Commande
+                        </label>
+                        {% render_field form.init_bdcommande class="form-control " %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Init. Etagère
+                        </label>
+                        {% render_field form.init_location class="form-control " %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div>
+            <div class="card-title-head">
+                <h6 class="fs-16 fw-bold mb-3">
+                    <span class="fs-16 me-2"><i class="ti ti-menu-2"></i></span> 
+                    Autres
+                </h6>
+            </div>
+
+            <div class="row align-items-center">
+                <div class="col-sm-4">
+                    <div class="setting-info">
+                        Siège Social de l'entreprise
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="localization-select d-flex align-items-center">
+                        <div class="status-toggle modal-status d-flex justify-content-between align-items-center me-3">
+                            {% render_field form.est_siege_social class="check" %}
+                            <label for="id_est_siege_social" class="checktoggle"></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row align-items-center">
+                <div class="col-sm-4">
+                    <div class="setting-info">
+                        Pas d'étagère ordonée
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="localization-select d-flex align-items-center">
+                        <div class="status-toggle modal-status d-flex justify-content-between align-items-center me-3">
+                            {% render_field form.sans_etagere_ordonne class="check" %}
+                            <label for="id_sans_etagere_ordonne" class="checktoggle"></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="text-end settings-bottom-btn mt-0">
+            <a hx-get="{% url 'entreprise:branche-liste' %}" hx-target="body" hx-push-url="true"
+                class="btn btn-secondary me-2">Annuler</a>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+    </form>
+</div>
+</div>

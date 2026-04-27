@@ -1,0 +1,26 @@
+{% load widget_tweaks %}
+
+{% if success %}
+<div class="alert alert-success py-2"><i class="ti ti-check me-1"></i>E-mail mis à jour avec succès.</div>
+{% endif %}
+
+<div class="mb-3">
+    <label class="form-label">Nouvel e-mail <span class="text-danger">*</span></label>
+    {% render_field form_email.email class="form-control" placeholder="nouveau@exemple.com" %}
+    {% if form_email.email.errors %}<div class="text-danger small mt-1">{{ form_email.email.errors.0 }}</div>{% endif %}
+</div>
+<div class="mb-4">
+    <label class="form-label">Confirmation par mot de passe <span class="text-danger">*</span></label>
+    <div class="pass-group">
+        {% render_field form_email.mot_de_passe_actuel class="form-control pass-inputs" type="password" %}
+        <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+    </div>
+    {% if form_email.mot_de_passe_actuel.errors %}
+        <div class="text-danger small mt-1">{{ form_email.mot_de_passe_actuel.errors.0 }}</div>
+    {% endif %}
+</div>
+<div class="d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary">
+        <i class="ti ti-device-floppy me-1"></i>Mettre à jour l'e-mail
+    </button>
+</div>

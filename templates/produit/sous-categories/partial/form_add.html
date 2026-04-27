@@ -1,0 +1,29 @@
+{% load widget_tweaks %}
+<div class="card border-primary border-opacity-50 h-100 mb-0">
+    <div class="card-header bg-primary bg-opacity-10 border-primary border-opacity-25">
+        <h6 class="fw-bold mb-0 text-primary">
+            <i class="ti ti-circle-plus me-2"></i>Nouvelle sous-catégorie
+        </h6>
+    </div>
+    <div class="card-body">
+        <form hx-post="{% url 'produit:sous-categorie-creer' %}"
+              hx-target="#souscat-contenu"
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-medium">Catégorie parente <span class="text-danger">*</span></label>
+                {% render_field form.categorie %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-medium">Nom <span class="text-danger">*</span></label>
+                {% render_field form.nom %}
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="ti ti-check me-1"></i>Enregistrer
+                </button>
+                <button type="reset" class="btn btn-outline-secondary">Réinitialiser</button>
+            </div>
+        </form>
+    </div>
+</div>

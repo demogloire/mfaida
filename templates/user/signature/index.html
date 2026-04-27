@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Ma signature</h4>
+            <h6>Signature apposée sur les documents générés (factures, bons, etc.)</h6>
+        </div>
+    </div>
+
+    {% include 'user/parametres/nav.html' with actif='signature' %}
+
+    <div class="row g-4 justify-content-center">
+
+        {# ── Aperçu actuel ── #}
+        <div class="col-lg-5">
+            <div class="card text-center h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="ti ti-eye text-primary fs-5"></i>
+                    <h5 class="card-title mb-0">Signature actuelle</h5>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center py-5" id="apercu-signature">
+                    {% include 'user/signature/partial/apercu.html' %}
+                </div>
+            </div>
+        </div>
+
+        {# ── Formulaire d'upload ── #}
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="ti ti-upload text-success fs-5"></i>
+                    <h5 class="card-title mb-0">Modifier la signature</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info d-flex gap-2 align-items-start">
+                        <i class="ti ti-info-circle flex-shrink-0 mt-1"></i>
+                        <div>
+                            <strong>Conseils :</strong>
+                            <ul class="mb-0 ps-3 mt-1">
+                                <li>Format <strong>PNG avec fond transparent</strong> recommandé</li>
+                                <li>Dimensions idéales : <strong>400 × 150 px</strong></li>
+                                <li>Taille maximale : 2 Mo</li>
+                                <li>La signature sera intégrée directement dans les documents PDF</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data"
+                          hx-post="{% url 'user:signature' %}"
+                          hx-target="#apercu-signature"
+                          hx-swap="innerHTML"
+                          hx-encoding="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-4">
+                            <label class="form-label fw-medium">
+                                Fichier de signature <span class="text-danger">*</span>
+                            </label>
+                            {% render_field form.signature class="form-control" %}
+                            <div class="form-text">{{ form.signature.help_text }}</div>
+                            {% if form.signature.errors %}
+                                <div class="text-danger small mt-1">{{ form.signature.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if profil.signature %}
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {% render_field form.supprimer_signature class="form-check-input" %}
+                                <label class="form-check-label text-danger">
+                                    Supprimer la signature actuelle
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'user:mon-profil' %}" class="btn btn-outline-secondary">Annuler</a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="ti ti-device-floppy me-1"></i>Enregistrer la signature
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {# ── Exemple d'utilisation ── #}
+        {% if profil.signature %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="ti ti-file-invoice fs-5 text-muted"></i>
+                    <h5 class="card-title mb-0">Aperçu sur document</h5>
+                </div>
+                <div class="card-body">
+                    <div class="border rounded p-4" style="background:#f8f9fa;">
+                        <div class="row align-items-end">
+                            <div class="col-md-6">
+                                <p class="text-muted small mb-1">Approuvé et signé par :</p>
+                                <img src="{{ profil.signature.url }}" alt="Signature" style="max-height:80px; max-width:200px;">
+                                <p class="fw-bold mb-0 mt-2">{{ profil.get_full_name }}</p>
+                                {% if profil.role %}<p class="text-muted small mb-0">{{ profil.role.nom }}</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock content %}

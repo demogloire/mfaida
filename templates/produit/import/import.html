@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Catalogue produits</h4>
+            <h6>Import de produits via Excel</h6>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% include 'Utilities/produit/sidebar.html' %}
+                <div class="flex-fill d-flex flex-column gap-3">
+
+                    {# ── Étape 1 : télécharger le modèle ── #}
+                    <div class="card mb-0">
+                        <div class="card-header">
+                            <h6 class="fw-bold mb-0">
+                                <span class="badge bg-primary me-2">1</span>Télécharger le modèle Excel
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                <div>
+                                    <p class="mb-1">Téléchargez le fichier modèle (.xlsx), remplissez-le avec vos produits, puis importez-le ci-dessous.</p>
+                                    <p class="text-muted small mb-0">
+                                        Colonnes obligatoires : <code>nom</code>, <code>categorie</code>, <code>sous_categorie</code>,
+                                        <code>prix_achat_ht</code>, <code>prix_vente_ht</code>.
+                                        Les catégories et sous-catégories inexistantes seront créées automatiquement.
+                                    </p>
+                                </div>
+                                <a href="{% url 'produit:import-modele' %}"
+                                   class="btn btn-outline-success flex-shrink-0">
+                                    <i class="ti ti-file-download me-1"></i>Télécharger le modèle
+                                </a>
+                            </div>
+
+                            {# Aperçu des colonnes #}
+                            <div class="mt-3">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered mb-0 small">
+                                        <thead class="table-primary">
+                                            <tr>
+                                                <th>nom</th><th>categorie</th><th>sous_categorie</th>
+                                                <th>code_barre</th><th>description</th>
+                                                <th>prix_achat_ht</th><th>prix_vente_ht</th>
+                                                <th>tva_taux</th><th>unite_mesure</th>
+                                                <th>stock_alerte</th><th>methode_gestion</th><th>vie</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="text-muted fst-italic">
+                                                <td>Savon Lux</td><td>Hygiène</td><td>Soins du corps</td>
+                                                <td>6901234…</td><td>Savon 150g</td>
+                                                <td>1500</td><td>2500</td>
+                                                <td>16</td><td>PCS</td>
+                                                <td>10</td><td>FEFO</td><td>365</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# ── Étape 2 : importer ── #}
+                    <div class="card mb-0">
+                        <div class="card-header">
+                            <h6 class="fw-bold mb-0">
+                                <span class="badge bg-primary me-2">2</span>Importer votre fichier Excel
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" enctype="multipart/form-data" class="row g-3">
+                                {% csrf_token %}
+                                <div class="col-md-8">
+                                    <label class="form-label fw-medium">{{ form.fichier.label }}</label>
+                                    {% render_field form.fichier %}
+                                    <div class="form-text">{{ form.fichier.help_text }}</div>
+                                    {% if form.fichier.errors %}
+                                    <div class="text-danger small mt-1">{{ form.fichier.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="ti ti-file-import me-1"></i>Lancer l'import
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    {# ── Résultats ── #}
+                    {% if results %}
+                    <div class="card mb-0">
+                        <div class="card-header d-flex align-items-center gap-2">
+                            <i class="ti ti-report text-primary"></i>
+                            <h6 class="fw-bold mb-0">Résultats de l'import</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <div class="p-3 rounded border border-success border-opacity-50 bg-success bg-opacity-10 text-center">
+                                        <div class="fw-bold fs-3 text-success">{{ results.created }}</div>
+                                        <div class="text-muted small">Produit(s) créé(s)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-3 rounded border border-info border-opacity-50 bg-info bg-opacity-10 text-center">
+                                        <div class="fw-bold fs-3 text-info">{{ results.updated }}</div>
+                                        <div class="text-muted small">Produit(s) mis à jour</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-3 rounded border bg-light text-center">
+                                        <div class="fw-bold fs-3 text-muted">{{ results.skipped }}</div>
+                                        <div class="text-muted small">Ligne(s) ignorée(s)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if results.errors %}
+                            <div class="alert alert-warning mb-0">
+                                <h6 class="fw-bold mb-2">
+                                    <i class="ti ti-alert-triangle me-1"></i>
+                                    {{ results.errors|length }} erreur(s) rencontrée(s)
+                                </h6>
+                                <ul class="mb-0 small">
+                                    {% for err in results.errors %}
+                                    <li>{{ err }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            {% if results.created or results.updated %}
+                            <div class="mt-3">
+                                <a hx-get="{% url 'produit:liste' %}" hx-target="body" hx-push-url="true"
+                                   class="btn btn-primary">
+                                    <i class="ti ti-eye me-1"></i>Voir les produits importés
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {# ── Aide ── #}
+                    <div class="card mb-0 border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-3"><i class="ti ti-help me-2 text-info"></i>Guide des valeurs acceptées</h6>
+                            <div class="row g-2 small">
+                                <div class="col-md-6">
+                                    <strong>unite_mesure :</strong>
+                                    <code>PCS</code> (Pièce), <code>KG</code> (Kilogramme),
+                                    <code>L</code> (Litre), <code>M</code> (Mètre), <code>BOX</code> (Carton)
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>methode_gestion :</strong>
+                                    <code>FEFO</code> (premier expiré sorti),
+                                    <code>FIFO</code> (premier entré sorti),
+                                    <code>LIFO</code> (dernier entré sorti)
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>tva_taux :</strong> valeur en % (ex: <code>16</code> pour 16%). Défaut : 16.
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>vie :</strong> durée de vie en jours (ex: <code>365</code>). Défaut : 30.
+                                </div>
+                                <div class="col-12 text-muted">
+                                    Si <code>code_barre</code> est renseigné, un produit existant avec ce code sera mis à jour.
+                                    Sinon, un nouveau produit est toujours créé.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

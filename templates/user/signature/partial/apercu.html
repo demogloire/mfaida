@@ -1,0 +1,17 @@
+{% if success %}
+<div class="alert alert-success py-2 w-100"><i class="ti ti-check me-1"></i>Signature mise à jour.</div>
+{% endif %}
+
+{% if profil.signature %}
+    <div class="border rounded p-3 mb-3 bg-white" style="min-height:120px; display:flex; align-items:center; justify-content:center;">
+        <img src="{{ profil.signature.url }}" alt="Signature de {{ profil.get_full_name }}"
+             style="max-height:120px; max-width:100%; object-fit:contain;">
+    </div>
+    <p class="text-muted small mb-0">Signature de <strong>{{ profil.get_full_name }}</strong></p>
+{% else %}
+    <div class="text-center text-muted">
+        <i class="ti ti-signature-off fs-1 d-block mb-2"></i>
+        <p class="mb-0">Aucune signature enregistrée.</p>
+        <p class="small">Téléversez une image pour l'apposer sur vos documents.</p>
+    </div>
+{% endif %}

@@ -1,0 +1,27 @@
+{# Barre de navigation commune aux pages Générale #}
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if actif == 'profil' %}active{% endif %}"
+           href="{% url 'user:mon-profil' %}">
+            <i class="ti ti-user-circle me-1"></i>Profil
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if actif == 'securite' %}active{% endif %}"
+           href="{% url 'user:securite' %}">
+            <i class="ti ti-shield-lock me-1"></i>Sécurité
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if actif == 'signature' %}active{% endif %}"
+           href="{% url 'user:signature' %}">
+            <i class="ti ti-signature me-1"></i>Signature
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if actif == 'audit' %}active{% endif %}"
+           href="{% url 'user:audit-personnel' %}">
+            <i class="ti ti-clipboard-list me-1"></i>Audit
+        </a>
+    </li>
+</ul>

@@ -1,0 +1,23 @@
+{% if not entreprise.nepas_actif %}
+    {# Entreprise active → bouton pour désactiver (envoie "status" → nepas_actif=True) #}
+    <form hx-post="{% url 'entreprise:entreprise-maj' entreprise.id %}"
+          hx-target="#status-toggle-{{ entreprise.id }}"
+          hx-swap="innerHTML"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+          hx-confirm="Désactiver cette entreprise ?">
+        <input type="hidden" name="status" value="on">
+        <button type="submit" class="btn btn-outline-danger btn-sm" title="Désactiver">
+            <i class="ti ti-toggle-right me-1"></i>Désactiver
+        </button>
+    </form>
+{% else %}
+    {# Entreprise inactive → bouton pour activer (sans "status" → nepas_actif=False) #}
+    <form hx-post="{% url 'entreprise:entreprise-maj' entreprise.id %}"
+          hx-target="#status-toggle-{{ entreprise.id }}"
+          hx-swap="innerHTML"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <button type="submit" class="btn btn-outline-success btn-sm" title="Activer">
+            <i class="ti ti-toggle-left me-1"></i>Activer
+        </button>
+    </form>
+{% endif %}

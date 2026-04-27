@@ -1,0 +1,210 @@
+{# Partial HTMX — tableau d'accès rechargeable #}
+{% load acces_tags %}
+
+{% if success %}
+<div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+    <i class="ti ti-circle-check fs-5"></i>
+    <span>Accès de <strong>{{ utilisateur.get_full_name }}</strong> enregistrés avec succès.</span>
+</div>
+{% endif %}
+
+{% if not branche %}
+<div class="alert alert-warning d-flex gap-2">
+    <i class="ti ti-alert-circle fs-5 flex-shrink-0"></i>
+    <div>
+        <strong>Aucune branche assignée.</strong><br>
+        <span class="small">Assignez d'abord une branche à cet utilisateur pour gérer ses accès.</span>
+        <a hx-get="{% url 'user:modifier-utilisateur' utilisateur.pk %}"
+           hx-target="body" hx-push-url="true"
+           class="btn btn-sm btn-outline-primary ms-2">
+            <i class="ti ti-edit me-1"></i>Modifier l'utilisateur
+        </a>
+    </div>
+</div>
+
+{% else %}
+
+{# ─── Macro : une permission switch ──────────────────────────────────────── #}
+{# Utilisé inline via include dans les boucles                                #}
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# DÉPÔTS                                                                       #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<h6 class="fw-bold text-uppercase text-muted mb-3" style="font-size:.7rem;letter-spacing:.08em;">
+    <i class="ti ti-building-warehouse me-1"></i>Dépôts de la branche
+    <span class="badge bg-secondary ms-2">{{ depots.count }}</span>
+</h6>
+
+{% if depots %}
+<div class="row g-3 mb-4">
+    {% for depot in depots %}
+    {% with acces=acces_depots|get_item:depot.pk %}
+    <div class="col-md-6 col-xl-4">
+        <div class="acces-card card border h-100 mb-0 {% if acces %}border-primary{% endif %}"
+             id="depot-card-{{ depot.pk }}">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle
+                                 {% if acces %}bg-primary text-white{% else %}bg-light text-muted{% endif %}"
+                          style="width:32px;height:32px;flex-shrink:0;">
+                        <i class="ti ti-building-warehouse" style="font-size:.9rem;"></i>
+                    </span>
+                    <div>
+                        <div class="fw-semibold lh-sm small">{{ depot.nom }}</div>
+                        <div class="text-muted" style="font-size:.7rem;">{{ depot.code_depot }}</div>
+                    </div>
+                </div>
+                {# Toggle activation du dépôt #}
+                <div class="form-check form-switch mb-0">
+                    <input type="checkbox" class="form-check-input depot-master-toggle"
+                           id="depot-{{ depot.pk }}-actif"
+                           name="depot_{{ depot.pk }}_actif" value="1"
+                           data-target="depot-perms-{{ depot.pk }}"
+                           style="width:2.2em;height:1.2em;cursor:pointer;"
+                           {% if acces %}checked{% endif %}>
+                </div>
+            </div>
+            <div class="card-body py-3 depot-perms" id="depot-perms-{{ depot.pk }}"
+                 {% if not acces %}style="opacity:.45;pointer-events:none;"{% endif %}>
+                <div class="row g-2">
+                    {% for field_name, label, icon in depot_perms %}
+                    <div class="col-6">
+                        <label class="d-flex align-items-center gap-2 p-2 border rounded small
+                                      perm-item {% if acces and acces|getattr_filter:field_name %}active border-primary bg-primary bg-opacity-10{% endif %}"
+                               style="cursor:pointer;transition:.12s;">
+                            <input type="checkbox" class="perm-cb" style="display:none;"
+                                   name="depot_{{ depot.pk }}_{{ field_name }}" value="1"
+                                   {% if acces %}{% if acces|getattr_filter:field_name %}checked{% endif %}{% endif %}>
+                            <i class="ti {{ icon }} flex-shrink-0"></i>
+                            <span>{{ label }}</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-4 mb-4 border rounded">
+    <i class="ti ti-building-warehouse fs-2 d-block mb-2"></i>
+    Aucun dépôt actif dans cette branche.
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# POINTS DE VENTE                                                              #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<h6 class="fw-bold text-uppercase text-muted mb-3" style="font-size:.7rem;letter-spacing:.08em;">
+    <i class="ti ti-shopping-cart me-1"></i>Points de vente de la branche
+    <span class="badge bg-secondary ms-2">{{ points_vente.count }}</span>
+</h6>
+
+{% if points_vente %}
+<div class="row g-3 mb-4">
+    {% for pv in points_vente %}
+    {% with acces=acces_pv|get_item:pv.pk %}
+    <div class="col-md-6 col-xl-4">
+        <div class="acces-card card border h-100 mb-0 {% if acces %}border-success{% endif %}"
+             id="pv-card-{{ pv.pk }}">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle
+                                 {% if acces %}bg-success text-white{% else %}bg-light text-muted{% endif %}"
+                          style="width:32px;height:32px;flex-shrink:0;">
+                        <i class="ti ti-shopping-cart" style="font-size:.9rem;"></i>
+                    </span>
+                    <div>
+                        <div class="fw-semibold lh-sm small">{{ pv.nom }}</div>
+                        <div class="text-muted" style="font-size:.7rem;">{{ pv.code_pointvente }}</div>
+                    </div>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input type="checkbox" class="form-check-input pv-master-toggle"
+                           id="pv-{{ pv.pk }}-actif"
+                           name="pv_{{ pv.pk }}_actif" value="1"
+                           data-target="pv-perms-{{ pv.pk }}"
+                           style="width:2.2em;height:1.2em;cursor:pointer;"
+                           {% if acces %}checked{% endif %}>
+                </div>
+            </div>
+            <div class="card-body py-3 pv-perms" id="pv-perms-{{ pv.pk }}"
+                 {% if not acces %}style="opacity:.45;pointer-events:none;"{% endif %}>
+                <div class="row g-2">
+                    {% for field_name, label, icon in pv_perms %}
+                    <div class="col-6">
+                        <label class="d-flex align-items-center gap-2 p-2 border rounded small
+                                      perm-item {% if acces and acces|getattr_filter:field_name %}active border-success bg-success bg-opacity-10{% endif %}"
+                               style="cursor:pointer;transition:.12s;">
+                            <input type="checkbox" class="perm-cb" style="display:none;"
+                                   name="pv_{{ pv.pk }}_{{ field_name }}" value="1"
+                                   {% if acces %}{% if acces|getattr_filter:field_name %}checked{% endif %}{% endif %}>
+                            <i class="ti {{ icon }} flex-shrink-0"></i>
+                            <span>{{ label }}</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-4 mb-4 border rounded">
+    <i class="ti ti-shopping-cart fs-2 d-block mb-2"></i>
+    Aucun point de vente actif dans cette branche.
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-end gap-2 pt-3 border-top">
+    <button type="submit" class="btn btn-primary px-5">
+        <i class="ti ti-device-floppy me-1"></i>Enregistrer les accès
+    </button>
+</div>
+
+{% endif %}{# end branche #}
+
+<script>
+(function () {
+    /* ── Master toggle : active/désactive le panneau de permissions ── */
+    document.querySelectorAll('.depot-master-toggle, .pv-master-toggle').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            var panel = document.getElementById(this.dataset.target);
+            if (!panel) return;
+            if (this.checked) {
+                panel.style.opacity = '1';
+                panel.style.pointerEvents = 'auto';
+            } else {
+                panel.style.opacity = '.45';
+                panel.style.pointerEvents = 'none';
+                panel.querySelectorAll('.perm-cb').forEach(function (cb) {
+                    cb.checked = false;
+                    cb.closest('label').classList.remove('active', 'border-primary', 'bg-primary',
+                        'bg-opacity-10', 'border-success', 'bg-success');
+                });
+            }
+        });
+    });
+
+    /* ── Perm item : toggle visuel d'une permission individuelle ── */
+    document.querySelectorAll('.perm-item').forEach(function (label) {
+        label.addEventListener('click', function () {
+            var cb = this.querySelector('.perm-cb');
+            cb.checked = !cb.checked;
+            var isDepot = this.closest('[id^="depot-perms-"]') !== null;
+            var activeClasses = isDepot
+                ? ['border-primary', 'bg-primary', 'bg-opacity-10']
+                : ['border-success', 'bg-success', 'bg-opacity-10'];
+            if (cb.checked) {
+                this.classList.add('active', ...activeClasses);
+            } else {
+                this.classList.remove('active', ...activeClasses);
+            }
+        });
+    });
+})();
+</script>

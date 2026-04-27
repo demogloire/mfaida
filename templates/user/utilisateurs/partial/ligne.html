@@ -1,0 +1,52 @@
+<tr id="user-row-{{ u.pk }}">
+    <td>
+        <div class="d-flex align-items-center gap-2">
+            {% if u.photo %}
+                <img src="{{ u.photo.url }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="">
+            {% else %}
+                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width:32px;height:32px;">
+                    <span class="text-white small fw-bold">{{ u.first_name|first|upper }}{{ u.last_name|first|upper }}</span>
+                </div>
+            {% endif %}
+            <span class="fw-medium">{{ u.get_full_name }}</span>
+            {% if u.admin %}<span class="badge bg-danger ms-1">Admin</span>{% endif %}
+        </div>
+    </td>
+    <td>{{ u.email }}</td>
+    <td>{{ u.role|default:"—" }}</td>
+    <td>{{ u.branche|default:"—" }}</td>
+    <td>
+        {% if u.is_active %}
+            <span class="badge bg-success">Actif</span>
+        {% else %}
+            <span class="badge bg-secondary">Inactif</span>
+        {% endif %}
+    </td>
+    <td class="text-end">
+        <div class="btn-group btn-group-sm">
+            <a href="{% url 'user:modifier-utilisateur' u.pk %}" class="btn btn-outline-primary" title="Modifier">
+                <i class="ti ti-edit"></i>
+            </a>
+            <a href="{% url 'user:acces-utilisateur' u.pk %}" class="btn btn-outline-secondary" title="Accès dépôts &amp; PdV">
+                <i class="ti ti-key"></i>
+            </a>
+            <button class="btn btn-outline-warning"
+                    hx-post="{% url 'user:toggle-utilisateur' u.pk %}"
+                    hx-target="#user-row-{{ u.pk }}"
+                    hx-swap="outerHTML"
+                    hx-confirm="{% if u.is_active %}Désactiver cet utilisateur ?{% else %}Réactiver cet utilisateur ?{% endif %}"
+                    title="{% if u.is_active %}Désactiver{% else %}Activer{% endif %}">
+                <i class="ti ti-{% if u.is_active %}user-off{% else %}user-check{% endif %}"></i>
+            </button>
+            <a href="{% url 'user:reset-mdp-utilisateur' u.pk %}" class="btn btn-outline-info" title="Réinitialiser MDP">
+                <i class="ti ti-rotate"></i>
+            </a>
+            <button class="btn btn-outline-danger"
+                    hx-get="{% url 'user:supprimer-utilisateur' u.pk %}"
+                    hx-target="#modal-container"
+                    title="Supprimer">
+                <i class="ti ti-trash"></i>
+            </button>
+        </div>
+    </td>
+</tr>

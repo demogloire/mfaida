@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Catalogue produits</h4>
+            <h6>Fiche produit</h6>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% include 'Utilities/produit/sidebar.html' %}
+                <div class="flex-fill d-flex flex-column gap-3">
+
+                    {# ── En-tête produit ── #}
+                    <div class="card mb-0">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start gap-4 flex-wrap">
+                                {# Image / initiales #}
+                                {% if produit.image %}
+                                <img src="{{ produit.image.url }}" class="rounded-3 border flex-shrink-0"
+                                     style="width:96px;height:96px;object-fit:contain;background:#f8f9fa;" alt="{{ produit.nom }}">
+                                {% else %}
+                                <span class="d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary fw-bold flex-shrink-0"
+                                      style="width:96px;height:96px;font-size:2rem;">
+                                    {{ produit.nom|slice:":2"|upper }}
+                                </span>
+                                {% endif %}
+
+                                <div class="flex-fill">
+                                    <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                                        <div>
+                                            <h4 class="fw-bold mb-1">{{ produit.nom }}</h4>
+                                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                                <span class="badge bg-secondary-subtle text-secondary border">
+                                                    {{ produit.sous_categorie.categorie.nom }}
+                                                </span>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                                    {{ produit.sous_categorie.nom }}
+                                                </span>
+                                                {% if produit.code_barre %}
+                                                <code class="px-2 py-1 rounded bg-light border small">{{ produit.code_barre }}</code>
+                                                {% endif %}
+                                                {% if produit.est_actif %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if produit.description %}
+                                            <p class="text-muted mb-0 small">{{ produit.description }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex gap-2 flex-shrink-0">
+                                            <a hx-get="{% url 'produit:modifier' produit.pk %}" hx-target="body" hx-push-url="true"
+                                               class="btn btn-outline-primary">
+                                                <i class="ti ti-edit me-1"></i>Modifier
+                                            </a>
+                                            <a hx-get="{% url 'produit:liste' %}" hx-target="body" hx-push-url="true"
+                                               class="btn btn-outline-secondary">
+                                                <i class="ti ti-arrow-left me-1"></i>Retour
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        {# ── Prix & TVA ── #}
+                        <div class="col-lg-8">
+                            <div class="card mb-0 h-100">
+                                <div class="card-header">
+                                    <h6 class="fw-bold mb-0">
+                                        <i class="ti ti-coin me-2 text-success"></i>Prix & TVA
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <div class="p-3 rounded border bg-light text-center">
+                                                <div class="text-muted small mb-1">Prix achat HT</div>
+                                                <div class="fw-bold fs-5">{{ produit.prix_achat_ht|floatformat:2 }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="p-3 rounded border bg-light text-center">
+                                                <div class="text-muted small mb-1">Prix vente HT</div>
+                                                <div class="fw-bold fs-5 text-success">{{ produit.prix_vente_ht|floatformat:2 }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="p-3 rounded border bg-light text-center">
+                                                <div class="text-muted small mb-1">TVA</div>
+                                                <div class="fw-bold fs-5 text-info">{{ produit.tva_taux|floatformat:2 }} %</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="p-3 rounded border border-success border-opacity-50 bg-success bg-opacity-10 text-center">
+                                                <div class="text-muted small mb-1">Prix vente TTC</div>
+                                                <div class="fw-bold fs-5 text-success">{{ produit.prix_vente_ttc|floatformat:2 }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="p-3 rounded border bg-light text-center">
+                                                <div class="text-muted small mb-1">Marge brute (HT)</div>
+                                                {% with marge=produit.prix_vente_ht|add:"-"|add:produit.prix_achat_ht %}
+                                                <div class="fw-bold fs-5 {% if produit.prix_vente_ht >= produit.prix_achat_ht %}text-success{% else %}text-danger{% endif %}">
+                                                    {{ produit.prix_vente_ht|floatformat:2 }}
+                                                </div>
+                                                {% endwith %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="p-3 rounded border bg-light text-center">
+                                                <div class="text-muted small mb-1">Unité de mesure</div>
+                                                <div class="fw-bold">{{ produit.get_unite_mesure_display }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# ── Paramètres stock ── #}
+                        <div class="col-lg-4">
+                            <div class="card mb-0 h-100">
+                                <div class="card-header">
+                                    <h6 class="fw-bold mb-0">
+                                        <i class="ti ti-settings me-2 text-warning"></i>Paramètres stock
+                                    </h6>
+                                </div>
+                                <div class="card-body d-flex flex-column gap-3">
+                                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span class="text-muted small">Méthode de gestion</span>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ produit.methode_gestion }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span class="text-muted small">Seuil d'alerte</span>
+                                        <span class="fw-medium">{{ produit.stock_alerte|floatformat:0 }} unités</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span class="text-muted small">Durée de vie</span>
+                                        <span class="fw-medium">{{ produit.vie }} jours</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center py-2">
+                                        <span class="text-muted small">Créé le</span>
+                                        <span class="fw-medium">{{ produit.date_creation|date:"d/m/Y" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# ── Niveaux de stock ── #}
+                    <div class="card mb-0">
+                        <div class="card-header">
+                            <h6 class="fw-bold mb-0">
+                                <i class="ti ti-building-warehouse me-2 text-info"></i>Stock par dépôt
+                            </h6>
+                        </div>
+                        <div class="card-body pb-0">
+                            {% if stocks %}
+                            <div class="table-responsive">
+                                <table class="table table-hover border mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Dépôt</th>
+                                            <th>Point de vente</th>
+                                            <th class="text-end">Quantité disponible</th>
+                                            <th class="text-end">Dernière mise à jour</th>
+                                            <th class="text-center">Alerte</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for s in stocks %}
+                                        <tr>
+                                            <td>{{ s.depot.nom }}</td>
+                                            <td>{{ s.pointdevente.nom|default:"—" }}</td>
+                                            <td class="text-end fw-bold {% if s.quantite_reelle <= produit.stock_alerte %}text-danger{% else %}text-success{% endif %}">
+                                                {{ s.quantite_reelle|floatformat:2 }}
+                                            </td>
+                                            <td class="text-end text-muted small">{{ s.derniere_mise_a_jour|date:"d/m/Y H:i" }}</td>
+                                            <td class="text-center">
+                                                {% if s.quantite_reelle <= produit.stock_alerte %}
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                                    <i class="ti ti-alert-triangle me-1"></i>Bas
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">OK</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="ti ti-building-warehouse" style="font-size:2.5rem;opacity:.3;"></i>
+                                <p class="mt-2 mb-0 small">Aucun stock enregistré pour ce produit.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

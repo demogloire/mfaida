@@ -1,0 +1,117 @@
+{% load widget_tweaks %}
+
+{% if success %}
+<div class="alert alert-success d-flex align-items-center gap-2">
+    <i class="ti ti-circle-check fs-5"></i>
+    <span>Opération effectuée avec succès.</span>
+</div>
+{% endif %}
+
+{% for field in form %}
+    {% if field.errors %}
+    <div class="alert alert-danger py-2 small">
+        {% for error in field.errors %}<div><i class="ti ti-alert-circle me-1"></i>{{ error }}</div>{% endfor %}
+    </div>
+    {% endif %}
+{% endfor %}
+
+{# ── Informations personnelles ── #}
+<h6 class="fw-bold text-muted text-uppercase" style="font-size:.7rem; letter-spacing:.08em;">
+    <i class="ti ti-user me-1"></i>Informations personnelles
+</h6>
+<div class="row g-3 mb-4">
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+        {% render_field form.first_name class="form-control" %}
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+        {% render_field form.last_name class="form-control" %}
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">E-mail <span class="text-danger">*</span></label>
+        {% render_field form.email class="form-control" %}
+        <div class="form-text">Servira d'identifiant de connexion.</div>
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">Téléphone</label>
+        {% render_field form.telephone class="form-control" %}
+    </div>
+
+    {% if form.password1 %}
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">Mot de passe <span class="text-danger">*</span></label>
+        {% render_field form.password1 class="form-control" type="password" %}
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">Confirmer le mot de passe <span class="text-danger">*</span></label>
+        {% render_field form.password2 class="form-control" type="password" %}
+    </div>
+    {% endif %}
+
+    <div class="col-12">
+        <label class="form-label fw-semibold">Adresse</label>
+        {% render_field form.adresse class="form-control" rows="2" %}
+    </div>
+    <div class="col-12">
+        <label class="form-label fw-semibold">Photo de profil</label>
+        {% render_field form.photo class="form-control" %}
+        {% if utilisateur and utilisateur.photo %}
+        <div class="mt-2">
+            <img src="{{ utilisateur.photo.url }}" alt="Photo actuelle"
+                 class="rounded-circle" style="width:52px;height:52px;object-fit:cover;">
+            <span class="text-muted small ms-2">Photo actuelle</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<hr class="my-3">
+
+{# ── Accès & Autorisations (Admin only) ── #}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h6 class="fw-bold text-muted text-uppercase mb-0" style="font-size:.7rem; letter-spacing:.08em;">
+        <i class="ti ti-lock me-1"></i>Accès &amp; autorisations
+    </h6>
+    <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.65rem;">
+        Administrateur uniquement
+    </span>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">Rôle</label>
+        {% render_field form.role class="form-select" %}
+        <div class="form-text">Définit les permissions de l'utilisateur.</div>
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label fw-semibold">Branche</label>
+        {% render_field form.branche class="form-select" %}
+    </div>
+    <div class="col-12">
+        <div class="d-flex gap-4 flex-wrap p-3 border rounded bg-light">
+            <div class="form-check">
+                {% render_field form.admin class="form-check-input" %}
+                <label class="form-check-label fw-semibold" for="{{ form.admin.id_for_label }}">
+                    <i class="ti ti-shield-check text-danger me-1"></i>Administrateur ERP
+                </label>
+                <div class="form-text">Accès complet à toutes les fonctionnalités d'administration.</div>
+            </div>
+            <div class="form-check">
+                {% render_field form.is_active class="form-check-input" %}
+                <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">
+                    <i class="ti ti-toggle-right text-success me-1"></i>Compte actif
+                </label>
+                <div class="form-text">Un compte inactif ne peut pas se connecter.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-end gap-2 pt-2 border-top">
+    <a href="{% url 'user:liste-utilisateurs' %}" class="btn btn-outline-secondary">
+        <i class="ti ti-x me-1"></i>Annuler
+    </a>
+    <button type="submit" class="btn btn-primary px-4">
+        <i class="ti ti-device-floppy me-1"></i>Enregistrer
+    </button>
+</div>

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content settings-content">
+    {% include 'utilities/entreprise/header-conf.html' %}
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% include 'utilities/entreprise/sidebar-conf.html' %}
+                <div class="card flex-fill mb-0">
+                    {% include 'depot/partial/lire.html' %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

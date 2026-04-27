@@ -1,0 +1,40 @@
+{% load widget_tweaks %}
+
+{% if success %}
+<div class="alert alert-success">
+    <i class="ti ti-check me-1"></i>Mot de passe modifié avec succès.
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <div class="col-12">
+        <label class="form-label">Mot de passe actuel <span class="text-danger">*</span></label>
+        <div class="pass-group">
+            {% render_field form.old_password class="form-control pass-inputs" type="password" %}
+            <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+        </div>
+        {% if form.old_password.errors %}<div class="text-danger small">{{ form.old_password.errors.0 }}</div>{% endif %}
+    </div>
+    <div class="col-12">
+        <label class="form-label">Nouveau mot de passe <span class="text-danger">*</span></label>
+        <div class="pass-group">
+            {% render_field form.new_password1 class="form-control pass-inputs" type="password" %}
+            <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+        </div>
+        {% if form.new_password1.errors %}<div class="text-danger small">{{ form.new_password1.errors.0 }}</div>{% endif %}
+    </div>
+    <div class="col-12">
+        <label class="form-label">Confirmer le nouveau mot de passe <span class="text-danger">*</span></label>
+        <div class="pass-group">
+            {% render_field form.new_password2 class="form-control pass-inputs" type="password" %}
+            <span class="ti toggle-password ti-eye-off text-gray-9"></span>
+        </div>
+        {% if form.new_password2.errors %}<div class="text-danger small">{{ form.new_password2.errors.0 }}</div>{% endif %}
+    </div>
+</div>
+<div class="mt-4 d-flex justify-content-end gap-2">
+    <a href="{% url 'user:mon-profil' %}" class="btn btn-outline-secondary">Annuler</a>
+    <button type="submit" class="btn btn-primary">
+        <i class="ti ti-lock me-1"></i>Mettre à jour
+    </button>
+</div>

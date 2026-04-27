@@ -1,0 +1,88 @@
+<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">Liste des dépôts</h4>
+        <p class="text-muted mb-0">Vue globale de tous les dépôts.</p>
+    </div>
+    <div class="input-group" style="max-width: 320px;">
+        <span class="input-group-text bg-white"><i class="ti ti-search"></i></span>
+        <input
+            type="search"
+            name="q"
+            class="form-control"
+            placeholder="Rechercher…"
+            value="{{ q|default:'' }}"
+            hx-get="{% url 'entreprise:depot-liste-tous' %}"
+            hx-target="#depot-list"
+            hx-push-url="true"
+            hx-trigger="keyup changed delay:300ms, search">
+    </div>
+</div>
+
+<div class="card-body pb-0">
+    <div class="row">
+        <div class="table-responsive mb-4">
+            <table class="table table-hover border mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Entreprise</th>
+                        <th>Branche</th>
+                        <th>Code</th>
+                        <th>Nom</th>
+                        <th>Adresse</th>
+                        <th class="no-sort"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for depot in depots %}
+                    <tr>
+                        <td>{{ depot.branche.entreprise.nom }}</td>
+                        <td>{{ depot.branche.nom }}</td>
+                        <td>{{ depot.code_depot }}</td>
+                        <td>{{ depot.nom }}</td>
+                        <td>{{ depot.adresse }}</td>
+                        <td class="action-table-data">
+                            <div class="edit-delete-action">
+                                <a href="{% url 'entreprise:depot-maj' depot.pk %}" hx-target="body" hx-push-url="true">
+                                    <i data-feather="edit" class="feather-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td class="text-center text-muted">Aucun dépôt.</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if depots.paginator.num_pages > 1 %}
+<div class="card-footer bg-white border-top">
+    <nav aria-label="Pagination dépôts">
+        <ul class="pagination mb-0 flex-wrap">
+            <li class="page-item {% if not depots.has_previous %}disabled{% endif %}">
+                <a class="page-link"
+                   hx-get="{% url 'entreprise:depot-liste-tous' %}?q={{ q|urlencode }}&page={{ depots.previous_page_number }}"
+                   hx-target="#depot-list" hx-push-url="true">Précédent</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page {{ depots.number }} / {{ depots.paginator.num_pages }}</span>
+            </li>
+            <li class="page-item {% if not depots.has_next %}disabled{% endif %}">
+                <a class="page-link"
+                   hx-get="{% url 'entreprise:depot-liste-tous' %}?q={{ q|urlencode }}&page={{ depots.next_page_number }}"
+                   hx-target="#depot-list" hx-push-url="true">Suivant</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+{% endif %}
+

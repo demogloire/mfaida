@@ -1,0 +1,44 @@
+{% extends 'baseout.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="account-content">
+    <div class="login-wrapper login-new">
+        <div class="row w-100">
+            <div class="col-lg-5 mx-auto">
+                <div class="login-content user-login">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="card">
+                            <div class="card-body p-5">
+                                <div class="login-userheading">
+                                    <h3>Mot de passe oublié</h3>
+                                    <h4>Entrez votre e-mail pour recevoir un mot de passe temporaire</h4>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">E-mail <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        {% render_field form.email class="form-control border-end-0" %}
+                                        <span class="input-group-text border-start-0">
+                                            <i class="ti ti-mail"></i>
+                                        </span>
+                                    </div>
+                                    {% if form.email.errors %}
+                                        <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-login">
+                                    <button type="submit" class="btn btn-primary w-100">Réinitialiser</button>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="{% url 'user:connexion' %}" class="text-orange fs-14">Retour à la connexion</a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

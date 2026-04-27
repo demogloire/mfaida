@@ -1,0 +1,145 @@
+<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">Entreprises</h4>
+        <p class="text-muted mb-0 small">Gérez les informations et paramètres de vos entreprises.</p>
+    </div>
+    <a hx-get="{% url 'entreprise:entreprise-info' %}"
+       hx-target="body"
+       hx-push-url="true"
+       class="btn btn-primary">
+        <i class="ti ti-circle-plus me-1"></i>Ajouter une entreprise
+    </a>
+</div>
+
+<div class="card-body">
+    <div class="row g-3" id="entreprise-liste">
+        {% for entreprise in listentreprise %}
+        <div class="col-xxl-6 col-xl-6 col-lg-12">
+            <div class="card h-100 mb-0 border {% if not entreprise.nepas_actif %}border-primary border-opacity-25{% else %}border-secondary border-opacity-25{% endif %}">
+
+                {# ── En-tête : logo + nom + statut ── #}
+                <div class="card-header py-3 d-flex align-items-start justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        {% if entreprise.logo %}
+                        <img src="{{ entreprise.logo.url }}" alt="{{ entreprise.nom }}"
+                             class="rounded-3 flex-shrink-0 border"
+                             style="width:46px;height:46px;object-fit:contain;background:#f8f9fa;">
+                        {% else %}
+                        <span class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0 fw-bold text-white"
+                              style="width:46px;height:46px;font-size:1.1rem;
+                                     background:{% if not entreprise.nepas_actif %}#0d6efd{% else %}#6c757d{% endif %};">
+                            {{ entreprise.nom|slice:":2"|upper }}
+                        </span>
+                        {% endif %}
+                        <div>
+                            <h6 class="fw-bold mb-0 lh-sm">{{ entreprise.nom }}</h6>
+                            <span class="text-muted small">
+                                <i class="ti ti-mail me-1"></i>{{ entreprise.email }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+                        {% if not entreprise.nepas_actif %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# ── Corps : infos légales + contact ── #}
+                <div class="card-body py-3">
+                    {# Identifiants légaux #}
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if entreprise.idnat %}
+                        <div class="d-flex align-items-center gap-1 px-2 py-1 rounded bg-light border small text-muted">
+                            <i class="ti ti-id-badge text-primary"></i>
+                            <span>ID Nat : <strong class="text-dark">{{ entreprise.idnat }}</strong></span>
+                        </div>
+                        {% endif %}
+                        {% if entreprise.rccm %}
+                        <div class="d-flex align-items-center gap-1 px-2 py-1 rounded bg-light border small text-muted">
+                            <i class="ti ti-file-certificate text-warning"></i>
+                            <span>RCCM : <strong class="text-dark">{{ entreprise.rccm }}</strong></span>
+                        </div>
+                        {% endif %}
+                        {% if entreprise.numero_impot %}
+                        <div class="d-flex align-items-center gap-1 px-2 py-1 rounded bg-light border small text-muted">
+                            <i class="ti ti-receipt text-success"></i>
+                            <span>N° Impôt : <strong class="text-dark">{{ entreprise.numero_impot }}</strong></span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {# Contact + adresse #}
+                    <div class="d-flex flex-column gap-1 mb-3">
+                        {% if entreprise.telephone %}
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="ti ti-phone text-primary flex-shrink-0"></i>
+                            <span>{{ entreprise.telephone }}</span>
+                        </div>
+                        {% endif %}
+                        {% if entreprise.adresse_siege %}
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="ti ti-map-pin text-danger flex-shrink-0"></i>
+                            <span class="text-truncate" style="max-width:260px;">{{ entreprise.adresse_siege }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {# Stats rapides #}
+                    <div class="row g-2 text-center">
+                        <div class="col-4">
+                            <div class="p-2 rounded bg-light">
+                                <div class="fw-bold text-primary">{{ entreprise.branches.count }}</div>
+                                <div class="text-muted" style="font-size:.7rem;">Branche(s)</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded bg-light">
+                                <div class="fw-bold text-success">{{ entreprise.devises.count }}</div>
+                                <div class="text-muted" style="font-size:.7rem;">Devise(s)</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded bg-light">
+                                <div class="fw-bold text-muted small">{{ entreprise.date_creation|date:"d/m/Y" }}</div>
+                                <div class="text-muted" style="font-size:.7rem;">Créée le</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# ── Pied : actions ── #}
+                <div class="card-footer py-2 bg-transparent">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a hx-get="{% url 'entreprise:entreprise-mod' entreprise.id %}"
+                           hx-target="body" hx-push-url="true"
+                           class="btn btn-outline-secondary btn-sm flex-fill"
+                           title="Modifier">
+                            <i class="ti ti-edit me-1"></i>Modifier
+                        </a>
+                        <div class="status-toggle d-flex align-items-center" id="status-toggle-{{ entreprise.id }}">
+                            {% include 'entreprise/partial/modifier/taggle.html' with entreprise=entreprise %}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5 text-muted">
+                <i class="ti ti-building-skyscraper" style="font-size:3.5rem;opacity:.3;"></i>
+                <h5 class="mt-3">Aucune entreprise</h5>
+                <p class="small">Commencez par créer votre première entreprise.</p>
+                <a hx-get="{% url 'entreprise:entreprise-info' %}"
+                   hx-target="body" hx-push-url="true"
+                   class="btn btn-primary mt-2">
+                    <i class="ti ti-circle-plus me-1"></i>Ajouter une entreprise
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>

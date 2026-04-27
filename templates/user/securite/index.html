@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Sécurité du compte</h4>
+            <h6>Gérez vos informations sensibles et l'accès à votre compte</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'user:mon-profil' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left me-1"></i>Mon profil
+            </a>
+        </div>
+    </div>
+
+    {# ── Navigation paramètres ── #}
+    {% include 'user/parametres/nav.html' with actif='securite' %}
+
+    <div class="row g-4">
+
+        {# ── Informations de session ── #}
+        <div class="col-12">
+            <div class="row g-3">
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body text-center py-3">
+                            <i class="ti ti-login fs-2 text-primary mb-2 d-block"></i>
+                            <div class="fs-13 text-muted">Dernière connexion</div>
+                            <div class="fw-bold">{{ request.user.last_login|date:"d/m/Y H:i"|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body text-center py-3">
+                            <i class="ti ti-calendar fs-2 text-success mb-2 d-block"></i>
+                            <div class="fs-13 text-muted">Membre depuis</div>
+                            <div class="fw-bold">{{ request.user.date_joined|date:"d/m/Y" }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card border-0 {% if dernieres_connexions %}bg-success bg-opacity-10{% else %}bg-light{% endif %}">
+                        <div class="card-body text-center py-3">
+                            <i class="ti ti-shield-check fs-2 {% if dernieres_connexions %}text-success{% else %}text-muted{% endif %} mb-2 d-block"></i>
+                            <div class="fs-13 text-muted">Connexions (7 derniers jours)</div>
+                            <div class="fw-bold">{{ dernieres_connexions|length }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body text-center py-3">
+                            <i class="ti ti-user-check fs-2 text-primary mb-2 d-block"></i>
+                            <div class="fs-13 text-muted">Statut du compte</div>
+                            <div class="fw-bold">
+                                {% if request.user.is_active %}
+                                    <span class="badge bg-success">Actif</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactif</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ── Changer l'e-mail ── #}
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="ti ti-mail text-primary fs-5"></i>
+                    <h5 class="card-title mb-0">Adresse e-mail</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-4">
+                        L'e-mail est utilisé pour la connexion. Tout changement invalide l'identifiant actuel.
+                    </p>
+                    <form method="post"
+                          hx-post="{% url 'user:securite' %}"
+                          hx-target="#form-email-container"
+                          hx-swap="innerHTML">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="email">
+                        <div id="form-email-container">
+                            {% include 'user/securite/partial/form_email.html' %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {# ── Changer le mot de passe ── #}
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="ti ti-lock text-warning fs-5"></i>
+                    <h5 class="card-title mb-0">Mot de passe</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-4">
+                        Utilisez un mot de passe fort d'au moins 8 caractères, avec des majuscules, chiffres et symboles.
+                    </p>
+                    <form method="post"
+                          hx-post="{% url 'user:securite' %}"
+                          hx-target="#form-mdp-container"
+                          hx-swap="innerHTML">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="mdp">
+                        <div id="form-mdp-container">
+                            {% include 'user/securite/partial/form_mdp.html' %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {# ── Activité récente ── #}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="ti ti-history text-info fs-5"></i>
+                        <h5 class="card-title mb-0">Activité récente</h5>
+                    </div>
+                    <a href="{% url 'user:audit-personnel' %}" class="btn btn-sm btn-outline-primary">
+                        Voir tout l'audit
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>IP</th>
+                                    <th>Navigateur</th>
+                                    <th>Résultat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for j in dernieres_connexions %}
+                                <tr>
+                                    <td class="text-nowrap">{{ j.date_heure|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ j.adresse_ip|default:"—" }}</td>
+                                    <td class="text-truncate" style="max-width:250px;" title="{{ j.user_agent }}">
+                                        {{ j.user_agent|truncatechars:50|default:"—" }}
+                                    </td>
+                                    <td>
+                                        {% if j.succes %}
+                                            <span class="badge bg-success">Succès</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Échec</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-3">Aucune connexion enregistrée.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock content %}

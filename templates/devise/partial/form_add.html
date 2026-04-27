@@ -1,0 +1,62 @@
+{% load widget_tweaks %}
+<form hx-post="{% url 'entreprise:devise-ajouter' %}">
+    {% csrf_token %}
+    <div class="border-bottom mb-3 pb-3">
+        <div class="card-title-head">
+            <h6 class="fs-16 fw-bold mb-2">
+                <span class="fs-16 me-2"><i class="ti ti-currency-dollar"></i></span>
+                Details
+            </h6>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-1">
+                    <label class="form-label">Entreprise <span class="text-danger">*</span></label>
+                    {% render_field form.entreprise class="form-control select" %}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-1">
+                    <label class="form-label">Code <span class="text-danger">*</span></label>
+                    {% render_field form.code class="form-control" placeholder="USD" %}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-1">
+                    <label class="form-label">Symbole <span class="text-danger">*</span></label>
+                    {% render_field form.symbole class="form-control" placeholder="$" %}
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mb-1">
+                    <label class="form-label">Taux d'échange</label>
+                    {% render_field form.taux_echange class="form-control" %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row align-items-center mb-3">
+        <div class="col-sm-4">
+            <div class="setting-info">
+                Devise principale
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="localization-select d-flex align-items-center">
+                <div class="status-toggle modal-status d-flex justify-content-between align-items-center me-3">
+                    {% render_field form.est_principale class="check" %}
+                    <label for="id_est_principale" class="checktoggle"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-end settings-bottom-btn mt-0">
+        <a hx-get="{% url 'entreprise:devise-liste' %}" hx-target="body" hx-push-url="true" class="btn btn-secondary me-2">Annuler</a>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+</form>
+

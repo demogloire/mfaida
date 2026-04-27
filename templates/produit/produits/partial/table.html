@@ -1,0 +1,129 @@
+<div class="card-body pb-0 pt-2">
+    <div class="table-responsive">
+        <table class="table table-hover border mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:50px;"></th>
+                    <th>Produit</th>
+                    <th>Catégorie</th>
+                    <th>Unité</th>
+                    <th class="text-end">PA HT</th>
+                    <th class="text-end">PV HT</th>
+                    <th class="text-end">PV TTC</th>
+                    <th class="text-center">Statut</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in produits %}
+                <tr class="{% if not p.est_actif %}text-muted{% endif %}">
+                    <td>
+                        {% if p.image %}
+                        <img src="{{ p.image.url }}" class="rounded border" style="width:36px;height:36px;object-fit:cover;" alt="">
+                        {% else %}
+                        <span class="d-flex align-items-center justify-content-center rounded border bg-light text-muted"
+                              style="width:36px;height:36px;font-size:.75rem;font-weight:700;">
+                            {{ p.nom|slice:":2"|upper }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="fw-medium">
+                            <a hx-get="{% url 'produit:detail' p.pk %}" hx-target="body" hx-push-url="true"
+                               class="text-decoration-none text-dark">{{ p.nom }}</a>
+                        </div>
+                        {% if p.code_barre %}
+                        <code class="small text-muted">{{ p.code_barre }}</code>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="small">{{ p.sous_categorie.categorie.nom }}</div>
+                        <span class="badge bg-secondary-subtle text-secondary border" style="font-size:.65rem;">
+                            {{ p.sous_categorie.nom }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">{{ p.get_unite_mesure_display }}</span>
+                    </td>
+                    <td class="text-end fw-medium">{{ p.prix_achat_ht|floatformat:2 }}</td>
+                    <td class="text-end fw-medium text-success">{{ p.prix_vente_ht|floatformat:2 }}</td>
+                    <td class="text-end fw-medium text-primary">{{ p.prix_vente_ttc|floatformat:2 }}</td>
+                    <td class="text-center">
+                        {% if p.est_actif %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="d-flex gap-1 justify-content-end">
+                            <a hx-get="{% url 'produit:detail' p.pk %}" hx-target="body" hx-push-url="true"
+                               class="btn btn-outline-info btn-sm" title="Voir">
+                                <i class="ti ti-eye"></i>
+                            </a>
+                            <a hx-get="{% url 'produit:modifier' p.pk %}" hx-target="body" hx-push-url="true"
+                               class="btn btn-outline-secondary btn-sm" title="Modifier">
+                                <i class="ti ti-edit"></i>
+                            </a>
+                            <form hx-post="{% url 'produit:toggle' p.pk %}"
+                                  hx-target="body"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="btn btn-sm {% if p.est_actif %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                                        title="{% if p.est_actif %}Désactiver{% else %}Activer{% endif %}">
+                                    <i class="ti ti-{% if p.est_actif %}toggle-right{% else %}toggle-left{% endif %}"></i>
+                                </button>
+                            </form>
+                            <form hx-post="{% url 'produit:supprimer' p.pk %}"
+                                  hx-target="body"
+                                  hx-confirm="Supprimer « {{ p.nom }} » définitivement ?"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Supprimer">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        <i class="ti ti-box" style="font-size:3rem;opacity:.3;"></i>
+                        <p class="mt-2 mb-0">Aucun produit trouvé.</p>
+                        {% if not q and not cat_id and not statut %}
+                        <a hx-get="{% url 'produit:creer' %}" hx-target="body" hx-push-url="true"
+                           class="btn btn-primary mt-3">
+                            <i class="ti ti-circle-plus me-1"></i>Créer le premier produit
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if produits.paginator.num_pages > 1 %}
+<div class="card-footer bg-white border-top">
+    <nav>
+        <ul class="pagination mb-0 flex-wrap">
+            <li class="page-item {% if not produits.has_previous %}disabled{% endif %}">
+                <a class="page-link"
+                   hx-get="{% url 'produit:liste' %}?q={{ q|urlencode }}&cat={{ cat_id }}&statut={{ statut }}&page={{ produits.previous_page_number }}"
+                   hx-target="#produits-table" hx-push-url="true">Précédent</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page {{ produits.number }} / {{ produits.paginator.num_pages }}</span>
+            </li>
+            <li class="page-item {% if not produits.has_next %}disabled{% endif %}">
+                <a class="page-link"
+                   hx-get="{% url 'produit:liste' %}?q={{ q|urlencode }}&cat={{ cat_id }}&statut={{ statut }}&page={{ produits.next_page_number }}"
+                   hx-target="#produits-table" hx-push-url="true">Suivant</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+{% endif %}

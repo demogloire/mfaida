@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="add-item d-flex">
+            <div class="page-title">
+                <h4 class="fw-bold">Accès &amp; zones</h4>
+                <h6>Dépôts et points de vente accessibles</h6>
+            </div>
+        </div>
+        <ul class="table-top-head">
+            <li>
+                <a data-bs-toggle="tooltip" data-bs-placement="top" title="Réduire" id="collapse-header">
+                    <i class="ti ti-chevron-up"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% include 'Utilities/user/sidebar-conf.html' with actif='acces-utilisateur' actif_section='utilisateurs' %}
+
+                <div class="flex-fill d-flex flex-column gap-3">
+
+                    {# ── Bandeau admin-only ── #}
+                    <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2">
+                        <i class="ti ti-shield-lock fs-5"></i>
+                        <span class="small">
+                            <strong>Zone réservée aux administrateurs.</strong>
+                            Définissez précisément les dépôts et points de vente auxquels cet utilisateur a accès.
+                        </span>
+                    </div>
+
+                    {# ── Fiche utilisateur ── #}
+                    <div class="card mb-0">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                {% if utilisateur.photo %}
+                                <img src="{{ utilisateur.photo.url }}" alt=""
+                                     class="rounded-circle flex-shrink-0"
+                                     style="width:52px;height:52px;object-fit:cover;">
+                                {% else %}
+                                <span class="d-flex align-items-center justify-content-center rounded-circle
+                                             bg-primary bg-opacity-10 text-primary flex-shrink-0"
+                                      style="width:52px;height:52px;font-size:1.3rem;font-weight:700;">
+                                    {{ utilisateur.first_name|first }}{{ utilisateur.last_name|first }}
+                                </span>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <h5 class="fw-bold mb-0">{{ utilisateur.get_full_name }}</h5>
+                                    <p class="text-muted small mb-0">
+                                        {{ utilisateur.email }}
+                                        {% if utilisateur.role %}
+                                        · <span class="badge bg-info-subtle text-info border border-info-subtle">{{ utilisateur.role.nom }}</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div class="d-flex gap-2 flex-wrap text-center">
+                                    <div class="px-3 border-end">
+                                        <div class="fw-bold text-primary">{{ acces_depots|length }}</div>
+                                        <div class="text-muted" style="font-size:.72rem;">Dépôt(s)</div>
+                                    </div>
+                                    <div class="px-3">
+                                        <div class="fw-bold text-success">{{ acces_pv|length }}</div>
+                                        <div class="text-muted" style="font-size:.72rem;">PdV</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    {% if branche %}
+                                    <span class="badge bg-secondary-subtle text-secondary border">
+                                        <i class="ti ti-building me-1"></i>{{ branche.nom }}
+                                    </span>
+                                    {% endif %}
+                                    <a hx-get="{% url 'user:modifier-utilisateur' utilisateur.pk %}"
+                                       hx-target="body" hx-push-url="true"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="ti ti-edit me-1"></i>Modifier
+                                    </a>
+                                    <a href="{% url 'user:liste-utilisateurs' %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="ti ti-arrow-left me-1"></i>Retour
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# ── Formulaire accès ── #}
+                    <div class="card mb-0">
+                        <div class="card-header">
+                            <h6 class="fw-bold mb-0">
+                                <i class="ti ti-key me-1 text-primary"></i>Gestion des accès par zone
+                            </h6>
+                            <p class="text-muted small mb-0">
+                                Activez chaque zone puis cochez les permissions accordées. Un toggle désactivé supprime tous les accès à cette zone.
+                            </p>
+                        </div>
+                        <div class="card-body">
+                            <form method="post"
+                                  hx-post="{{ request.path }}"
+                                  hx-target="#acces-container"
+                                  hx-swap="innerHTML">
+                                {% csrf_token %}
+                                <div id="acces-container">
+                                    {% include 'user/utilisateurs/partial/acces.html' with depot_perms=depot_perms pv_perms=pv_perms %}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

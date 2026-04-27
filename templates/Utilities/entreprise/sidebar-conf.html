@@ -1,0 +1,55 @@
+<!-- class="active subdrop" -->
+<div class="settings-sidebar" id="sidebar2">
+    <div class="sidebar-inner slimscroll">
+        <div id="sidebar-menu5" class="sidebar-menu">
+            <h4 class="fw-bold fs-18 mb-2 pb-2">Configuration</h4>
+            <ul>
+                <li class="submenu-open">
+                    <ul>
+                        <li>
+                            <a  hx-get="{% url 'entreprise:entreprise-liste' %}" 
+                                hx-target="body" 
+                                hx-push-url="true"
+                                class="{%if info %}active{%endif%}">
+                                <i class="ti ti-building-skyscraper fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Entreprise</span>
+                            </a>
+                        </li>
+                        
+                        <li class="submenu">
+                            <a href="javascript:void(0);" class="{%if branche1 %} active {%endif%} {%if subdrop %} subdrop {%endif%}">
+                                <i class="ti ti ti-building-store fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Branche</span>
+                                <span class="menu-arrow"></span>
+                            </a>
+                            <ul>
+                                <li><a hx-get="{% url 'entreprise:branche-liste' %}" hx-target="body" hx-push-url="true" class="{%if branch %} active {%endif%}">Branche</a></li>
+                                <li>
+                                    <a hx-get="{% url 'entreprise:depot-liste-tous' %}" hx-target="body" hx-push-url="true" class="{%if depot %} active {%endif%}">
+                                        Dépôt
+                                    </a>
+                                </li>
+                                <li>
+                                    <a hx-get="{% url 'entreprise:pvente-liste-tous' %}" hx-target="body" hx-push-url="true" class="{%if pdvente %} active {%endif%}">
+                                        PDVente
+                                    </a>
+                                </li>
+                                <li>
+                                    <a hx-get="{% url 'entreprise:devise-liste' %}" hx-target="body" hx-push-url="true" class="{%if devise %} active {%endif%}">
+                                        Devise
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a hx-get="{% url 'entreprise:fournisseur-liste' %}" hx-target="body" hx-push-url="true" class="{%if fournisseur %} active {%endif%}">
+                                <i class="ti ti-user fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Fournisseur</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

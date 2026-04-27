@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="add-item d-flex">
+            <div class="page-title">
+                <h4 class="fw-bold">{{ titre }}</h4>
+                <h6>Réservé aux administrateurs</h6>
+            </div>
+        </div>
+        <ul class="table-top-head">
+            <li>
+                <a data-bs-toggle="tooltip" data-bs-placement="top" title="Réduire" id="collapse-header">
+                    <i class="ti ti-chevron-up"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% if role %}
+                    {% include 'Utilities/user/sidebar-conf.html' with actif='modifier-role' actif_section='roles' %}
+                {% else %}
+                    {% include 'Utilities/user/sidebar-conf.html' with actif='creer-role' actif_section='roles' %}
+                {% endif %}
+
+                <div class="flex-fill d-flex flex-column gap-3">
+
+                    {# ── Bandeau admin-only ── #}
+                    <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2">
+                        <i class="ti ti-shield-lock fs-5"></i>
+                        <span class="small">
+                            <strong>Zone réservée aux administrateurs.</strong>
+                            Les rôles définissent les accès des utilisateurs dans le système.
+                        </span>
+                    </div>
+
+                    <div class="row g-3 align-items-start">
+
+                        {# ── Formulaire principal ── #}
+                        <div class="col-lg-7">
+                            <div class="card mb-0">
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary"
+                                              style="width:40px;height:40px;">
+                                            <i class="ti ti-shield-half fs-5"></i>
+                                        </span>
+                                        <div>
+                                            <h6 class="fw-bold mb-0">{% if role %}Modifier le rôle{% else %}Nouveau rôle{% endif %}</h6>
+                                            <p class="text-muted small mb-0">{% if role %}{{ role.nom }}{% else %}Définir un nouveau profil d'accès{% endif %}</p>
+                                        </div>
+                                    </div>
+                                    <a href="{% url 'user:liste-roles' %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="ti ti-arrow-left me-1"></i>Retour
+                                    </a>
+                                </div>
+                                <div class="card-body p-4">
+                                    <form method="post"
+                                          hx-post="{{ request.path }}"
+                                          hx-target="#form-role"
+                                          hx-swap="innerHTML">
+                                        {% csrf_token %}
+                                        <div id="form-role">
+                                            {% include 'user/roles/partial/form.html' %}
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# ── Panneau info droite ── #}
+                        <div class="col-lg-5">
+                            {% if role %}
+                            {# Résumé du rôle en modification #}
+                            <div class="card border-primary border-opacity-25 mb-3">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-primary mb-3">
+                                        <i class="ti ti-info-circle me-1"></i>Résumé du rôle
+                                    </h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted small">Utilisateurs avec ce rôle</span>
+                                        <span class="badge bg-primary">{{ role.utilisateurs.count }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted small">Permissions attribuées</span>
+                                        <span class="badge bg-info">{{ role.permissions.count }}</span>
+                                    </div>
+                                    <a hx-get="{% url 'user:permissions-role' role.pk %}"
+                                       hx-target="body" hx-push-url="true"
+                                       class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="ti ti-shield me-1"></i>Gérer les permissions
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {# Guide des bonnes pratiques #}
+                            <div class="card bg-light border-0">
+                                <div class="card-body">
+                                    <h6 class="fw-bold mb-3">
+                                        <i class="ti ti-bulb me-1 text-warning"></i>Bonnes pratiques
+                                    </h6>
+                                    <ul class="small text-muted ps-3 mb-0">
+                                        <li class="mb-2">Nommez le rôle selon la <strong>fonction métier</strong> (ex : Caissier, Responsable stock).</li>
+                                        <li class="mb-2">Créez d'abord les <strong>permissions</strong>, puis assignez-les au rôle.</li>
+                                        <li class="mb-2">Un utilisateur hérite de <strong>toutes les permissions</strong> de son rôle.</li>
+                                        <li>Seul un <strong>administrateur</strong> peut modifier les rôles.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

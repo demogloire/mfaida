@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="add-item d-flex">
+            <div class="page-title">
+                <h4 class="fw-bold">Journal des connexions</h4>
+                <h6>Historique de toutes les tentatives de connexion</h6>
+            </div>
+        </div>
+        <ul class="table-top-head">
+            <li>
+                <a data-bs-toggle="tooltip" data-bs-placement="top" title="Réduire" id="collapse-header">
+                    <i class="ti ti-chevron-up"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% include 'Utilities/user/sidebar-conf.html' with actif='journal-connexions' %}
+
+                <div class="card flex-fill mb-0">
+                    <!-- En-tête carte -->
+                    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <h5 class="fw-bold mb-1">Historique des connexions</h5>
+                            <p class="text-muted mb-0 small">Toutes les tentatives de connexion au système.</p>
+                        </div>
+                    </div>
+
+                    <!-- Barre de filtre -->
+                    <div class="card-header border-top-0 bg-light py-2">
+                        <form hx-get="{% url 'user:journal-connexions' %}"
+                              hx-target="#journal-tableau"
+                              hx-trigger="submit, change"
+                              class="row g-2 align-items-end">
+                            <div class="col-sm-3">
+                                <select name="utilisateur" class="form-select form-select-sm">
+                                    <option value="">Tous les utilisateurs</option>
+                                    {% for u in utilisateurs %}
+                                    <option value="{{ u.pk }}" {% if utilisateur_id == u.pk|stringformat:"s" %}selected{% endif %}>
+                                        {{ u.get_full_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-sm-2">
+                                <select name="succes" class="form-select form-select-sm">
+                                    <option value="">Tous</option>
+                                    <option value="1" {% if succes == '1' %}selected{% endif %}>Succès</option>
+                                    <option value="0" {% if succes == '0' %}selected{% endif %}>Échec</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-2">
+                                <input type="date" name="date_debut" value="{{ date_debut }}" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-sm-2">
+                                <input type="date" name="date_fin" value="{{ date_fin }}" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-sm-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-sm btn-outline-primary flex-fill">
+                                    <i class="ti ti-filter me-1"></i>Filtrer
+                                </button>
+                                <a href="{% url 'user:journal-connexions' %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="ti ti-refresh"></i>
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card-body p-0" id="journal-tableau">
+                        {% include 'user/journal/partial/tableau.html' %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

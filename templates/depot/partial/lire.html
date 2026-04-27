@@ -1,0 +1,65 @@
+<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">Liste des dépôts</h4>
+        <p class="text-muted mb-0">Gérez les dépôts rattachés à la branche sélectionnée.</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <a hx-get="{% url 'entreprise:branche-liste'%}" hx-target="body" hx-push-url="true" class="btn btn-outline-secondary">
+            Retour
+        </a>
+        <a hx-get="{% url 'entreprise:depot-ajouter' pk %}" hx-target="body" hx-push-url="true" class="btn btn-primary">
+            <i class="ti ti-circle-plus me-1"></i>
+            Ajouter dépôt
+        </a>
+    </div>
+</div>
+
+<div class="card-body pb-0">
+    <div class="row">
+        <div class="table-responsive mb-4">
+            <table class="table table-hover border mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Code </th>
+                        <th>Nom du dépôt.</th>
+                        <th>Adresse du dépôt </th>
+                        <th>Branche </th>
+                        <th class="no-sort"></th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    {%for depot in depots%}
+                    <tr>
+                        <td>
+                            {{depot.code_depot}}
+                        </td>
+                        <td>
+                            {{depot.nom}}
+                        </td>
+                        <td>{{depot.adresse}}</td>
+                        <td>{{depot.branche.nom}}</td>
+
+                        <td class="action-table-data">
+                            <div class="edit-delete-action">
+                                <a href="{% url 'entreprise:depot-maj' depot.pk %}" hx-target="body" hx-push-url="true">
+                                    <i data-feather="edit" class="feather-edit"></i>
+                                </a>
+                                {% if depot.est_principal %}
+                                    <a href="" hx-target="body" hx-push-url="true">
+                                        <i data-feather="store" class="ti ti-building-store"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                            
+                        </td>
+                    </tr>
+                    {%endfor%}
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+

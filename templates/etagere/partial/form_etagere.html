@@ -1,0 +1,93 @@
+{% load widget_tweaks %}
+<form hx-post="{% url 'entreprise:etagere-ajouter' pk=pk %}">
+    {% csrf_token %}
+    <div class="border-bottom mb-3 pb-3">
+        <div class="card-title-head">
+            <h6 class="fs-16 fw-bold mb-2">
+                <span class="fs-16 me-2"><i class="ti ti ti-list"></i></span>
+                Details
+            </h6>
+        </div>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="mb-1">
+                    <label class="form-label">
+                        Init
+                        <span class="text-danger">*</span>
+                    </label>
+                    {% render_field form.initiale class="form-control " %}
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="mb-1">
+                    <label class="form-label">
+                        Référence
+                        <span class="text-danger">*</span>
+                    </label>
+                    {% render_field form.reference class="form-control " %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-1">
+                    <label class="form-label">
+                        Capacité (Kg)
+                        <span class="text-danger">*</span>
+                    </label>
+                    {% render_field form.capacite class="form-control" %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-1">
+                    <label class="form-label">
+                        Branche
+                        <span class="text-danger">*</span>
+                    </label>
+                    {% render_field form.branche_un class="form-control " %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-1">
+                    <label class="form-label">
+                        Entreprise
+                        <span class="text-danger">*</span>
+                    </label>
+                    {% render_field form.entreprise class="form-control" %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="card-title-head">
+            <h6 class="fs-16 fw-bold mb-3">
+                <span class="fs-16 me-2"><i class="ti ti-menu-2"></i></span>
+                Execution de commande
+            </h6>
+        </div>
+
+        <div class="row align-items-center">
+            <div class="col-sm-4">
+                <div class="setting-info">
+                    Sélection des articles
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="localization-select d-flex align-items-center">
+                    <div class="status-toggle modal-status d-flex justify-content-between align-items-center me-3">
+                        {% render_field form.ramassage class="check" %}
+                        <label for="id_ramassage" class="checktoggle"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="text-end settings-bottom-btn mt-0">
+        <a hx-get="{% url 'entreprise:etagere-liste' pk=pk %}" 
+            hx-target="body" 
+            hx-push-url="true"
+            class="btn btn-secondary me-2">Annuler</a>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+</form>

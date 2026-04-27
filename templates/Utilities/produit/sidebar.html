@@ -1,0 +1,47 @@
+<div class="settings-sidebar" id="sidebar-produit">
+    <div class="sidebar-inner slimscroll">
+        <div class="sidebar-menu">
+            <h4 class="fw-bold fs-18 mb-2 pb-2">
+                <i class="ti ti-package me-2 text-primary"></i>Catalogue
+            </h4>
+            <ul>
+                <li class="submenu-open">
+                    <ul>
+                        <li>
+                            <a hx-get="{% url 'produit:categories' %}"
+                               hx-target="body" hx-push-url="true"
+                               class="{% if cat_actif %}active{% endif %}">
+                                <i class="ti ti-category fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Catégories</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a hx-get="{% url 'produit:sous-categories' %}"
+                               hx-target="body" hx-push-url="true"
+                               class="{% if souscat_actif %}active{% endif %}">
+                                <i class="ti ti-list-tree fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Sous-catégories</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a hx-get="{% url 'produit:liste' %}"
+                               hx-target="body" hx-push-url="true"
+                               class="{% if produit_liste_actif %}active{% endif %}">
+                                <i class="ti ti-box fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Produits</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a hx-get="{% url 'produit:import' %}"
+                               hx-target="body" hx-push-url="true"
+                               class="{% if import_actif %}active{% endif %}">
+                                <i class="ti ti-file-import fs-18"></i>
+                                <span class="fs-14 fw-medium ms-2">Import Excel</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

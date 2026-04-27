@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Modifier mon profil</h4>
+            <h6>Mettez à jour vos informations personnelles</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'user:mon-profil' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left me-1"></i>Retour
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data"
+                          hx-post="{% url 'user:modifier-profil' %}"
+                          hx-target="this" hx-swap="outerHTML">
+                        {% csrf_token %}
+                        {% include 'user/profil/partial/form_profil.html' %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

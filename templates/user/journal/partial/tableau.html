@@ -1,0 +1,66 @@
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Date / Heure</th>
+                <th>Utilisateur</th>
+                <th>E-mail tenté</th>
+                <th>IP</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for j in page_obj %}
+            <tr>
+                <td class="text-nowrap">{{ j.date_heure|date:"d/m/Y H:i" }}</td>
+                <td>
+                    {% if j.utilisateur %}
+                        <a href="{% url 'user:activite-utilisateur' j.utilisateur.pk %}">{{ j.utilisateur.get_full_name }}</a>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ j.username_tente|default:"—" }}</td>
+                <td>{{ j.adresse_ip|default:"—" }}</td>
+                <td>
+                    {% if j.succes %}
+                        <span class="badge bg-success">Succès</span>
+                    {% else %}
+                        <span class="badge bg-danger">Échec</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                    <i class="ti ti-history-off fs-3 d-block mb-2"></i>Aucune entrée dans le journal.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="d-flex justify-content-center py-3">
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" hx-get="?page={{ page_obj.previous_page_number }}&utilisateur={{ utilisateur_id }}&succes={{ succes }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}"
+                   hx-target="#journal-tableau">&laquo;</a>
+            </li>
+            {% endif %}
+            <li class="page-item disabled">
+                <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" hx-get="?page={{ page_obj.next_page_number }}&utilisateur={{ utilisateur_id }}&succes={{ succes }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}"
+                   hx-target="#journal-tableau">&raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}

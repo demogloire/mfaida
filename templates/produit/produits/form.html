@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content settings-content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Catalogue produits</h4>
+            <h6>{% if produit %}Modifier un produit{% else %}Créer un nouveau produit{% endif %}</h6>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="settings-wrapper d-flex">
+                {% include 'Utilities/produit/sidebar.html' %}
+                <div class="flex-fill">
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="d-flex flex-column gap-3">
+
+                            {# ── En-tête avec boutons ── #}
+                            <div class="card mb-0">
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-3">
+                                        {% if produit and produit.image %}
+                                        <img src="{{ produit.image.url }}" class="rounded-3 border"
+                                             style="width:48px;height:48px;object-fit:cover;" alt="">
+                                        {% else %}
+                                        <span class="d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary fw-bold"
+                                              style="width:48px;height:48px;font-size:1.1rem;">
+                                            {% if produit %}{{ produit.nom|slice:":2"|upper }}{% else %}<i class="ti ti-package"></i>{% endif %}
+                                        </span>
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="fw-bold mb-0">
+                                                {% if produit %}{{ produit.nom }}{% else %}Nouveau produit{% endif %}
+                                            </h6>
+                                            <span class="small text-muted">
+                                                {% if produit %}{{ produit.sous_categorie }}{% else %}Remplissez les informations ci-dessous{% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <a hx-get="{% url 'produit:liste' %}" hx-target="body" hx-push-url="true"
+                                           class="btn btn-outline-secondary">
+                                            <i class="ti ti-arrow-left me-1"></i>Retour
+                                        </a>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="ti ti-check me-1"></i>
+                                            {% if produit %}Mettre à jour{% else %}Créer le produit{% endif %}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                {# ── Colonne gauche : informations ── #}
+                                <div class="col-lg-8">
+                                    <div class="d-flex flex-column gap-3">
+
+                                        {# Informations générales #}
+                                        <div class="card mb-0">
+                                            <div class="card-header">
+                                                <h6 class="fw-bold mb-0">
+                                                    <i class="ti ti-info-circle me-2 text-primary"></i>Informations générales
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row g-3">
+                                                    <div class="col-md-8">
+                                                        <label class="form-label fw-medium">Nom du produit <span class="text-danger">*</span></label>
+                                                        {% render_field form.nom class+="form-control-lg" %}
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-medium">Code-barres</label>
+                                                        {% render_field form.code_barre %}
+                                                        <div class="form-text">Laissez vide si aucun</div>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label fw-medium">Sous-catégorie <span class="text-danger">*</span></label>
+                                                        {% render_field form.sous_categorie %}
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label fw-medium">Description</label>
+                                                        {% render_field form.description %}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-medium">Image produit</label>
+                                                        {% render_field form.image %}
+                                                        {% if produit and produit.image %}
+                                                        <div class="mt-2">
+                                                            <img src="{{ produit.image.url }}" class="rounded border" style="height:80px;object-fit:contain;" alt="Image actuelle">
+                                                            <div class="form-text">Image actuelle — téléversez-en une nouvelle pour la remplacer</div>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label fw-medium">Statut</label>
+                                                        <div class="d-flex align-items-center gap-3 mt-2">
+                                                            {% render_field form.est_actif class="form-check-input" style="width:2.5rem;height:1.3rem;" %}
+                                                            <span class="small text-muted">Produit actif</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {# Prix et TVA #}
+                                        <div class="card mb-0">
+                                            <div class="card-header">
+                                                <h6 class="fw-bold mb-0">
+                                                    <i class="ti ti-coin me-2 text-success"></i>Prix & TVA
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-medium">Prix achat HT <span class="text-danger">*</span></label>
+                                                        <div class="input-group">
+                                                            {% render_field form.prix_achat_ht id="id_prix_achat_ht" %}
+                                                            <span class="input-group-text bg-white text-muted small">HT</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-medium">Prix vente HT <span class="text-danger">*</span></label>
+                                                        <div class="input-group">
+                                                            {% render_field form.prix_vente_ht id="id_prix_vente_ht" %}
+                                                            <span class="input-group-text bg-white text-muted small">HT</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-medium">Taux TVA</label>
+                                                        <div class="input-group">
+                                                            {% render_field form.tva_taux id="id_tva_taux" %}
+                                                            <span class="input-group-text bg-white text-muted">%</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {# Calculs automatiques #}
+                                                    <div class="col-12">
+                                                        <div class="row g-2 text-center">
+                                                            <div class="col-4">
+                                                                <div class="p-3 rounded bg-light border">
+                                                                    <div class="text-muted small mb-1">Marge brute</div>
+                                                                    <div class="fw-bold text-info" id="calc-marge">—</div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-4">
+                                                                <div class="p-3 rounded bg-light border">
+                                                                    <div class="text-muted small mb-1">Marge %</div>
+                                                                    <div class="fw-bold text-primary" id="calc-marge-pct">—</div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-4">
+                                                                <div class="p-3 rounded bg-success bg-opacity-10 border border-success border-opacity-25">
+                                                                    <div class="text-muted small mb-1">Prix vente TTC</div>
+                                                                    <div class="fw-bold text-success" id="calc-ttc">—</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                {# ── Colonne droite : paramètres stock ── #}
+                                <div class="col-lg-4">
+                                    <div class="card mb-0 h-100">
+                                        <div class="card-header">
+                                            <h6 class="fw-bold mb-0">
+                                                <i class="ti ti-settings me-2 text-warning"></i>Paramètres de stock
+                                            </h6>
+                                        </div>
+                                        <div class="card-body d-flex flex-column gap-4">
+
+                                            <div>
+                                                <label class="form-label fw-medium">Unité de mesure</label>
+                                                {% render_field form.unite_mesure %}
+                                            </div>
+                                            <div>
+                                                <label class="form-label fw-medium">Méthode de gestion</label>
+                                                {% render_field form.methode_gestion %}
+                                                <div class="form-text">Ordre de sortie des lots du stock</div>
+                                            </div>
+                                            <div>
+                                                <label class="form-label fw-medium">
+                                                    Seuil d'alerte
+                                                    <i class="ti ti-alert-triangle text-warning ms-1" title="Alerte générée si stock ≤ seuil"></i>
+                                                </label>
+                                                <div class="input-group">
+                                                    {% render_field form.stock_alerte %}
+                                                    <span class="input-group-text bg-white text-muted small">unités</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="form-label fw-medium">
+                                                    Durée de vie
+                                                    <i class="ti ti-clock text-info ms-1" title="Utilisé pour FEFO"></i>
+                                                </label>
+                                                <div class="input-group">
+                                                    {% render_field form.vie %}
+                                                    <span class="input-group-text bg-white text-muted small">jours</span>
+                                                </div>
+                                                <div class="form-text">Durée de vie moyenne du produit</div>
+                                            </div>
+
+                                            <div class="mt-auto p-3 rounded bg-info bg-opacity-10 border border-info border-opacity-25">
+                                                <div class="d-flex align-items-start gap-2">
+                                                    <i class="ti ti-bulb text-info mt-1 flex-shrink-0"></i>
+                                                    <div class="small text-muted">
+                                                        <strong>FEFO</strong> : sortir les produits qui expirent en premier.<br>
+                                                        <strong>FIFO</strong> : sortir les plus anciens en premier.<br>
+                                                        <strong>LIFO</strong> : sortir les plus récents en premier.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {# Bouton bas de page #}
+                            <div class="card mb-0">
+                                <div class="card-body py-2 d-flex justify-content-end gap-2">
+                                    <a hx-get="{% url 'produit:liste' %}" hx-target="body" hx-push-url="true"
+                                       class="btn btn-outline-secondary">Annuler</a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-check me-1"></i>
+                                        {% if produit %}Mettre à jour{% else %}Créer le produit{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const pa = document.getElementById('id_prix_achat_ht');
+    const pv = document.getElementById('id_prix_vente_ht');
+    const tva = document.getElementById('id_tva_taux');
+    const elMarge = document.getElementById('calc-marge');
+    const elPct = document.getElementById('calc-marge-pct');
+    const elTtc = document.getElementById('calc-ttc');
+
+    function compute() {
+        const pa_val = parseFloat(pa?.value) || 0;
+        const pv_val = parseFloat(pv?.value) || 0;
+        const tva_val = parseFloat(tva?.value) || 0;
+        const marge = pv_val - pa_val;
+        const pct = pa_val > 0 ? (marge / pa_val * 100) : 0;
+        const ttc = pv_val * (1 + tva_val / 100);
+
+        elMarge.textContent = marge.toFixed(2);
+        elMarge.className = 'fw-bold ' + (marge >= 0 ? 'text-success' : 'text-danger');
+        elPct.textContent = pct.toFixed(1) + ' %';
+        elTtc.textContent = ttc.toFixed(2);
+    }
+
+    [pa, pv, tva].forEach(el => el?.addEventListener('input', compute));
+    compute();
+})();
+</script>
+{% endblock %}
