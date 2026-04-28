@@ -1,14 +1,1 @@
-<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div>
-        <h4 class="fs-18 fw-bold mb-1">Modifier devise</h4>
-        <p class="text-muted mb-0">Mettez à jour le code, symbole et taux de change.</p>
-    </div>
-    <a hx-get="{% url 'entreprise:devise-liste' %}" hx-target="body" hx-push-url="true" class="btn btn-outline-secondary btn-sm">
-        Retour
-    </a>
-</div>
-
-<div class="card-body">
-    {% include 'devise/partial/form_mod.html' %}
-</div>
-
+{% include 'devise/partial/form_mod.html' %}

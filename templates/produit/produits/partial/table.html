@@ -1,17 +1,18 @@
 <div class="card-body pb-0 pt-2">
     <div class="table-responsive">
-        <table class="table table-hover border mb-0">
+        <table class="table table-sm table-hover border mb-0 align-middle">
             <thead class="table-light">
                 <tr>
-                    <th style="width:50px;"></th>
+                    <th class="text-nowrap" style="width:44px;"></th>
                     <th>Produit</th>
+                    <th class="text-nowrap">Entreprise</th>
                     <th>Catégorie</th>
-                    <th>Unité</th>
-                    <th class="text-end">PA HT</th>
-                    <th class="text-end">PV HT</th>
-                    <th class="text-end">PV TTC</th>
-                    <th class="text-center">Statut</th>
-                    <th class="text-end"></th>
+                    <th class="text-center text-nowrap" title="Unité de mesure (code)">UM</th>
+                    <th class="text-end text-nowrap">PA HT</th>
+                    <th class="text-end text-nowrap">PV HT</th>
+                    <th class="text-end text-nowrap">PV TTC</th>
+                    <th class="text-center text-nowrap">Statut</th>
+                    <th class="text-end text-nowrap" style="width:1%;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -32,9 +33,13 @@
                             <a hx-get="{% url 'produit:detail' p.pk %}" hx-target="body" hx-push-url="true"
                                class="text-decoration-none text-dark">{{ p.nom }}</a>
                         </div>
+                        {% if p.sku %}<code class="small text-muted me-1" title="SKU">{{ p.sku }}</code>{% endif %}
                         {% if p.code_barre %}
                         <code class="small text-muted">{{ p.code_barre }}</code>
                         {% endif %}
+                    </td>
+                    <td>
+                        <span class="small fw-medium">{{ p.entreprise.nom }}</span>
                     </td>
                     <td>
                         <div class="small">{{ p.sous_categorie.categorie.nom }}</div>
@@ -42,21 +47,22 @@
                             {{ p.sous_categorie.nom }}
                         </span>
                     </td>
-                    <td>
-                        <span class="badge bg-light text-dark border">{{ p.get_unite_mesure_display }}</span>
+                    <td class="text-center text-nowrap">
+                        <span class="badge bg-light text-dark border font-monospace"
+                              title="{{ p.get_unite_mesure_display }}">{{ p.unite_mesure }}</span>
                     </td>
-                    <td class="text-end fw-medium">{{ p.prix_achat_ht|floatformat:2 }}</td>
-                    <td class="text-end fw-medium text-success">{{ p.prix_vente_ht|floatformat:2 }}</td>
-                    <td class="text-end fw-medium text-primary">{{ p.prix_vente_ttc|floatformat:2 }}</td>
-                    <td class="text-center">
+                    <td class="text-end text-nowrap fw-medium">{{ p.prix_achat_ht|floatformat:2 }}</td>
+                    <td class="text-end text-nowrap fw-medium text-success">{{ p.prix_vente_ht|floatformat:2 }}</td>
+                    <td class="text-end text-nowrap fw-medium text-primary">{{ p.prix_vente_ttc|floatformat:2 }}</td>
+                    <td class="text-center text-nowrap">
                         {% if p.est_actif %}
                         <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
                         {% else %}
                         <span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
                         {% endif %}
                     </td>
-                    <td class="text-end">
-                        <div class="d-flex gap-1 justify-content-end">
+                    <td class="text-end text-nowrap">
+                        <div class="d-flex gap-1 justify-content-end flex-nowrap">
                             <a hx-get="{% url 'produit:detail' p.pk %}" hx-target="body" hx-push-url="true"
                                class="btn btn-outline-info btn-sm" title="Voir">
                                 <i class="ti ti-eye"></i>
@@ -89,7 +95,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center py-5 text-muted">
+                    <td colspan="10" class="text-center py-5 text-muted">
                         <i class="ti ti-box" style="font-size:3rem;opacity:.3;"></i>
                         <p class="mt-2 mb-0">Aucun produit trouvé.</p>
                         {% if not q and not cat_id and not statut %}

@@ -27,8 +27,13 @@
                     <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2">
                         <i class="ti ti-shield-lock fs-5"></i>
                         <span class="small">
-                            <strong>Zone réservée aux administrateurs.</strong>
-                            Seul un administrateur peut créer, modifier ou attribuer des rôles aux utilisateurs.
+                            {% if est_super_admin %}
+                            <strong>Administrateur ERP.</strong>
+                            Vous pouvez gérer les utilisateurs de toutes les entreprises et choisir l'entreprise sur chaque fiche.
+                            {% else %}
+                            <strong>Gestion des utilisateurs de votre entreprise.</strong>
+                            Les comptes listés sont ceux rattachés à votre entreprise (branche ou rôle).
+                            {% endif %}
                         </span>
                     </div>
 

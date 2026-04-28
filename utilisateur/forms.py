@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm as DjangoPasswordChangeForm
-from entreprise.models import Branche
+from entreprise.models import Branche, Entreprise
 from .models import Role, PermissionPersonnalisee, AccesDepot, AccesPointVente
 
 User = get_user_model()
@@ -159,13 +159,75 @@ class CreationUtilisateurForm(UserCreationForm):
             'is_active',
         ]
 
-    def __init__(self, *args, entreprise=None, **kwargs):
+    def __init__(self, *args, entreprise=None, choix_entreprise=False, htmx_entreprise_url='', **kwargs):
+        self.choix_entreprise = choix_entreprise
+        self._entreprise_fixe = entreprise
+        self._peut_promouvoir_admin = kwargs.pop('peut_promouvoir_admin', True)
         super().__init__(*args, **kwargs)
-        if entreprise:
-            self.fields['role'].queryset = Role.objects.filter(entreprise=entreprise)
-            self.fields['branche'].queryset = Branche.objects.filter(entreprise=entreprise)
+
+        if not self._peut_promouvoir_admin:
+            self.fields.pop('admin', None)
+
+        if choix_entreprise:
+            self.fields['entreprise_cible'] = forms.ModelChoiceField(
+                queryset=Entreprise.objects.order_by('nom'),
+                label='Entreprise',
+                required=True,
+                help_text='Sélectionnez l\'entreprise : les branches et rôles affichés correspondent à ce choix.',
+            )
+            if entreprise:
+                self.fields['entreprise_cible'].initial = entreprise.pk
+            w = self.fields['entreprise_cible'].widget
+            w.attrs.setdefault('class', 'form-select')
+            if htmx_entreprise_url:
+                w.attrs.update({
+                    'hx-get': htmx_entreprise_url,
+                    'hx-trigger': 'change',
+                    'hx-target': '#form-container',
+                    'hx-swap': 'innerHTML',
+                    'hx-include': 'this',
+                })
+
+        eff = None
+        if choix_entreprise:
+            if self.is_bound and self.data.get('entreprise_cible'):
+                eff = Entreprise.objects.filter(pk=self.data.get('entreprise_cible')).first()
+            elif not self.is_bound and entreprise:
+                eff = entreprise
+        else:
+            eff = entreprise
+
+        if eff:
+            self.fields['role'].queryset = Role.objects.filter(entreprise=eff).order_by('nom')
+            self.fields['branche'].queryset = Branche.objects.filter(
+                entreprise=eff, est_actif=True,
+            ).order_by('nom')
+        else:
+            self.fields['role'].queryset = Role.objects.none()
+            self.fields['branche'].queryset = Branche.objects.none()
+
         self.fields['is_active'].initial = True
         self.fields['is_active'].label = "Compte actif"
+        if 'admin' in self.fields:
+            self.fields['admin'].label = "Administrateur ERP"
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.choix_entreprise:
+            eff = cleaned.get('entreprise_cible')
+        else:
+            eff = self._entreprise_fixe
+        if not eff:
+            if self.choix_entreprise:
+                raise ValidationError({'entreprise_cible': 'Sélectionnez une entreprise.'})
+            raise ValidationError("Impossible de déterminer l'entreprise cible.")
+        branche = cleaned.get('branche')
+        role = cleaned.get('role')
+        if branche and branche.entreprise_id != eff.pk:
+            self.add_error('branche', "Cette branche n'appartient pas à l'entreprise choisie.")
+        if role and role.entreprise_id != eff.pk:
+            self.add_error('role', "Ce rôle n'appartient pas à l'entreprise choisie.")
+        return cleaned
 
     def clean_email(self):
         email = self.cleaned_data['email']
@@ -193,21 +255,77 @@ class ModificationUtilisateurForm(forms.ModelForm):
             'adresse': forms.Textarea(attrs={'rows': 2}),
         }
 
-    def __init__(self, *args, entreprise=None, **kwargs):
+    def __init__(self, *args, entreprise=None, choix_entreprise=False, htmx_entreprise_url='', **kwargs):
+        self.choix_entreprise = choix_entreprise
+        self._entreprise_fixe = entreprise
+        self._peut_promouvoir_admin = kwargs.pop('peut_promouvoir_admin', True)
         super().__init__(*args, **kwargs)
-        if entreprise:
-            role_qs = Role.objects.filter(entreprise=entreprise)
-            # Toujours inclure le rôle actuel même s'il n'est pas dans l'entreprise courante
+
+        if not self._peut_promouvoir_admin:
+            self.fields.pop('admin', None)
+
+        if choix_entreprise:
+            self.fields['entreprise_cible'] = forms.ModelChoiceField(
+                queryset=Entreprise.objects.order_by('nom'),
+                label='Entreprise',
+                required=True,
+                help_text='Les branches et rôles listés correspondent à cette entreprise.',
+            )
+            if entreprise:
+                self.fields['entreprise_cible'].initial = entreprise.pk
+            w = self.fields['entreprise_cible'].widget
+            w.attrs.setdefault('class', 'form-select')
+            if htmx_entreprise_url:
+                w.attrs.update({
+                    'hx-get': htmx_entreprise_url,
+                    'hx-trigger': 'change',
+                    'hx-target': '#form-container',
+                    'hx-swap': 'innerHTML',
+                    'hx-include': 'this',
+                })
+
+        eff = None
+        if choix_entreprise:
+            if self.is_bound and self.data.get('entreprise_cible'):
+                eff = Entreprise.objects.filter(pk=self.data.get('entreprise_cible')).first()
+            elif not self.is_bound and entreprise:
+                eff = entreprise
+        else:
+            eff = entreprise
+
+        if eff:
+            role_qs = Role.objects.filter(entreprise=eff).order_by('nom')
             if self.instance and self.instance.pk and self.instance.role_id:
                 role_qs = (role_qs | Role.objects.filter(pk=self.instance.role_id)).distinct()
             self.fields['role'].queryset = role_qs
-            self.fields['branche'].queryset = Branche.objects.filter(entreprise=entreprise)
+            self.fields['branche'].queryset = Branche.objects.filter(
+                entreprise=eff, est_actif=True,
+            ).order_by('nom')
         else:
-            # Aucune entreprise déterminée : on affiche tous les rôles
-            self.fields['role'].queryset = Role.objects.all()
-            self.fields['branche'].queryset = Branche.objects.all()
+            self.fields['role'].queryset = Role.objects.none()
+            self.fields['branche'].queryset = Branche.objects.none()
+
         self.fields['is_active'].label = "Compte actif"
-        self.fields['admin'].label = "Administrateur ERP"
+        if 'admin' in self.fields:
+            self.fields['admin'].label = "Administrateur ERP"
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.choix_entreprise:
+            eff = cleaned.get('entreprise_cible')
+        else:
+            eff = self._entreprise_fixe
+        if not eff:
+            if self.choix_entreprise:
+                raise ValidationError({'entreprise_cible': 'Sélectionnez une entreprise.'})
+            raise ValidationError("Impossible de déterminer l'entreprise cible.")
+        branche = cleaned.get('branche')
+        role = cleaned.get('role')
+        if branche and branche.entreprise_id != eff.pk:
+            self.add_error('branche', "Cette branche n'appartient pas à l'entreprise choisie.")
+        if role and role.entreprise_id != eff.pk:
+            self.add_error('role', "Ce rôle n'appartient pas à l'entreprise choisie.")
+        return cleaned
 
     def clean_email(self):
         email = self.cleaned_data['email']
@@ -226,6 +344,47 @@ class RoleForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, show_entreprise=False, entreprise_fixe=None, **kwargs):
+        """
+        show_entreprise : True pour un admin ERP / superuser — champ « Entreprise » (toutes les entreprises).
+        entreprise_fixe : utilisé pour la validation d'unicité (nom + entreprise) quand le champ n'est pas affiché.
+        """
+        self._entreprise_fixe = entreprise_fixe
+        super().__init__(*args, **kwargs)
+        if show_entreprise:
+            self.fields['entreprise'] = forms.ModelChoiceField(
+                label='Entreprise',
+                queryset=Entreprise.objects.order_by('nom'),
+                required=True,
+                help_text='Le rôle sera rattaché à cette entreprise (branches et utilisateurs associés).',
+            )
+            if self.instance.pk:
+                self.fields['entreprise'].initial = self.instance.entreprise_id
+
+    def clean(self):
+        cleaned = super().clean()
+        ent = cleaned.get('entreprise')
+        if ent is None:
+            ent = self._entreprise_fixe
+        if ent is None and self.instance.pk:
+            ent = self.instance.entreprise
+        nom = (cleaned.get('nom') or '').strip()
+        if ent and nom:
+            qs = Role.objects.filter(entreprise=ent, nom__iexact=nom)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error('nom', 'Un rôle avec ce nom existe déjà pour cette entreprise.')
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if 'entreprise' in self.cleaned_data:
+            instance.entreprise = self.cleaned_data['entreprise']
+        if commit:
+            instance.save()
+        return instance
 
 
 class PermissionForm(forms.ModelForm):

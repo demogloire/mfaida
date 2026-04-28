@@ -67,14 +67,20 @@
                                             </div>
                                             <div class="card-body">
                                                 <div class="row g-3">
-                                                    <div class="col-md-8">
+                                                    <div class="col-md-6">
                                                         <label class="form-label fw-medium">Nom du produit <span class="text-danger">*</span></label>
                                                         {% render_field form.nom class+="form-control-lg" %}
                                                     </div>
-                                                    <div class="col-md-4">
+                                                    <div class="col-md-3">
                                                         <label class="form-label fw-medium">Code-barres</label>
                                                         {% render_field form.code_barre %}
                                                         <div class="form-text">Laissez vide si aucun</div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label fw-medium">SKU</label>
+                                                        {% render_field form.sku %}
+                                                        <div class="form-text">Réf. interne, unique au sein de l’entreprise</div>
+                                                        {% if form.sku.errors %}<div class="text-danger small">{{ form.sku.errors.0 }}</div>{% endif %}
                                                     </div>
                                                     <div class="col-12">
                                                         <label class="form-label fw-medium">Sous-catégorie <span class="text-danger">*</span></label>

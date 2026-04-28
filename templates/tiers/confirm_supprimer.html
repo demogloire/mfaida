@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="row justify-content-center">
+        <div class="col-lg-5">
+            <div class="card border-danger">
+                <div class="card-header bg-danger-subtle">
+                    <h5 class="mb-0 text-danger"><i class="ti ti-alert-triangle me-2"></i>Confirmer la suppression</h5>
+                </div>
+                <div class="card-body text-center py-4">
+                    <p class="mb-1">Voulez-vous vraiment supprimer ce {{ type }} ?</p>
+                    <p class="fw-bold">{{ objet }}</p>
+                    <p class="text-muted small">Cette action est irréversible.</p>
+                </div>
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <a href="javascript:history.back()" class="btn btn-light">Annuler</a>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="ti ti-trash me-1"></i>Supprimer définitivement
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

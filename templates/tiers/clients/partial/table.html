@@ -1,0 +1,63 @@
+{% if clients %}
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Code client</th>
+                <th>Nom</th>
+                <th>Type</th>
+                {% if est_super_admin %}<th>Entreprise</th>{% endif %}
+                <th>Branche</th>
+                <th>Téléphone</th>
+                <th>Solde</th>
+                <th>Statut</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clients %}
+            <tr>
+                <td><code class="small">{{ c.code_client }}</code></td>
+                <td>
+                    <a href="{% url 'tiers:detail-client' c.pk %}" class="fw-medium text-decoration-none">
+                        {{ c.nom }}
+                    </a>
+                </td>
+                <td><span class="badge bg-info-subtle text-info border border-info-subtle">{{ c.get_type_client_display }}</span></td>
+                {% if est_super_admin %}
+                <td class="small text-muted">{{ c.branche.entreprise.nom }}</td>
+                {% endif %}
+                <td class="small"><span class="fw-medium text-body">{{ c.branche.nom }}</span></td>
+                <td class="text-muted small">{{ c.telephone }}</td>
+                <td class="small {% if c.solde_compte < 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {{ c.solde_compte|floatformat:2 }}
+                </td>
+                <td>
+                    {% if c.est_actif %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+                    {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'tiers:detail-client' c.pk %}" class="btn btn-sm btn-outline-primary" title="Voir">
+                        <i class="ti ti-eye"></i>
+                    </a>
+                    <a href="{% url 'tiers:modifier-client' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifier">
+                        <i class="ti ti-edit"></i>
+                    </a>
+                    <a href="{% url 'tiers:toggle-client' c.pk %}" class="btn btn-sm {% if c.est_actif %}btn-outline-warning{% else %}btn-outline-success{% endif %}" title="{% if c.est_actif %}Désactiver{% else %}Activer{% endif %}">
+                        <i class="ti ti-power"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="ti ti-users fs-1 d-block mb-2"></i>
+    Aucun client trouvé.
+</div>
+{% endif %}

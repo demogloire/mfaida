@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">BC {{ commande.numero_commande }}</h4>
+            <h6>{{ commande.fournisseur.nom_societe }}</h6>
+        </div>
+        <div class="page-btn d-flex gap-2 flex-wrap">
+            {% if commande.statut == 'BROUILLON' %}
+            <a href="{% url 'achat:modifier-commande' commande.pk %}" class="btn btn-outline-secondary">
+                <i class="ti ti-edit me-1"></i>Modifier
+            </a>
+            <a href="{% url 'achat:annuler-commande' commande.pk %}" class="btn btn-outline-danger">
+                <i class="ti ti-ban me-1"></i>Annuler
+            </a>
+            {% endif %}
+            {% if commande.statut in 'ENVOYE RECU_PARTIEL' %}
+            <a href="{% url 'achat:creer-reception' commande.pk %}" class="btn btn-success">
+                <i class="ti ti-package-import me-1"></i>Réceptionner
+            </a>
+            {% endif %}
+            <a href="{% url 'achat:export-commande-excel' commande.pk %}" class="btn btn-outline-success btn-sm">
+                <i class="ti ti-file-spreadsheet me-1"></i>Excel (données)
+            </a>
+            <a href="{% url 'achat:export-commande-pdf' commande.pk %}" class="btn btn-outline-danger btn-sm">
+                <i class="ti ti-file-type-pdf me-1"></i>PDF
+            </a>
+            <a href="{% url 'achat:liste-commandes' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left me-1"></i>Retour
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        {# ── En-tête commande ── #}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">Fournisseur</p>
+                            <p class="fw-bold mb-0">{{ commande.fournisseur.nom_societe }}</p>
+                            <p class="text-muted small">{{ commande.fournisseur.telephone }}</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">Dépôt destination</p>
+                            <p class="fw-medium mb-0">{{ commande.depot_destination.nom|default:"—" }}</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">Date commande</p>
+                            <p class="fw-medium mb-0">{{ commande.date_commande|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">Livraison prévue</p>
+                            <p class="fw-medium mb-0">{{ commande.date_livraison_prevue|date:"d/m/Y"|default:"—" }}</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">Statut</p>
+                            {% if commande.statut == 'BROUILLON' %}
+                            <span class="badge bg-secondary-subtle text-secondary border">Brouillon</span>
+                            {% elif commande.statut == 'ENVOYE' %}
+                            <span class="badge bg-info-subtle text-info border border-info-subtle">Envoyé</span>
+                            {% elif commande.statut == 'RECU_PARTIEL' %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Reçu partiellement</span>
+                            {% elif commande.statut == 'RECU_TOTAL' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Reçu totalement</span>
+                            {% elif commande.statut == 'ANNULE' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Annulé</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">Total HT</p>
+                            <p class="fw-medium mb-0">${{ commande.total_ht|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">TVA</p>
+                            <p class="fw-medium mb-0">${{ commande.total_tva|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="text-muted small mb-1">Total TTC</p>
+                            <p class="fw-bold fs-5 text-primary mb-0">${{ commande.total_ttc|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                    {% if commande.notes %}
+                    <hr>
+                    <p class="text-muted small mb-1">Notes</p>
+                    <p class="mb-0">{{ commande.notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# ── Lignes ── #}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold">Lignes de commande</h6>
+                    {% if peut_modifier %}
+                    <button class="btn btn-sm btn-primary"
+                            hx-get="{% url 'achat:ajouter-ligne' commande.pk %}"
+                            hx-target="#form-ligne-container"
+                            hx-swap="innerHTML">
+                        <i class="ti ti-plus me-1"></i>Ajouter un produit
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    <div id="lignes-container">
+                        {% include 'achat/commandes/partial/lignes.html' %}
+                    </div>
+                    {% if peut_modifier %}
+                    <div id="form-ligne-container" class="p-3"></div>
+                    {% endif %}
+                    {% if import_lignes_form %}
+                    <div class="card-footer bg-light border-top">
+                        <h6 class="fw-semibold mb-2">
+                            <i class="ti ti-file-upload me-1"></i>Importer des lignes (Excel)
+                        </h6>
+                        <p class="text-muted small mb-2">
+                            Produits du catalogue de <strong>{{ commande.entreprise.nom }}</strong>.
+                            Colonne <code>sku</code> : code SKU seul (sans libellé produit). Sinon <code>nom</code> exact.
+                            Une colonne <code>code_barre</code> reste acceptée si présente dans un ancien fichier.
+                            Les lignes identiques (même produit, prix, unité, lot…) fusionnent les quantités.
+                        </p>
+                        <form method="post"
+                              action="{% url 'achat:import-lignes-commande' commande.pk %}"
+                              enctype="multipart/form-data"
+                              class="row g-2 align-items-end flex-wrap">
+                            {% csrf_token %}
+                            <div class="col-md-6 col-lg-5">
+                                <label class="form-label small mb-0">{{ import_lignes_form.fichier.label }}</label>
+                                {{ import_lignes_form.fichier }}
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="ti ti-upload me-1"></i>Importer
+                                </button>
+                            </div>
+                            <div class="col-auto">
+                                <a href="{% url 'achat:modele-excel-lignes-bc' commande.pk %}"
+                                   class="btn btn-outline-secondary btn-sm">
+                                    <i class="ti ti-download me-1"></i>Excel (modèle ou lignes)
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

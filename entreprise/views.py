@@ -8,10 +8,9 @@ from .forms import (
     PoinDeVenteForm,
     MajPoinDeVenteForm,
     DeviseForm,
-    FournisseurForm,
 )
 from django.contrib import messages
-from .models import Entreprise, Branche, Location, Depot, PointVente, Devise, Fournisseur
+from .models import Entreprise, Branche, Location, Depot, PointVente, Devise
 from django.urls import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -29,30 +28,29 @@ def Dashboard(request):
     return render(request,'entreprise/dashboard.html', context)
 
 def Information(request):
-    form=EntrepriseForm()
-    context={"form":form,"info":"active","subdrop":""}
+    form = EntrepriseForm()
+    context = {"form": form, "info": "active", "subdrop": ""}
 
-    if request.method=="POST":
+    if request.method == "POST":
         form = EntrepriseForm(request.POST, request.FILES)
         if form.is_valid():
-            nw_user= form.save(commit=True)
-            nw_user.user= request.user
-            nw_user.save() #Enregistrer 
-            messages.success(request, "Entreprise crée")
-            q=Entreprise.objects.filter(user=request.user).all()
-            response = render(request, 'entreprise/partial/lire/listenetreprise.html', {'listentreprise':  q})
-            response['HX-Push-Url'] = '/entreprise/listes/'
-            return response
-
-        #Message d'erreur
+            nw_user = form.save(commit=False)
+            nw_user.user = request.user
+            nw_user.save()
+            messages.success(request, "Entreprise créée avec succès.")
+            from django.http import HttpResponse as _HR
+            resp = _HR(status=204)
+            resp['HX-Redirect'] = '/entreprise/listes/'
+            return resp
         else:
-            errors_list = []
-            for field_name, errors in form.errors.items():
-                label = form.fields[field_name].label or field_name
-                errors_list.append(f"{label} : {', '.join(errors)}")
-            error_msg = " | ".join([f"{', '.join(e)}" for f, e in form.errors.items()])
-            messages.info(request, error_msg)
-    return render(request,'entreprise/info.html', context)
+            error_msg = " | ".join([", ".join(e) for e in form.errors.values()])
+            messages.warning(request, error_msg)
+            # Requête HTMX : retourner seulement le formulaire partiel (pas la page complète)
+            if request.headers.get('HX-Request'):
+                context["form"] = form
+                return render(request, 'entreprise/partial/ajouter/info-entre.html', context)
+
+    return render(request, 'entreprise/info.html', context)
 
 def ListEntreprise(request):
     q=Entreprise.objects.filter(user=request.user).all()
@@ -74,18 +72,26 @@ def EntrepriseStatus(request, pk):
 def ModifierEntreprise(request, pk):
     entreprise = get_object_or_404(Entreprise, pk=pk, user=request.user)
     form = EntrepriseForm(instance=entreprise)
-    context={"form":form,"info":"active","subdrop":"", "logo_display":entreprise.logo}
+    context = {"form": form, "info": "active", "subdrop": "", "logo_display": entreprise.logo}
 
-    if request.method=="POST":
-        form = EntrepriseForm(request.POST or None, request.FILES or None, instance=entreprise)
-        form.save()
-        messages.success(request, "Entreprise est modifiée")
-        q=Entreprise.objects.filter(user=request.user).all()
-        response = render(request, 'entreprise/partial/lire/listenetreprise.html', {'listentreprise':  q})
-        response['HX-Push-Url'] = '/entreprise/listes/'
-        return response
+    if request.method == "POST":
+        form = EntrepriseForm(request.POST, request.FILES, instance=entreprise)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Entreprise modifiée avec succès.")
+            from django.http import HttpResponse as _HR
+            resp = _HR(status=204)
+            resp['HX-Redirect'] = '/entreprise/listes/'
+            return resp
+        else:
+            error_msg = " | ".join([", ".join(e) for e in form.errors.values()])
+            messages.warning(request, error_msg)
+            context["form"] = form
+            # Requête HTMX : retourner seulement le formulaire partiel (pas la page complète)
+            if request.headers.get('HX-Request'):
+                return render(request, 'entreprise/partial/modifier/info-mod.html', context)
 
-    return render(request,'entreprise/info-mod.html', context)
+    return render(request, 'entreprise/info-mod.html', context)
 
 
 ############### BRANCHE ###########################
@@ -523,75 +529,3 @@ def DeviseSupprimer(request, pk):
     return render(request, "devise/partial/lire.html", {"devise": True, "devises": devises})
 
 
-############### FOURNISSEUR ###########################
-
-def FournisseurListe(request):
-    search = (request.GET.get("q") or "").strip()
-    qs = Fournisseur.objects.filter(entreprise__user=request.user).select_related("entreprise")
-    if search:
-        qs = qs.filter(
-            Q(entreprise__nom__icontains=search)
-            | Q(code_fournisseur__icontains=search)
-            | Q(nom_societe__icontains=search)
-            | Q(telephone__icontains=search)
-            | Q(ville__icontains=search)
-        )
-
-    qs = qs.order_by("entreprise__nom", "nom_societe")
-    paginator = Paginator(qs, 10)
-    page_obj = paginator.get_page(request.GET.get("page") or 1)
-
-    context = {"fournisseur": True, "fournisseurs": page_obj, "q": search}
-    if request.headers.get("HX-Request") and request.headers.get("HX-Target") == "fournisseur-list":
-        return render(request, "fournisseur/partial/lire.html", context)
-    return render(request, "fournisseur/liste.html", context)
-
-
-def FournisseurAjouter(request):
-    form = FournisseurForm(request=request)
-    context = {"fournisseur": True, "form": form}
-
-    if request.method == "POST":
-        form = FournisseurForm(request.POST, request=request)
-        if form.is_valid():
-            fournisseur = form.save()
-            messages.success(request, f"Fournisseur créé ({fournisseur.code_fournisseur})")
-            response = HttpResponse(status=204)
-            response["HX-Redirect"] = reverse("entreprise:fournisseur-liste")
-            return response
-        messages.info(request, error_message_list(form))
-        return render(request, "fournisseur/partial/form_add.html", context)
-
-    return render(request, "fournisseur/fournisseur.html", context)
-
-
-def FournisseurMaj(request, pk):
-    fournisseur_obj = get_object_or_404(Fournisseur, pk=pk, entreprise__user=request.user)
-    form = FournisseurForm(instance=fournisseur_obj, request=request)
-    context = {"fournisseur": True, "form": form, "fournisseur_id": pk, "code": fournisseur_obj.code_fournisseur}
-
-    if request.method == "POST":
-        form = FournisseurForm(request.POST, instance=fournisseur_obj, request=request)
-        if form.is_valid():
-            fournisseur = form.save()
-            messages.success(request, f"Fournisseur mis à jour ({fournisseur.code_fournisseur})")
-            response = HttpResponse(status=204)
-            response["HX-Redirect"] = reverse("entreprise:fournisseur-liste")
-            return response
-        messages.info(request, error_message_list(form))
-        return render(request, "fournisseur/partial/form_mod.html", context)
-
-    return render(request, "fournisseur/modifier.html", context)
-
-
-@require_POST
-def FournisseurSupprimer(request, pk):
-    fournisseur_obj = get_object_or_404(Fournisseur, pk=pk, entreprise__user=request.user)
-    fournisseur_obj.delete()
-    messages.success(request, "Fournisseur supprimé")
-    fournisseurs = (
-        Fournisseur.objects.filter(entreprise__user=request.user)
-        .select_related("entreprise")
-        .order_by("entreprise__nom", "nom_societe")
-    )
-    return render(request, "fournisseur/partial/lire.html", {"fournisseur": True, "fournisseurs": fournisseurs})

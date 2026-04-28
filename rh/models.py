@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
-from stock.models import MouvementStock
-from entreprise.models import Produit, PointVente, Client, Devise, Branche
+from entreprise.models import Devise, Branche
 from utilisateur.models import Profil
 
 class Employe(models.Model):

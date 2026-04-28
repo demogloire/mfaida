@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Bons de réception</h4>
+            <h6>Historique des réceptions</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'achat:liste-commandes' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-file-invoice me-1"></i>Voir les commandes
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <form hx-get="{% url 'achat:liste-receptions' %}" hx-target="#table-container"
+                  hx-trigger="input delay:400ms from:input, change from:select"
+                  class="d-flex gap-2 flex-wrap w-100">
+                <div class="flex-grow-1">
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Rechercher…">
+                </div>
+                <div>
+                    <select name="statut" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        {% for code, label in STATUTS %}
+                        <option value="{{ code }}" {% if statut == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0" id="table-container">
+            {% include 'achat/receptions/partial/table.html' %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

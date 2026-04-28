@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from .models import Entreprise, Branche, Location, Depot, PointVente, Devise, Fournisseur
+from .models import Entreprise, Branche, Location, Depot, PointVente, Devise
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 
@@ -180,32 +180,3 @@ class DeviseForm(forms.ModelForm):
         return code
 
 
-class FournisseurForm(forms.ModelForm):
-    class Meta:
-        model = Fournisseur
-        fields = [
-            "entreprise",
-            "nom_societe",
-            "rccm_id",
-            "contact_nom",
-            "telephone",
-            "email",
-            "adresse",
-            "ville",
-            "est_actif",
-        ]
-
-    def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop("request", None)
-        super().__init__(*args, **kwargs)
-        if "entreprise" in self.fields:
-            self.fields["entreprise"].empty_label = "--- Choisissez une entreprise ---"
-            if self.request:
-                self.fields["entreprise"].queryset = Entreprise.objects.filter(user=self.request.user)
-
-    
-            
- 
-   
-
-        

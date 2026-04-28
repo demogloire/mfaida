@@ -1,0 +1,55 @@
+{% if lignes %}
+<div class="table-responsive">
+    <table class="table table-sm mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Produit</th>
+                <th>Qté commandée</th>
+                <th>Qté reçue</th>
+                <th>Prix HT</th>
+                <th>Sous-total HT</th>
+                <th>Lot</th>
+                {% if commande.statut == 'BROUILLON' %}<th></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for l in lignes %}
+            <tr>
+                <td class="fw-medium">{{ l.produit.libelle_ligne_achat }}</td>
+                <td>{{ l.quantite_commandee }} {{ l.unite }}</td>
+                <td>
+                    {% if l.quantite_recue > 0 %}
+                    <span class="text-success">{{ l.quantite_recue }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>${{ l.prix_unitaire_ht|floatformat:2 }}</td>
+                <td class="fw-medium">${{ l.sous_total_ht|floatformat:2 }}</td>
+                <td class="text-muted small">{{ l.lot_batch|default:"—" }}</td>
+                {% if commande.statut == 'BROUILLON' %}
+                <td class="text-nowrap">
+                    {% if l.quantite_recue == 0 %}
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            hx-delete="{% url 'achat:supprimer-ligne' l.pk %}"
+                            hx-target="#lignes-container"
+                            hx-swap="innerHTML"
+                            hx-confirm="Supprimer cette ligne ?">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                    {% else %}
+                    <span class="text-muted small" title="Une quantité a déjà été réceptionnée — suppression impossible">
+                        <i class="ti ti-lock me-1"></i>Réception
+                    </span>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-4 text-muted">
+    <i class="ti ti-list fs-2 d-block mb-2"></i>
+    Aucun produit ajouté.
+</div>
+{% endif %}

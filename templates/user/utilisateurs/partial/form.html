@@ -68,15 +68,37 @@
 
 <hr class="my-3">
 
-{# ── Accès & Autorisations (Admin only) ── #}
+{# ── Accès & Autorisations ── #}
 <div class="d-flex align-items-center gap-2 mb-3">
     <h6 class="fw-bold text-muted text-uppercase mb-0" style="font-size:.7rem; letter-spacing:.08em;">
         <i class="ti ti-lock me-1"></i>Accès &amp; autorisations
     </h6>
     <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.65rem;">
-        Administrateur uniquement
+        Rôle &amp; branche
     </span>
 </div>
+
+{% if entreprise_affichage %}
+<div class="alert alert-light border d-flex align-items-center gap-2 py-2 small mb-3">
+    <i class="ti ti-building fs-5 text-primary"></i>
+    <span>Entreprise : <strong>{{ entreprise_affichage.nom }}</strong></span>
+    <span class="text-muted">— Seules les branches et rôles de cette entreprise sont proposés.</span>
+</div>
+{% endif %}
+
+{% if form.entreprise_cible %}
+<div class="mb-3">
+    <label class="form-label fw-semibold">Entreprise <span class="text-danger">*</span></label>
+    {% render_field form.entreprise_cible %}
+    {% if form.entreprise_cible.help_text %}
+    <div class="form-text">{{ form.entreprise_cible.help_text }}</div>
+    {% endif %}
+    {% if form.entreprise_cible.errors %}
+    <div class="text-danger small mt-1">{{ form.entreprise_cible.errors }}</div>
+    {% endif %}
+</div>
+{% endif %}
+
 <div class="row g-3 mb-4">
     <div class="col-sm-6">
         <label class="form-label fw-semibold">Rôle</label>
@@ -89,6 +111,7 @@
     </div>
     <div class="col-12">
         <div class="d-flex gap-4 flex-wrap p-3 border rounded bg-light">
+            {% if form.admin %}
             <div class="form-check">
                 {% render_field form.admin class="form-check-input" %}
                 <label class="form-check-label fw-semibold" for="{{ form.admin.id_for_label }}">
@@ -96,6 +119,7 @@
                 </label>
                 <div class="form-text">Accès complet à toutes les fonctionnalités d'administration.</div>
             </div>
+            {% endif %}
             <div class="form-check">
                 {% render_field form.is_active class="form-check-input" %}
                 <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">

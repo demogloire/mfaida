@@ -22,7 +22,7 @@
     <h4 class="fs-18 fw-bold">Configuration informations</h4>
 </div>
 <div class="card-body">
-    <form hx-post=""  enctype="multipart/form-data">
+    <form hx-post="" hx-encoding="multipart/form-data" hx-target="this" hx-swap="outerHTML">
          {% csrf_token %}
         <div class="border-bottom mb-3">
             <div class="card-title-head">

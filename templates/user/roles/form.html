@@ -7,7 +7,7 @@
         <div class="add-item d-flex">
             <div class="page-title">
                 <h4 class="fw-bold">{{ titre }}</h4>
-                <h6>Réservé aux administrateurs</h6>
+                <h6>{% if est_super_admin %}Administrateur ERP{% else %}Gestion des rôles{% endif %}</h6>
             </div>
         </div>
         <ul class="table-top-head">
@@ -34,8 +34,13 @@
                     <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2">
                         <i class="ti ti-shield-lock fs-5"></i>
                         <span class="small">
-                            <strong>Zone réservée aux administrateurs.</strong>
-                            Les rôles définissent les accès des utilisateurs dans le système.
+                            {% if est_super_admin %}
+                            <strong>Administrateur ERP.</strong>
+                            Sélectionnez l'entreprise à laquelle rattacher ce rôle.
+                            {% else %}
+                            <strong>Rôle pour votre entreprise.</strong>
+                            Le rôle sera créé ou modifié dans le périmètre de l'entreprise à laquelle vous êtes lié.
+                            {% endif %}
                         </span>
                     </div>
 
@@ -109,7 +114,7 @@
                                         <li class="mb-2">Nommez le rôle selon la <strong>fonction métier</strong> (ex : Caissier, Responsable stock).</li>
                                         <li class="mb-2">Créez d'abord les <strong>permissions</strong>, puis assignez-les au rôle.</li>
                                         <li class="mb-2">Un utilisateur hérite de <strong>toutes les permissions</strong> de son rôle.</li>
-                                        <li>Seul un <strong>administrateur</strong> peut modifier les rôles.</li>
+                                        <li>Les <strong>permissions</strong> globales sont les mêmes pour toutes les entreprises ; vous les affectez ensuite à chaque rôle.</li>
                                     </ul>
                                 </div>
                             </div>

@@ -1,43 +1,120 @@
 {% load widget_tweaks %}
 
 {% if success %}
-<div class="alert alert-success">
-    <i class="ti ti-check me-1"></i>Profil mis à jour avec succès.
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="ti ti-circle-check me-2"></i>Profil mis à jour avec succès.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 {% endif %}
 
-<div class="row g-3">
-    <div class="col-sm-6">
-        <label class="form-label">Prénom <span class="text-danger">*</span></label>
-        {% render_field form.first_name class="form-control" %}
-        {% if form.first_name.errors %}<div class="text-danger small">{{ form.first_name.errors.0 }}</div>{% endif %}
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+    {% for error in form.non_field_errors %}
+    <div><i class="ti ti-alert-circle me-1"></i>{{ error }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# ── Section : Informations personnelles ── #}
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span class="avatar avatar-sm bg-primary-subtle text-primary rounded">
+            <i class="ti ti-user"></i>
+        </span>
+        <h6 class="mb-0 fw-semibold">Informations personnelles</h6>
     </div>
-    <div class="col-sm-6">
-        <label class="form-label">Nom <span class="text-danger">*</span></label>
-        {% render_field form.last_name class="form-control" %}
-        {% if form.last_name.errors %}<div class="text-danger small">{{ form.last_name.errors.0 }}</div>{% endif %}
-    </div>
-    <div class="col-sm-6">
-        <label class="form-label">E-mail <span class="text-danger">*</span></label>
-        {% render_field form.email class="form-control" %}
-        {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors.0 }}</div>{% endif %}
-    </div>
-    <div class="col-sm-6">
-        <label class="form-label">Téléphone</label>
-        {% render_field form.telephone class="form-control" %}
-    </div>
-    <div class="col-12">
-        <label class="form-label">Adresse</label>
-        {% render_field form.adresse class="form-control" rows="2" %}
-    </div>
-    <div class="col-12">
-        <label class="form-label">Photo de profil</label>
-        {% render_field form.photo class="form-control" %}
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label class="form-label fw-medium">
+                    Prénom <span class="text-danger">*</span>
+                </label>
+                {% render_field form.first_name class="form-control" placeholder="Votre prénom" %}
+                {% if form.first_name.errors %}
+                <div class="invalid-feedback d-block">{{ form.first_name.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label fw-medium">
+                    Nom <span class="text-danger">*</span>
+                </label>
+                {% render_field form.last_name class="form-control" placeholder="Votre nom" %}
+                {% if form.last_name.errors %}
+                <div class="invalid-feedback d-block">{{ form.last_name.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
-<div class="mt-4 d-flex justify-content-end gap-2">
-    <a href="{% url 'user:mon-profil' %}" class="btn btn-outline-secondary">Annuler</a>
+
+{# ── Section : Coordonnées ── #}
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span class="avatar avatar-sm bg-info-subtle text-info rounded">
+            <i class="ti ti-at"></i>
+        </span>
+        <h6 class="mb-0 fw-semibold">Coordonnées</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label class="form-label fw-medium">
+                    Adresse e-mail <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="ti ti-mail"></i></span>
+                    {% render_field form.email class="form-control" placeholder="votre@email.com" type="email" %}
+                </div>
+                {% if form.email.errors %}
+                <div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label fw-medium">Téléphone</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="ti ti-phone"></i></span>
+                    {% render_field form.telephone class="form-control" placeholder="+243 000 000 000" %}
+                </div>
+                {% if form.telephone.errors %}
+                <div class="invalid-feedback d-block">{{ form.telephone.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-medium">Adresse postale</label>
+                {% render_field form.adresse class="form-control" rows="2" placeholder="Votre adresse complète…" %}
+                {% if form.adresse.errors %}
+                <div class="invalid-feedback d-block">{{ form.adresse.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Section : Photo de profil ── #}
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span class="avatar avatar-sm bg-warning-subtle text-warning rounded">
+            <i class="ti ti-camera"></i>
+        </span>
+        <h6 class="mb-0 fw-semibold">Photo de profil</h6>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Formats acceptés : JPG, PNG, GIF · Taille recommandée : 200×200 px.
+        </p>
+        {% render_field form.photo class="form-control" %}
+        {% if form.photo.errors %}
+        <div class="invalid-feedback d-block">{{ form.photo.errors.0 }}</div>
+        {% endif %}
+    </div>
+</div>
+
+{# ── Boutons ── #}
+<div class="d-flex justify-content-end gap-2">
+    <a href="{% url 'user:mon-profil' %}" class="btn btn-light">
+        <i class="ti ti-x me-1"></i>Annuler
+    </a>
     <button type="submit" class="btn btn-primary">
-        <i class="ti ti-device-floppy me-1"></i>Enregistrer
+        <i class="ti ti-device-floppy me-1"></i>Enregistrer les modifications
     </button>
 </div>

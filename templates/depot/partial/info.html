@@ -1,15 +1,1 @@
-
-<div class="card flex-fill mb-0">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div>
-            <h4 class="fs-18 fw-bold mb-1">Créer un dépôt</h4>
-            <p class="text-muted mb-0">Ajoutez un dépôt et renseignez son adresse.</p>
-        </div>
-        <a hx-get="{% url 'entreprise:depot-liste-tous' %}" hx-target="body" hx-push-url="true" class="btn btn-outline-secondary btn-sm">
-            Retour
-        </a>
-    </div>
-    <div class="card-body">
-        {% include 'depot/partial/form_add.html' %}
-    </div>
-</div>
+{% include 'depot/partial/form_add.html' %}

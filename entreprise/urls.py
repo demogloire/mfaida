@@ -5,7 +5,6 @@ from .views import (Dashboard, Information, ListEntreprise, EntrepriseStatus, Mo
                     BrancheAjouter, ListeDeBranche, BrancheStatus,ModifierBranche, Etagere, ListeLocation, 
                     EtagereModifier, UploadExcel, AjouterDepot, ListeDepot, ListeDepotTous, MajDepot, AjouterPoindeVente,
                     ListePVente, ListePVenteTous, MajPDVente, DeviseAjouter, DeviseListe, DeviseMaj, DeviseSupprimer)
-from .views import (FournisseurAjouter, FournisseurListe, FournisseurMaj, FournisseurSupprimer)
 
 
 app_name='entreprise'
@@ -46,12 +45,5 @@ urlpatterns = [
     path('devise/listes/', DeviseListe, name="devise-liste"),
     path('devise/<int:pk>/maj', DeviseMaj, name="devise-maj"),
     path('devise/<int:pk>/supprimer', DeviseSupprimer, name="devise-supprimer"),
-
-    #Fournisseur
-    path('fournisseur/', FournisseurAjouter, name="fournisseur-ajouter"),
-    path('fournisseur/listes/', FournisseurListe, name="fournisseur-liste"),
-    path('fournisseur/<int:pk>/maj', FournisseurMaj, name="fournisseur-maj"),
-    path('fournisseur/<int:pk>/supprimer', FournisseurSupprimer, name="fournisseur-supprimer"),
-    
 
 ]

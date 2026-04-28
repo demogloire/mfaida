@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Clients</h4>
+            <h6>Gestion de la clientèle</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'tiers:creer-client' %}" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i>Nouveau client
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            {% if est_super_admin %}
+            <p class="small text-muted mb-2 mb-md-3"><i class="ti ti-building-community me-1"></i>Liste : <strong>tous les clients</strong> (toutes entreprises).</p>
+            {% elif entreprise_utilisateur %}
+            <p class="small text-muted mb-2 mb-md-3"><i class="ti ti-building me-1"></i>Liste : clients de <strong>{{ entreprise_utilisateur.nom }}</strong> uniquement.</p>
+            {% endif %}
+            <form hx-get="{% url 'tiers:liste-clients' %}" hx-target="#table-container" hx-trigger="input delay:400ms from:input, change from:select"
+                  class="d-flex gap-2 flex-wrap align-items-end w-100">
+                <div class="flex-grow-1">
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Code, nom, téléphone, branche…">
+                </div>
+                <div>
+                    <select name="type" class="form-select">
+                        <option value="">Tous les types</option>
+                        {% for code, label in TYPES %}
+                        <option value="{{ code }}" {% if type_f == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <select name="actif" class="form-select">
+                        <option value="">Tous</option>
+                        <option value="1" {% if actif_f == '1' %}selected{% endif %}>Actifs</option>
+                        <option value="0" {% if actif_f == '0' %}selected{% endif %}>Inactifs</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0" id="table-container">
+            {% include 'tiers/clients/partial/table.html' %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

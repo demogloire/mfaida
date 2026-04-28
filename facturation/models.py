@@ -1,7 +1,8 @@
 from django.db import models
 from django.conf import settings
 from stock.models import MouvementStock
-from entreprise.models import Produit, PointVente, Client, Devise, Branche
+from entreprise.models import Produit, PointVente, Devise, Branche
+from tiers.models import Client
 from utilisateur.models import Profil
 
 

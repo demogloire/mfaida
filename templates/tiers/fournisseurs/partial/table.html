@@ -1,0 +1,64 @@
+{% if fournisseurs %}
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Code</th>
+                {% if est_super_admin %}<th>Entreprise</th>{% endif %}
+                <th>Société</th>
+                <th>Contact</th>
+                <th>Téléphone</th>
+                <th>Ville</th>
+                <th>Solde dû</th>
+                <th>Statut</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in fournisseurs %}
+            <tr>
+                <td><code class="small">{{ f.code_fournisseur }}</code></td>
+                {% if est_super_admin %}
+                <td><span class="badge bg-secondary-subtle text-secondary border">{{ f.entreprise.nom }}</span></td>
+                {% endif %}
+                <td>
+                    <a href="{% url 'tiers:detail-fournisseur' f.pk %}" class="fw-medium text-decoration-none">
+                        {{ f.nom_societe }}
+                    </a>
+                    {% if f.rccm_id %}<br><span class="text-muted small">{{ f.rccm_id }}</span>{% endif %}
+                </td>
+                <td class="text-muted small">{{ f.contact_nom|default:"—" }}</td>
+                <td class="text-muted small">{{ f.telephone }}</td>
+                <td class="text-muted small">{{ f.ville|default:"—" }}</td>
+                <td class="small {% if f.solde_du > 0 %}text-danger fw-medium{% else %}text-muted{% endif %}">
+                    ${{ f.solde_du|floatformat:2 }}
+                </td>
+                <td>
+                    {% if f.est_actif %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+                    {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'tiers:detail-fournisseur' f.pk %}" class="btn btn-sm btn-outline-primary" title="Voir">
+                        <i class="ti ti-eye"></i>
+                    </a>
+                    <a href="{% url 'tiers:modifier-fournisseur' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifier">
+                        <i class="ti ti-edit"></i>
+                    </a>
+                    <a href="{% url 'tiers:toggle-fournisseur' f.pk %}" class="btn btn-sm {% if f.est_actif %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                        <i class="ti ti-power"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="ti ti-truck fs-1 d-block mb-2"></i>
+    Aucun fournisseur trouvé.
+</div>
+{% endif %}

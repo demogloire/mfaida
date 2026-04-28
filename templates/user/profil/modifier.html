@@ -1,33 +1,124 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
-
 {% block content %}
 <div class="content">
+
     <div class="page-header">
         <div class="page-title">
-            <h4 class="fw-bold">Modifier mon profil</h4>
-            <h6>Mettez à jour vos informations personnelles</h6>
-        </div>
-        <div class="page-btn">
-            <a href="{% url 'user:mon-profil' %}" class="btn btn-outline-secondary">
-                <i class="ti ti-arrow-left me-1"></i>Retour
-            </a>
+            <h4 class="fw-bold">Mon profil</h4>
+            <h6>Modifier mes informations personnelles</h6>
         </div>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-body p-4">
-                    <form method="post" enctype="multipart/form-data"
-                          hx-post="{% url 'user:modifier-profil' %}"
-                          hx-target="this" hx-swap="outerHTML">
-                        {% csrf_token %}
-                        {% include 'user/profil/partial/form_profil.html' %}
-                    </form>
+    {% include 'user/parametres/nav.html' with actif='profil' %}
+
+    <form method="post" enctype="multipart/form-data"
+          hx-post="{% url 'user:modifier-profil' %}"
+          hx-target="#form-container"
+          hx-swap="innerHTML">
+        {% csrf_token %}
+
+        <div class="row g-3">
+
+            {# ── Colonne gauche : carte identité ── #}
+            <div class="col-lg-4">
+                <div class="card mb-0 text-center">
+                    <div class="card-body pt-4 pb-4">
+
+                        {# Avatar #}
+                        {% if request.user.photo %}
+                        <img src="{{ request.user.photo.url }}"
+                             alt="Photo"
+                             class="rounded-circle border border-3 border-primary border-opacity-25 mb-3"
+                             style="width:110px;height:110px;object-fit:cover;" id="avatar-preview">
+                        {% else %}
+                        <div class="rounded-circle bg-primary bg-opacity-10 border border-3 border-primary border-opacity-25
+                                    d-flex align-items-center justify-content-center mx-auto mb-3"
+                             style="width:110px;height:110px;" id="avatar-preview-initials">
+                            <span class="text-primary fw-bold" style="font-size:2.2rem;">
+                                {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+                            </span>
+                        </div>
+                        {% endif %}
+
+                        <h5 class="fw-bold mb-1">{{ request.user.get_full_name|default:request.user.username }}</h5>
+                        <p class="text-muted small mb-2">{{ request.user.email }}</p>
+
+                        <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
+                            {% if request.user.role %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                <i class="ti ti-shield-check me-1"></i>{{ request.user.role.nom }}
+                            </span>
+                            {% endif %}
+                            {% if request.user.admin %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                <i class="ti ti-crown me-1"></i>Admin
+                            </span>
+                            {% endif %}
+                            {% if request.user.branche %}
+                            <span class="badge bg-secondary-subtle text-secondary border">
+                                <i class="ti ti-building-store me-1"></i>{{ request.user.branche.nom }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <hr>
+
+                        {# Liens rapides #}
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{% url 'user:securite' %}"
+                               class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="ti ti-shield-lock me-2"></i>Changer le mot de passe
+                            </a>
+                            <a href="{% url 'user:signature' %}"
+                               class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="ti ti-signature me-2"></i>Ma signature
+                            </a>
+                            <a href="{% url 'user:audit-personnel' %}"
+                               class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="ti ti-clipboard-list me-2"></i>Mon journal d'activité
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {# ── Colonne droite : formulaire ── #}
+            <div class="col-lg-8">
+                <div id="form-container">
+                    {% include 'user/profil/partial/form_profil.html' %}
+                </div>
+            </div>
+
         </div>
-    </div>
+    </form>
+
 </div>
+
+<script>
+(function () {
+    const input = document.querySelector('input[type="file"][name="photo"]');
+    if (!input) return;
+    input.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const preview = document.getElementById('avatar-preview');
+            const initials = document.getElementById('avatar-preview-initials');
+            if (preview) {
+                preview.src = e.target.result;
+            } else if (initials) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'rounded-circle border border-3 border-primary border-opacity-25 mb-3';
+                img.style.cssText = 'width:110px;height:110px;object-fit:cover;';
+                img.id = 'avatar-preview';
+                initials.replaceWith(img);
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+})();
+</script>
 {% endblock content %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Fournisseurs</h4>
+            <h6>{% if est_super_admin %}Toutes les entreprises{% else %}Fournisseurs de votre entreprise{% endif %}</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'tiers:creer-fournisseur' %}" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i>Nouveau fournisseur
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <form hx-get="{% url 'tiers:liste-fournisseurs' %}" hx-target="#table-container" hx-trigger="input delay:400ms from:input, change from:select"
+                  class="d-flex gap-2 flex-wrap align-items-end w-100">
+                <div class="flex-grow-1">
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Rechercher un fournisseur…">
+                </div>
+                <div>
+                    <select name="actif" class="form-select">
+                        <option value="">Tous</option>
+                        <option value="1" {% if actif_f == '1' %}selected{% endif %}>Actifs</option>
+                        <option value="0" {% if actif_f == '0' %}selected{% endif %}>Inactifs</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0" id="table-container">
+            {% include 'tiers/fournisseurs/partial/table.html' %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Nouvelle réception</h4>
+            <h6>BC {{ commande.numero_commande }} — {{ commande.fournisseur.nom_societe }}</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'achat:detail-commande' commande.pk %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left me-1"></i>Retour
+            </a>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            {# ── En-tête réception ── #}
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-success-subtle text-success rounded"><i class="ti ti-package-import"></i></span>
+                        <h6 class="mb-0 fw-semibold">Informations de la réception</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label class="form-label fw-medium">Dépôt de réception <span class="text-danger">*</span></label>
+                                {% render_field form.depot_destination class="form-select" %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-medium">Notes</label>
+                                {% render_field form.notes class="form-control" rows="2" placeholder="Observations sur la livraison…" %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Lignes ── #}
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0 fw-semibold">Quantités reçues</h6>
+                        <p class="text-muted small mb-0">Saisissez les quantités réellement reçues pour chaque ligne.</p>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Produit</th>
+                                        <th>Qté commandée</th>
+                                        <th>Qté reçue *</th>
+                                        <th>Qté écartée</th>
+                                        <th>Motif écart</th>
+                                        <th>Lot/Batch</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for l in lignes_commande %}
+                                    <tr>
+                                        <td class="fw-medium">{{ l.produit.libelle_ligne_achat }}</td>
+                                        <td class="fw-medium">{{ l.quantite_commandee }}</td>
+                                        <td>
+                                            <input type="number" name="qte_{{ l.pk }}" class="form-control form-control-sm"
+                                                   value="{{ l.quantite_commandee }}" min="0" step="0.01" style="min-width:90px;">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="ecart_{{ l.pk }}" class="form-control form-control-sm"
+                                                   value="0" min="0" step="0.01" style="min-width:80px;">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="motif_{{ l.pk }}" class="form-control form-control-sm"
+                                                   placeholder="Motif…" style="min-width:120px;">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="lot_{{ l.pk }}" class="form-control form-control-sm"
+                                                   value="{{ l.lot_batch }}" placeholder="LOT-001" style="min-width:100px;">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 d-flex justify-content-end gap-2">
+                <a href="{% url 'achat:detail-commande' commande.pk %}" class="btn btn-light">
+                    <i class="ti ti-x me-1"></i>Annuler
+                </a>
+                <button type="submit" class="btn btn-success">
+                    <i class="ti ti-package-import me-1"></i>Enregistrer la réception
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock content %}

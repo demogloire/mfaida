@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">{{ titre|default:"Nouveau bon de commande" }}</h4>
+            <h6>Achats — Bons de commande fournisseur</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'achat:liste-commandes' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left me-1"></i>Retour à la liste
+            </a>
+        </div>
+    </div>
+
+    <form method="post" id="commande-form">
+        {% csrf_token %}
+        <div class="row g-3">
+
+            {# ── Colonne gauche : résumé ── #}
+            <div class="col-lg-4">
+                <div class="card mb-0">
+                    <div class="card-body pt-4 pb-4">
+
+                        {# Icône commande #}
+                        <div class="rounded bg-primary bg-opacity-10 border border-primary border-opacity-25
+                                    d-flex align-items-center justify-content-center mx-auto mb-3"
+                             style="width:80px;height:80px;border-radius:1rem!important;">
+                            <i class="ti ti-file-invoice text-primary" style="font-size:2.2rem;"></i>
+                        </div>
+                        <h6 class="fw-bold text-center mb-1">Résumé de la commande</h6>
+                        <p class="text-muted small text-center mb-4">Remplissez le formulaire pour créer votre bon de commande.</p>
+
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex align-items-start gap-2 p-2 rounded bg-light">
+                                <i class="ti ti-truck text-warning mt-1"></i>
+                                <div>
+                                    <p class="text-muted small mb-0">Fournisseur</p>
+                                    <span class="fw-medium small" id="preview-fournisseur">Non sélectionné</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start gap-2 p-2 rounded bg-light">
+                                <i class="ti ti-building-warehouse text-primary mt-1"></i>
+                                <div>
+                                    <p class="text-muted small mb-0">Dépôt de destination</p>
+                                    <span class="fw-medium small" id="preview-depot">Non sélectionné</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start gap-2 p-2 rounded bg-light">
+                                <i class="ti ti-calendar text-info mt-1"></i>
+                                <div>
+                                    <p class="text-muted small mb-0">Livraison prévue</p>
+                                    <span class="fw-medium small" id="preview-date">Non définie</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start gap-2 p-2 rounded bg-light">
+                                <i class="ti ti-currency-dollar text-success mt-1"></i>
+                                <div>
+                                    <p class="text-muted small mb-0">Devise</p>
+                                    <span class="fw-medium small" id="preview-devise">Non sélectionnée</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="alert alert-info-subtle border border-info-subtle rounded p-3 mb-0 small">
+                            <i class="ti ti-info-circle me-1 text-info"></i>
+                            Après création, vous pourrez ajouter les produits à commander ligne par ligne.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Colonne droite : formulaire ── #}
+            <div class="col-lg-8">
+
+                {% if entreprise_affichage %}
+                <div class="alert alert-light border d-flex align-items-center gap-2 py-2 small mb-3">
+                    <i class="ti ti-building fs-5 text-primary"></i>
+                    <span>Commande pour l'entreprise <strong>{{ entreprise_affichage.nom }}</strong> — fournisseurs, dépôts, PDV et devises sont limités à ce périmètre.</span>
+                </div>
+                {% endif %}
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
+                {% endif %}
+
+                <script type="application/json" id="pdv-depot-data">{{ pdv_par_depot_json|default:'{}'|safe }}</script>
+
+                {# Section 1 : Fournisseur & Devise #}
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-warning-subtle text-warning rounded">
+                            <i class="ti ti-truck"></i>
+                        </span>
+                        <h6 class="mb-0 fw-semibold">Fournisseur & devise</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-8">
+                                <label class="form-label fw-medium">Fournisseur <span class="text-danger">*</span></label>
+                                {% render_field form.fournisseur class="form-select" id="inp-fournisseur" %}
+                                {% if form.fournisseur.errors %}<div class="invalid-feedback d-block">{{ form.fournisseur.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-sm-4">
+                                <label class="form-label fw-medium">Devise</label>
+                                {% render_field form.devise class="form-select" id="inp-devise" %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Section 2 : Destination & Dates #}
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-primary-subtle text-primary rounded">
+                            <i class="ti ti-building-warehouse"></i>
+                        </span>
+                        <h6 class="mb-0 fw-semibold">Destination & planification</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label class="form-label fw-medium">Dépôt de destination</label>
+                                {% render_field form.depot_destination class="form-select" id="inp-depot" %}
+                                <div class="form-text">Dépôt où les marchandises seront reçues.</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-medium">Point de vente (optionnel)</label>
+                                {% render_field form.pointdevente_destination class="form-select" id="inp-pdv" %}
+                                <div class="form-text">Si le PDV est lié au dépôt choisi (dépôt source), il est présélectionné automatiquement.</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-medium">Date de livraison prévue</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-calendar"></i></span>
+                                    {% render_field form.date_livraison_prevue class="form-control" id="inp-date" %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Section 3 : Notes #}
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-secondary-subtle text-secondary rounded">
+                            <i class="ti ti-notes"></i>
+                        </span>
+                        <h6 class="mb-0 fw-semibold">Notes & instructions</h6>
+                    </div>
+                    <div class="card-body">
+                        {% render_field form.notes class="form-control" rows="3" placeholder="Instructions spéciales pour le fournisseur, conditions de livraison, remarques…" %}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'achat:liste-commandes' %}" class="btn btn-light px-4">
+                        <i class="ti ti-x me-1"></i>Annuler
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="ti ti-file-plus me-1"></i>
+                        {% if commande %}Enregistrer{% else %}Créer le bon de commande{% endif %}
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    let pdvParDepot = {};
+    try {
+        const raw = document.getElementById('pdv-depot-data');
+        if (raw && raw.textContent) pdvParDepot = JSON.parse(raw.textContent);
+    } catch (e) { pdvParDepot = {}; }
+
+    function optionExists(select, value) {
+        if (!select || !value) return false;
+        return [...select.options].some(o => o.value === String(value));
+    }
+
+    /** Met à jour le PDV à partir du dépôt. Si userChangedDepot, vide le PDV si aucun lien. */
+    function syncPdvWithDepot(userChangedDepot) {
+        const depotEl = document.getElementById('inp-depot');
+        const pdvEl = document.getElementById('inp-pdv');
+        if (!depotEl || !pdvEl) return;
+        const depotId = depotEl.value;
+        if (!depotId) {
+            if (userChangedDepot) pdvEl.value = '';
+            return;
+        }
+        const ids = pdvParDepot[depotId];
+        if (ids && ids.length) {
+            const first = String(ids[0]);
+            if (optionExists(pdvEl, first)) pdvEl.value = first;
+        } else if (userChangedDepot) {
+            pdvEl.value = '';
+        }
+    }
+
+    function getText(selectId) {
+        const el = document.getElementById(selectId);
+        if (!el) return '';
+        const opt = el.options[el.selectedIndex];
+        return (opt && opt.text && opt.text !== '---------') ? opt.text : '';
+    }
+
+    function sync() {
+        const fournisseur = getText('inp-fournisseur');
+        const depot = getText('inp-depot');
+        const devise = getText('inp-devise');
+        const dateEl = document.getElementById('inp-date');
+        const date = dateEl ? dateEl.value : '';
+
+        const pf = document.getElementById('preview-fournisseur');
+        const pd = document.getElementById('preview-depot');
+        const pv = document.getElementById('preview-devise');
+        if (pf) pf.textContent = fournisseur || 'Non sélectionné';
+        if (pd) pd.textContent = depot || 'Non sélectionné';
+        if (pv) pv.textContent = devise || 'Non sélectionnée';
+
+        const pdate = document.getElementById('preview-date');
+        if (pdate) {
+            if (date) {
+                const [y, m, d] = date.split('-');
+                pdate.textContent = `${d}/${m}/${y}`;
+            } else {
+                pdate.textContent = 'Non définie';
+            }
+        }
+    }
+
+    const depotEl = document.getElementById('inp-depot');
+    if (depotEl) {
+        depotEl.addEventListener('change', function () {
+            syncPdvWithDepot(true);
+            sync();
+        });
+    }
+
+    ['inp-fournisseur', 'inp-devise', 'inp-date'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', sync), el.addEventListener('input', sync);
+    });
+
+    function initPreselectPdv() {
+        const pdvEl = document.getElementById('inp-pdv');
+        if (pdvEl && !pdvEl.value) syncPdvWithDepot(false);
+        sync();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPreselectPdv);
+    } else {
+        initPreselectPdv();
+    }
+})();
+</script>
+{% endblock content %}

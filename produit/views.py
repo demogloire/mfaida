@@ -211,11 +211,21 @@ def liste_produits(request):
 
     qs = (
         Produit.objects.filter(sous_categorie__categorie__entreprise__user=request.user)
-        .select_related('sous_categorie', 'sous_categorie__categorie', 'sous_categorie__categorie__entreprise')
+        .select_related(
+            'entreprise',
+            'sous_categorie',
+            'sous_categorie__categorie',
+            'sous_categorie__categorie__entreprise',
+        )
         .order_by('sous_categorie__categorie__nom', 'sous_categorie__nom', 'nom')
     )
     if q:
-        qs = qs.filter(Q(nom__icontains=q) | Q(code_barre__icontains=q) | Q(description__icontains=q))
+        qs = qs.filter(
+            Q(nom__icontains=q)
+            | Q(code_barre__icontains=q)
+            | Q(sku__icontains=q)
+            | Q(description__icontains=q)
+        )
     if cat_id:
         qs = qs.filter(sous_categorie__categorie_id=cat_id)
     if scat_id:
@@ -252,9 +262,22 @@ def detail_produit(request, pk):
         Produit, pk=pk, sous_categorie__categorie__entreprise__user=request.user
     )
     stocks = produit.niveaux_stock.select_related('depot', 'pointdevente').all()
+
+    # Calculs de prix/marge
+    marge_brute = produit.prix_vente_ht - produit.prix_achat_ht
+    prix_ttc = produit.prix_vente_ttc
+    montant_tva = prix_ttc - produit.prix_vente_ht
+    taux_marge = (
+        (marge_brute / produit.prix_achat_ht * 100)
+        if produit.prix_achat_ht > 0 else None
+    )
+
     return render(request, 'produit/produits/detail.html', {
         'produit': produit,
         'stocks': stocks,
+        'marge_brute': marge_brute,
+        'montant_tva': montant_tva,
+        'taux_marge': taux_marge,
         'produit_liste_actif': True,
         'produit_actif': True,
     })
@@ -364,11 +387,15 @@ def import_produits(request):
                         errors.append(f"Ligne {row_idx} ({nom}): catégorie ou sous-catégorie manquante.")
                         continue
 
-                    # Récupère l'entreprise du user (1ère disponible)
-                    entreprise = Entreprise.objects.filter(user=request.user).first()
+                    # Récupère l'entreprise depuis la colonne du fichier
+                    entreprise_nom = str(data.get('entreprise') or '').strip()
+                    if not entreprise_nom:
+                        errors.append(f"Ligne {row_idx} ({nom}): colonne 'entreprise' manquante ou vide.")
+                        continue
+                    entreprise = Entreprise.objects.filter(nom__iexact=entreprise_nom).first()
                     if not entreprise:
-                        errors.append(f"Ligne {row_idx}: aucune entreprise associée à votre compte.")
-                        break
+                        errors.append(f"Ligne {row_idx} ({nom}): entreprise « {entreprise_nom} » introuvable dans le système.")
+                        continue
 
                     cat, _ = Categorie.objects.get_or_create(entreprise=entreprise, nom=cat_nom)
                     scat, _ = SousCategorie.objects.get_or_create(categorie=cat, nom=scat_nom)
@@ -388,9 +415,14 @@ def import_produits(request):
                     if methode not in valides_methode:
                         methode = 'FEFO'
 
+                    sku_raw = str(data.get('sku') or '').strip()[:100]
+                    sku_val = sku_raw or None
+
                     defaults = {
+                        'entreprise': entreprise,
                         'sous_categorie': scat,
                         'nom': nom,
+                        'sku': sku_val,
                         'description': str(data.get('description') or '').strip(),
                         'prix_achat_ht': to_dec(data.get('prix_achat_ht'), 0),
                         'prix_vente_ht': to_dec(data.get('prix_vente_ht'), 0),
@@ -407,6 +439,10 @@ def import_produits(request):
                         if code_barre:
                             _, is_new = Produit.objects.update_or_create(
                                 code_barre=code_barre, defaults=defaults
+                            )
+                        elif sku_val:
+                            _, is_new = Produit.objects.update_or_create(
+                                sous_categorie=scat, sku=sku_val, defaults=defaults
                             )
                         else:
                             Produit.objects.create(code_barre=None, **defaults)
@@ -439,7 +475,7 @@ def telecharger_modele_excel(request):
     ws.title = "Produits"
 
     headers = [
-        'nom', 'categorie', 'sous_categorie', 'code_barre', 'description',
+        'entreprise', 'nom', 'categorie', 'sous_categorie', 'code_barre', 'sku', 'description',
         'prix_achat_ht', 'prix_vente_ht', 'tva_taux', 'unite_mesure',
         'stock_alerte', 'methode_gestion', 'vie',
     ]
@@ -447,37 +483,44 @@ def telecharger_modele_excel(request):
     h_font = Font(bold=True, color='FFFFFF')
     h_fill = PatternFill('solid', fgColor='1A56DB')
     h_align = Alignment(horizontal='center', vertical='center')
+    # Colonne entreprise mise en évidence (orange)
+    e_fill = PatternFill('solid', fgColor='E07B00')
 
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=h)
         cell.font = h_font
-        cell.fill = h_fill
+        cell.fill = e_fill if h == 'entreprise' else h_fill
         cell.alignment = h_align
-        ws.column_dimensions[cell.column_letter].width = 20
+        ws.column_dimensions[cell.column_letter].width = 24 if h == 'entreprise' else 20
 
     ws.row_dimensions[1].height = 22
+
+    # Exemples de données — les noms d'entreprise doivent correspondre exactement
     ws.append([
-        'Savon Lux', 'Hygiène', 'Soins du corps', '6901234567890',
+        'Mon Entreprise SA', 'Savon Lux', 'Hygiène', 'Soins du corps', '6901234567890', 'HYG-SAV-LUX',
         'Savon de toilette 150g', 1500, 2500, 16, 'PCS', 10, 'FEFO', 365,
     ])
     ws.append([
-        'Sucre 1kg', 'Alimentation', 'Épicerie', '',
+        'Mon Entreprise SA', 'Sucre 1kg', 'Alimentation', 'Épicerie', '', 'ALIM-SUC-1KG',
         '', 800, 1200, 16, 'KG', 20, 'FIFO', 730,
     ])
 
+    # Feuille d'instructions
     ws2 = wb.create_sheet("Instructions")
     ws2.column_dimensions['A'].width = 22
     ws2.column_dimensions['B'].width = 12
-    ws2.column_dimensions['C'].width = 60
+    ws2.column_dimensions['C'].width = 65
     ws2.append(['Colonne', 'Obligatoire', 'Description / Valeurs acceptées'])
     ws2['A1'].font = Font(bold=True)
     ws2['B1'].font = Font(bold=True)
     ws2['C1'].font = Font(bold=True)
     for row in [
+        ('entreprise', 'OUI', 'Nom exact de l\'entreprise dans le système (sensible à la casse ignorée)'),
         ('nom', 'OUI', 'Nom du produit'),
-        ('categorie', 'OUI', 'Nom de catégorie (créée auto si nouvelle)'),
-        ('sous_categorie', 'OUI', 'Nom de sous-catégorie (créée auto si nouvelle)'),
-        ('code_barre', 'NON', 'Code barre unique — laisser vide si aucun'),
+        ('categorie', 'OUI', 'Nom de catégorie (créée automatiquement si nouvelle)'),
+        ('sous_categorie', 'OUI', 'Nom de sous-catégorie (créée automatiquement si nouvelle)'),
+        ('code_barre', 'NON', 'Code barre unique — laisser vide si aucun ; sert d’identifiant prioritaire pour mise à jour'),
+        ('sku', 'NON', 'Référence SKU — unique par entreprise ; si pas de code-barre, sert à mettre à jour un produit existant'),
         ('description', 'NON', 'Description libre du produit'),
         ('prix_achat_ht', 'OUI', 'Prix achat hors taxe (nombre décimal)'),
         ('prix_vente_ht', 'OUI', 'Prix vente hors taxe (nombre décimal)'),

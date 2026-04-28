@@ -1,0 +1,19 @@
+<div class="sidebar-inner slimscroll">
+    <div id="sidebar-menu" class="sidebar-menu">
+        <ul>
+            <li class="menu-title"><span>Achats</span></li>
+
+            <li class="{% if actif == 'commandes' %}active{% endif %}">
+                <a href="{% url 'achat:liste-commandes' %}">
+                    <i class="ti ti-file-invoice"></i><span>Bons de commande</span>
+                </a>
+            </li>
+
+            <li class="{% if actif == 'receptions' %}active{% endif %}">
+                <a href="{% url 'achat:liste-receptions' %}">
+                    <i class="ti ti-package-import"></i><span>Réceptions</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

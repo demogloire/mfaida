@@ -6,7 +6,7 @@
         <div class="add-item d-flex">
             <div class="page-title">
                 <h4 class="fw-bold">Rôles</h4>
-                <h6>Rôles définis pour l'entreprise</h6>
+                <h6>{% if est_super_admin %}Rôles par entreprise{% else %}Rôles de votre entreprise{% endif %}</h6>
             </div>
         </div>
         <ul class="table-top-head">
@@ -27,8 +27,13 @@
                     <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2">
                         <i class="ti ti-shield-lock fs-5"></i>
                         <span class="small">
-                            <strong>Zone réservée aux administrateurs.</strong>
-                            Seul un administrateur peut créer ou modifier des rôles.
+                            {% if est_super_admin %}
+                            <strong>Administrateur ERP.</strong>
+                            Choisissez l'entreprise lors de la création ou la modification d'un rôle ; la liste affiche tous les rôles du système.
+                            {% else %}
+                            <strong>Gestion des rôles de votre entreprise.</strong>
+                            Les rôles sont créés pour l'entreprise à laquelle vous êtes rattaché ; vous ne voyez que ce périmètre.
+                            {% endif %}
                         </span>
                     </div>
                 <div class="card mb-0">
@@ -38,7 +43,7 @@
                             <h5 class="fw-bold mb-1">Rôles disponibles</h5>
                             <p class="text-muted mb-0 small">Définissez les rôles et leurs permissions.</p>
                         </div>
-                        {% if entreprise %}
+                        {% if est_super_admin or entreprise %}
                         <a href="{% url 'user:creer-role' %}" class="btn btn-primary">
                             <i class="ti ti-plus me-1"></i>Nouveau rôle
                         </a>
@@ -46,17 +51,22 @@
                     </div>
 
                     <div class="card-body">
-                        {% if not entreprise %}
+                        {% if not est_super_admin and not entreprise %}
                         <div class="alert alert-warning">
-                            <i class="ti ti-alert-circle me-2"></i>Vous devez être rattaché à une branche d'entreprise pour gérer les rôles.
+                            <i class="ti ti-alert-circle me-2"></i>Aucune entreprise associée à votre compte. Impossible de gérer les rôles.
                         </div>
                         {% else %}
                         <div class="row g-3">
                             {% for role in roles %}
                             <div class="col-lg-6 col-xl-4">
                                 <div class="card border h-100 mb-0">
-                                    <div class="card-header d-flex justify-content-between align-items-center py-3">
-                                        <h6 class="card-title mb-0 fw-bold">{{ role.nom }}</h6>
+                                    <div class="card-header d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
+                                        <div>
+                                            <h6 class="card-title mb-0 fw-bold">{{ role.nom }}</h6>
+                                            {% if est_super_admin %}
+                                            <span class="badge bg-secondary-subtle text-secondary border mt-1">{{ role.entreprise.nom }}</span>
+                                            {% endif %}
+                                        </div>
                                         <span class="badge bg-primary">{{ role.utilisateurs.count }} utilisateur{{ role.utilisateurs.count|pluralize }}</span>
                                     </div>
                                     <div class="card-body py-3">
@@ -93,11 +103,13 @@
                             {% empty %}
                             <div class="col-12 text-center py-5 text-muted">
                                 <i class="ti ti-shield-off fs-1 d-block mb-2"></i>
-                                Aucun rôle défini pour cette entreprise.
+                                {% if est_super_admin %}Aucun rôle dans le système.{% else %}Aucun rôle défini pour votre entreprise.{% endif %}
                                 <div class="mt-3">
+                                    {% if est_super_admin or entreprise %}
                                     <a href="{% url 'user:creer-role' %}" class="btn btn-primary">
                                         <i class="ti ti-plus me-1"></i>Créer le premier rôle
                                     </a>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endfor %}

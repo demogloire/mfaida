@@ -67,6 +67,44 @@ def _get_entreprise(user):
     return None
 
 
+def _est_super_admin(user):
+    return bool(getattr(user, 'admin', False) or getattr(user, 'is_superuser', False))
+
+
+def _get_entreprise_liee(user):
+    """
+    Entreprise à laquelle l'utilisateur est rattaché (hors mode super-admin).
+    Branche d'affectation, sinon entreprise dont il est le propriétaire (Entreprise.user).
+    """
+    if getattr(user, 'branche_id', None):
+        return user.branche.entreprise
+    return Entreprise.objects.filter(user=user).first()
+
+
+def _peut_gerer_utilisateurs(user):
+    if _est_super_admin(user):
+        return True
+    return _get_entreprise_liee(user) is not None
+
+
+def _entreprise_utilisateur_cible(utilisateur):
+    if utilisateur.branche_id:
+        return utilisateur.branche.entreprise
+    if utilisateur.role_id:
+        return utilisateur.role.entreprise
+    return None
+
+
+def _peut_modifier_utilisateur_hors_superadmin(actor, cible):
+    ae = _get_entreprise_liee(actor)
+    if not ae:
+        return False
+    ce = _entreprise_utilisateur_cible(cible)
+    if ce is None:
+        return True
+    return ce == ae
+
+
 # ── Authentification ──────────────────────────────────────────────────────────
 
 def AdminUser(request):
@@ -169,9 +207,9 @@ def modifier_profil(request):
         user = form.save(commit=False)
         user.username = user.email
         user.save()
-        messages.success(request, "Votre profil a été mis à jour.")
         if request.htmx:
-            return render(request, 'user/profil/partial/form_profil.html', {'form': form})
+            return render(request, 'user/profil/partial/form_profil.html', {'form': form, 'success': True})
+        messages.success(request, "Votre profil a été mis à jour.")
         return redirect('user:mon-profil')
     return render(request, 'user/profil/modifier.html', {'form': form})
 
@@ -191,9 +229,21 @@ def changer_mot_de_passe(request):
 
 # ── CRUD Utilisateurs ─────────────────────────────────────────────────────────
 
-@admin_requis
+@login_requis
 def liste_utilisateurs(request):
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Vous n'avez pas accès à la gestion des utilisateurs.")
+        return redirect('entreprise:dashboard')
+
     qs = User.objects.select_related('branche', 'role').order_by('last_name', 'first_name')
+    super_adm = _est_super_admin(request.user)
+    ent_scope = None
+    if not super_adm:
+        ent_scope = _get_entreprise_liee(request.user)
+        if not ent_scope:
+            messages.error(request, "Aucune entreprise associée à votre compte.")
+            return redirect('entreprise:dashboard')
+        qs = qs.filter(Q(branche__entreprise=ent_scope) | Q(role__entreprise=ent_scope))
 
     q = request.GET.get('q', '').strip()
     branche_id = request.GET.get('branche')
@@ -218,71 +268,197 @@ def liste_utilisateurs(request):
     paginator = Paginator(qs, 20)
     page = paginator.get_page(request.GET.get('page'))
 
+    roles_qs = Role.objects.all().order_by('nom') if super_adm else Role.objects.filter(
+        entreprise=ent_scope,
+    ).order_by('nom')
+
     contexte = {
         'page_obj': page,
-        'roles': Role.objects.all(),
+        'roles': roles_qs,
         'q': q,
         'branche_id': branche_id,
         'role_id': role_id,
         'actif': actif,
+        'est_super_admin': super_adm,
     }
     if request.htmx and request.htmx.target == 'tableau-utilisateurs':
         return render(request, 'user/utilisateurs/partial/tableau.html', contexte)
     return render(request, 'user/utilisateurs/liste.html', contexte)
 
 
-@admin_requis
+@login_requis
 def creer_utilisateur(request):
-    entreprise = _get_entreprise(request.user)
-    form = CreationUtilisateurForm(request.POST or None, request.FILES or None, entreprise=entreprise)
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Vous n'avez pas accès à la création d'utilisateurs.")
+        return redirect('entreprise:dashboard')
+
+    choix = _est_super_admin(request.user)
+    entreprise_liee = _get_entreprise_liee(request.user)
+
+    entreprise_eff = None
+    if choix:
+        raw_ec = request.POST.get('entreprise_cible') if request.method == 'POST' else request.GET.get(
+            'entreprise_cible'
+        )
+        if raw_ec:
+            entreprise_eff = get_object_or_404(Entreprise, pk=raw_ec)
+    else:
+        entreprise_eff = entreprise_liee
+        if not entreprise_eff:
+            messages.error(request, "Aucune entreprise associée à votre compte.")
+            return redirect('entreprise:dashboard')
+
+    htmx_ent_url = reverse('user:creer-utilisateur') if choix else ''
+    prom_admin = _est_super_admin(request.user)
+
+    if request.method == 'GET' and request.htmx and getattr(request.htmx, 'target', None) == 'form-container':
+        form = CreationUtilisateurForm(
+            entreprise=entreprise_eff,
+            choix_entreprise=choix,
+            htmx_entreprise_url=htmx_ent_url,
+            peut_promouvoir_admin=prom_admin,
+        )
+        return render(request, 'user/utilisateurs/partial/form.html', {
+            'form': form,
+            'entreprise_affichage': None if choix else entreprise_eff,
+        })
+
+    entreprise_kw = None if (request.method == 'POST' and choix) else entreprise_eff
+    form = CreationUtilisateurForm(
+        request.POST or None, request.FILES or None,
+        entreprise=entreprise_kw,
+        choix_entreprise=choix,
+        htmx_entreprise_url=htmx_ent_url,
+        peut_promouvoir_admin=prom_admin,
+    )
     if request.method == "POST":
         if form.is_valid():
             form.save()
             messages.success(request, "Utilisateur créé avec succès.")
             if request.htmx and request.htmx.target == 'form-container':
                 return render(request, 'user/utilisateurs/partial/form.html', {
-                    'form': CreationUtilisateurForm(entreprise=entreprise),
+                    'form': CreationUtilisateurForm(
+                        entreprise=None if choix else entreprise_liee,
+                        choix_entreprise=choix,
+                        htmx_entreprise_url=htmx_ent_url,
+                        peut_promouvoir_admin=prom_admin,
+                    ),
                     'success': True,
+                    'entreprise_affichage': None if choix else entreprise_liee,
                 })
             return redirect('user:liste-utilisateurs')
         elif request.htmx and request.htmx.target == 'form-container':
-            return render(request, 'user/utilisateurs/partial/form.html', {'form': form})
-    return render(request, 'user/utilisateurs/form.html', {'form': form, 'titre': "Créer un utilisateur"})
+            return render(request, 'user/utilisateurs/partial/form.html', {
+                'form': form,
+                'entreprise_affichage': None if choix else entreprise_eff,
+            })
+    return render(request, 'user/utilisateurs/form.html', {
+        'form': form,
+        'titre': "Créer un utilisateur",
+        'entreprise_affichage': None if choix else entreprise_eff,
+    })
 
 
-@admin_requis
+@login_requis
 def modifier_utilisateur(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
-    entreprise = _get_entreprise(utilisateur) or _get_entreprise(request.user)
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Vous n'avez pas accès à la modification des utilisateurs.")
+        return redirect('entreprise:dashboard')
+    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
+        request.user, utilisateur
+    ):
+        messages.error(request, "Vous ne pouvez pas modifier cet utilisateur.")
+        return redirect('user:liste-utilisateurs')
+
+    choix = _est_super_admin(request.user)
+    u_ent = _entreprise_utilisateur_cible(utilisateur)
+
+    entreprise_eff = None
+    if choix:
+        raw_ec = request.POST.get('entreprise_cible') if request.method == 'POST' else request.GET.get(
+            'entreprise_cible'
+        )
+        if raw_ec:
+            entreprise_eff = get_object_or_404(Entreprise, pk=raw_ec)
+        else:
+            entreprise_eff = u_ent
+    else:
+        entreprise_eff = _get_entreprise_liee(request.user)
+
+    htmx_ent_url = reverse('user:modifier-utilisateur', args=[utilisateur.pk]) if choix else ''
+    prom_admin = _est_super_admin(request.user)
+
+    if request.method == 'GET' and request.htmx and getattr(request.htmx, 'target', None) == 'form-container':
+        form = ModificationUtilisateurForm(
+            instance=utilisateur,
+            entreprise=entreprise_eff,
+            choix_entreprise=choix,
+            htmx_entreprise_url=htmx_ent_url,
+            peut_promouvoir_admin=prom_admin,
+        )
+        return render(request, 'user/utilisateurs/partial/form.html', {
+            'form': form,
+            'utilisateur': utilisateur,
+            'entreprise_affichage': None if choix else entreprise_eff,
+        })
+
+    entreprise_kw = None if (request.method == 'POST' and choix) else entreprise_eff
     form = ModificationUtilisateurForm(
         request.POST or None, request.FILES or None,
-        instance=utilisateur, entreprise=entreprise,
+        instance=utilisateur,
+        entreprise=entreprise_kw,
+        choix_entreprise=choix,
+        htmx_entreprise_url=htmx_ent_url,
+        peut_promouvoir_admin=prom_admin,
     )
     if request.method == "POST":
         if form.is_valid():
             user = form.save(commit=False)
             user.username = user.email
             user.save()
+            utilisateur.refresh_from_db()
+            u_ent_apres = _entreprise_utilisateur_cible(utilisateur)
             messages.success(request, "Utilisateur modifié avec succès.")
             if request.htmx and request.htmx.target == 'form-container':
                 return render(request, 'user/utilisateurs/partial/form.html', {
-                    'form': form, 'utilisateur': utilisateur, 'success': True,
+                    'form': ModificationUtilisateurForm(
+                        instance=utilisateur,
+                        entreprise=u_ent_apres or entreprise_eff,
+                        choix_entreprise=choix,
+                        htmx_entreprise_url=htmx_ent_url,
+                        peut_promouvoir_admin=prom_admin,
+                    ),
+                    'utilisateur': utilisateur,
+                    'success': True,
+                    'entreprise_affichage': None if choix else _get_entreprise_liee(request.user),
                 })
             return redirect('user:liste-utilisateurs')
         elif request.htmx and request.htmx.target == 'form-container':
             return render(request, 'user/utilisateurs/partial/form.html', {
-                'form': form, 'utilisateur': utilisateur,
+                'form': form,
+                'utilisateur': utilisateur,
+                'entreprise_affichage': None if choix else entreprise_eff,
             })
     return render(request, 'user/utilisateurs/form.html', {
         'form': form,
         'utilisateur': utilisateur,
         'titre': f"Modifier — {utilisateur.get_full_name()}",
+        'entreprise_affichage': None if choix else entreprise_eff,
     })
 
 
-@admin_requis
+@login_requis
 def activer_desactiver_utilisateur(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Accès refusé.")
+        return redirect('entreprise:dashboard')
+    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
+        request.user, utilisateur
+    ):
+        messages.error(request, "Vous ne pouvez pas modifier cet utilisateur.")
+        return redirect('user:liste-utilisateurs')
     if utilisateur == request.user:
         messages.error(request, "Vous ne pouvez pas désactiver votre propre compte.")
     else:
@@ -295,9 +471,17 @@ def activer_desactiver_utilisateur(request, pk):
     return redirect('user:liste-utilisateurs')
 
 
-@admin_requis
+@login_requis
 def reinitialiser_mot_de_passe(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Accès refusé.")
+        return redirect('entreprise:dashboard')
+    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
+        request.user, utilisateur
+    ):
+        messages.error(request, "Vous ne pouvez pas modifier cet utilisateur.")
+        return redirect('user:liste-utilisateurs')
     if request.method == "POST":
         nouveau_mdp = _generer_mot_de_passe()
         utilisateur.set_password(nouveau_mdp)
@@ -314,9 +498,17 @@ def reinitialiser_mot_de_passe(request, pk):
     return render(request, 'user/utilisateurs/confirm_reset.html', {'utilisateur': utilisateur})
 
 
-@admin_requis
+@login_requis
 def supprimer_utilisateur(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Accès refusé.")
+        return redirect('entreprise:dashboard')
+    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
+        request.user, utilisateur
+    ):
+        messages.error(request, "Vous ne pouvez pas supprimer cet utilisateur.")
+        return redirect('user:liste-utilisateurs')
     if utilisateur == request.user:
         messages.error(request, "Vous ne pouvez pas supprimer votre propre compte.")
         return redirect('user:liste-utilisateurs')
@@ -348,10 +540,18 @@ _PV_PERMS = [
 ]
 
 
-@admin_requis
+@login_requis
 def gerer_acces_utilisateur(request, pk):
     """Gérer les accès dépôts et points de vente d'un utilisateur."""
     utilisateur = get_object_or_404(User, pk=pk)
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Accès refusé.")
+        return redirect('entreprise:dashboard')
+    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
+        request.user, utilisateur
+    ):
+        messages.error(request, "Vous ne pouvez pas gérer les accès de cet utilisateur.")
+        return redirect('user:liste-utilisateurs')
     branche = utilisateur.branche
 
     depots = Depot.objects.filter(branche=branche, est_actif=True) if branche else Depot.objects.none()
@@ -421,55 +621,158 @@ def gerer_acces_utilisateur(request, pk):
 
 # ── CRUD Rôles ────────────────────────────────────────────────────────────────
 
-@admin_requis
+def _assert_peut_gerer_role(request, role):
+    """Rôle Django : même périmètre que la gestion des utilisateurs de l'entreprise."""
+    if not _peut_gerer_utilisateurs(request.user):
+        return False
+    if _est_super_admin(request.user):
+        return True
+    ent = _get_entreprise_liee(request.user)
+    return bool(ent and role.entreprise_id == ent.pk)
+
+
+@login_requis
 def liste_roles(request):
-    entreprise = _get_entreprise(request.user)
-    roles = Role.objects.filter(entreprise=entreprise).prefetch_related('permissions__permission') if entreprise else Role.objects.none()
-    return render(request, 'user/roles/liste.html', {'roles': roles, 'entreprise': entreprise})
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Vous n'avez pas accès à la gestion des rôles.")
+        return redirect('entreprise:dashboard')
+
+    super_adm = _est_super_admin(request.user)
+    ent_liee = _get_entreprise_liee(request.user)
+
+    if super_adm:
+        roles = (
+            Role.objects.select_related('entreprise')
+            .prefetch_related('permissions__permission')
+            .order_by('entreprise__nom', 'nom')
+        )
+        entreprise_ctx = True
+    else:
+        if not ent_liee:
+            roles = Role.objects.none()
+            entreprise_ctx = None
+        else:
+            roles = (
+                Role.objects.filter(entreprise=ent_liee)
+                .select_related('entreprise')
+                .prefetch_related('permissions__permission')
+                .order_by('nom')
+            )
+            entreprise_ctx = ent_liee
+
+    return render(request, 'user/roles/liste.html', {
+        'roles': roles,
+        'entreprise': entreprise_ctx,
+        'est_super_admin': super_adm,
+        'entreprise_affichage': None if super_adm else ent_liee,
+    })
 
 
-@admin_requis
+@login_requis
 def creer_role(request):
-    entreprise = _get_entreprise(request.user)
-    if not entreprise:
-        messages.error(request, "Aucune entreprise trouvée dans le système. Créez d'abord une entreprise.")
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Vous n'avez pas accès à la création de rôles.")
+        return redirect('entreprise:dashboard')
+
+    choix = _est_super_admin(request.user)
+    ent_liee = _get_entreprise_liee(request.user)
+
+    if not choix and not ent_liee:
+        messages.error(request, "Aucune entreprise associée à votre compte.")
         return redirect('user:liste-roles')
-    form = RoleForm(request.POST or None)
+
+    form = RoleForm(
+        request.POST or None,
+        show_entreprise=choix,
+        entreprise_fixe=None if choix else ent_liee,
+    )
     if request.method == "POST":
         if form.is_valid():
             role = form.save(commit=False)
-            role.entreprise = entreprise
+            if choix:
+                role.entreprise = form.cleaned_data['entreprise']
+            else:
+                role.entreprise = ent_liee
             role.save()
             messages.success(request, f"Rôle «\u00a0{role.nom}\u00a0» créé.")
             if request.htmx and request.htmx.target == 'form-role':
                 return render(request, 'user/roles/partial/form.html', {
-                    'form': RoleForm(), 'success': True,
+                    'form': RoleForm(show_entreprise=choix, entreprise_fixe=None if choix else ent_liee),
+                    'success': True,
+                    'entreprise_affichage': None if choix else ent_liee,
                 })
             return redirect('user:liste-roles')
         elif request.htmx and request.htmx.target == 'form-role':
-            return render(request, 'user/roles/partial/form.html', {'form': form})
-    return render(request, 'user/roles/form.html', {'form': form, 'titre': "Créer un rôle"})
+            return render(request, 'user/roles/partial/form.html', {
+                'form': form,
+                'entreprise_affichage': None if choix else ent_liee,
+            })
+    return render(request, 'user/roles/form.html', {
+        'form': form,
+        'titre': "Créer un rôle",
+        'est_super_admin': choix,
+        'entreprise_affichage': None if choix else ent_liee,
+    })
 
 
-@admin_requis
+@login_requis
 def modifier_role(request, pk):
-    role = get_object_or_404(Role, pk=pk)
-    form = RoleForm(request.POST or None, instance=role)
+    if not _peut_gerer_utilisateurs(request.user):
+        messages.error(request, "Vous n'avez pas accès à la modification des rôles.")
+        return redirect('entreprise:dashboard')
+
+    role = get_object_or_404(Role.objects.select_related('entreprise'), pk=pk)
+    if not _assert_peut_gerer_role(request, role):
+        messages.error(request, "Vous ne pouvez pas modifier ce rôle.")
+        return redirect('user:liste-roles')
+
+    choix = _est_super_admin(request.user)
+    ent_liee = _get_entreprise_liee(request.user)
+
+    form = RoleForm(
+        request.POST or None,
+        instance=role,
+        show_entreprise=choix,
+        entreprise_fixe=role.entreprise if not choix else None,
+    )
     if request.method == "POST":
         if form.is_valid():
             form.save()
+            role.refresh_from_db()
             messages.success(request, f"Rôle «\u00a0{role.nom}\u00a0» modifié.")
             if request.htmx and request.htmx.target == 'form-role':
-                return render(request, 'user/roles/partial/form.html', {'form': form, 'role': role, 'success': True})
+                return render(request, 'user/roles/partial/form.html', {
+                    'form': RoleForm(
+                        instance=role,
+                        show_entreprise=choix,
+                        entreprise_fixe=role.entreprise if not choix else None,
+                    ),
+                    'role': role,
+                    'success': True,
+                    'entreprise_affichage': None if choix else ent_liee,
+                })
             return redirect('user:liste-roles')
         elif request.htmx and request.htmx.target == 'form-role':
-            return render(request, 'user/roles/partial/form.html', {'form': form, 'role': role})
-    return render(request, 'user/roles/form.html', {'form': form, 'role': role, 'titre': f"Modifier — {role.nom}"})
+            return render(request, 'user/roles/partial/form.html', {
+                'form': form,
+                'role': role,
+                'entreprise_affichage': None if choix else ent_liee,
+            })
+    return render(request, 'user/roles/form.html', {
+        'form': form,
+        'role': role,
+        'titre': f"Modifier — {role.nom}",
+        'est_super_admin': choix,
+        'entreprise_affichage': None if choix else ent_liee,
+    })
 
 
-@admin_requis
+@login_requis
 def supprimer_role(request, pk):
     role = get_object_or_404(Role, pk=pk)
+    if not _assert_peut_gerer_role(request, role):
+        messages.error(request, "Vous ne pouvez pas supprimer ce rôle.")
+        return redirect('user:liste-roles')
     if request.method == "POST":
         if role.utilisateurs.exists():
             messages.error(request, f"Impossible : {role.utilisateurs.count()} utilisateur(s) ont ce rôle.")
@@ -483,9 +786,12 @@ def supprimer_role(request, pk):
     return render(request, 'user/roles/confirmer_suppression.html', {'role': role})
 
 
-@admin_requis
+@login_requis
 def gerer_permissions_role(request, pk):
     role = get_object_or_404(Role, pk=pk)
+    if not _assert_peut_gerer_role(request, role):
+        messages.error(request, "Vous ne pouvez pas gérer les permissions de ce rôle.")
+        return redirect('user:liste-roles')
     toutes_permissions = PermissionPersonnalisee.objects.order_by('nom')
 
     if request.method == "POST":
@@ -776,4 +1082,6 @@ def audit_personnel(request):
         'connexions_succes': connexions_qs.filter(succes=True).count(),
         'connexions_echec': connexions_qs.filter(succes=False).count(),
     }
+    if request.htmx and request.htmx.target == 'audit-container':
+        return render(request, 'user/audit/partial/table_actions.html', contexte)
     return render(request, 'user/audit/index.html', contexte)

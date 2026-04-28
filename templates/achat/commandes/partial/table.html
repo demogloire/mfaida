@@ -1,0 +1,68 @@
+{% if commandes %}
+<div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>N°</th>
+                <th>Entreprise</th>
+                <th>Destination</th>
+                <th>Fournisseur</th>
+                <th>Date</th>
+                <th>Livraison prévue</th>
+                <th>Total TTC</th>
+                <th>Statut</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cmd in commandes %}
+            <tr>
+                <td><a href="{% url 'achat:detail-commande' cmd.pk %}" class="fw-medium text-decoration-none"><code>{{ cmd.numero_commande }}</code></a></td>
+                <td class="small">{{ cmd.entreprise.nom }}</td>
+                <td class="small">
+                    <div class="text-body"><span class="text-muted">Dépôt</span> · {% if cmd.depot_destination %}{{ cmd.depot_destination.nom }}{% else %}—{% endif %}</div>
+                    <div class="text-muted"><span class="text-muted">PV</span> · {% if cmd.pointdevente_destination %}{{ cmd.pointdevente_destination.nom }}{% else %}—{% endif %}</div>
+                </td>
+                <td>{{ cmd.fournisseur.nom_societe }}</td>
+                <td class="text-muted small">{{ cmd.date_commande|date:"d/m/Y" }}</td>
+                <td class="text-muted small">{{ cmd.date_livraison_prevue|date:"d/m/Y"|default:"—" }}</td>
+                <td class="fw-medium text-nowrap">{% if cmd.devise %}{{ cmd.devise.symbole }} {% endif %}{{ cmd.total_ttc|floatformat:2 }}</td>
+                <td>
+                    {% if cmd.statut == 'BROUILLON' %}
+                    <span class="badge bg-secondary-subtle text-secondary border">Brouillon</span>
+                    {% elif cmd.statut == 'ENVOYE' %}
+                    <span class="badge bg-info-subtle text-info border border-info-subtle">Envoyé</span>
+                    {% elif cmd.statut == 'RECU_PARTIEL' %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Partiel</span>
+                    {% elif cmd.statut == 'RECU_TOTAL' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Reçu</span>
+                    {% elif cmd.statut == 'ANNULE' %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Annulé</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'achat:detail-commande' cmd.pk %}" class="btn btn-sm btn-outline-primary" title="Voir">
+                        <i class="ti ti-eye"></i>
+                    </a>
+                    {% if cmd.statut == 'BROUILLON' %}
+                    <a href="{% url 'achat:modifier-commande' cmd.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifier">
+                        <i class="ti ti-edit"></i>
+                    </a>
+                    {% endif %}
+                    {% if cmd.statut in 'ENVOYE RECU_PARTIEL' %}
+                    <a href="{% url 'achat:creer-reception' cmd.pk %}" class="btn btn-sm btn-outline-success" title="Réceptionner">
+                        <i class="ti ti-package-import"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="ti ti-file-invoice fs-1 d-block mb-2"></i>
+    Aucun bon de commande trouvé.
+</div>
+{% endif %}

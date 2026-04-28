@@ -1,12 +1,1 @@
-
-<div class="card flex-fill mb-0">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
-        <h4 class="fs-18 fw-bold mb-0">Modifier dépôt</h4>
-        <a hx-get="{% url 'entreprise:depot-liste-tous' %}" hx-target="body" hx-push-url="true" class="btn btn-secondary btn-sm">
-            Retour
-        </a>
-    </div>
-    <div class="card-body">
-        {% include 'depot/partial/form_mod.html' %}
-    </div>
-</div>
+{% include 'depot/partial/form_mod.html' %}

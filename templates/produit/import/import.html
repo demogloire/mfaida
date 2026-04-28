@@ -43,8 +43,8 @@
                                     <table class="table table-sm table-bordered mb-0 small">
                                         <thead class="table-primary">
                                             <tr>
-                                                <th>nom</th><th>categorie</th><th>sous_categorie</th>
-                                                <th>code_barre</th><th>description</th>
+                                                <th>entreprise</th><th>nom</th><th>categorie</th><th>sous_categorie</th>
+                                                <th>code_barre</th><th>sku</th><th>description</th>
                                                 <th>prix_achat_ht</th><th>prix_vente_ht</th>
                                                 <th>tva_taux</th><th>unite_mesure</th>
                                                 <th>stock_alerte</th><th>methode_gestion</th><th>vie</th>
@@ -52,8 +52,8 @@
                                         </thead>
                                         <tbody>
                                             <tr class="text-muted fst-italic">
-                                                <td>Savon Lux</td><td>Hygiène</td><td>Soins du corps</td>
-                                                <td>6901234…</td><td>Savon 150g</td>
+                                                <td>Mon Entreprise</td><td>Savon Lux</td><td>Hygiène</td><td>Soins du corps</td>
+                                                <td>6901234…</td><td>HYG-SAV</td><td>Savon 150g</td>
                                                 <td>1500</td><td>2500</td>
                                                 <td>16</td><td>PCS</td>
                                                 <td>10</td><td>FEFO</td><td>365</td>
@@ -170,8 +170,9 @@
                                     <strong>vie :</strong> durée de vie en jours (ex: <code>365</code>). Défaut : 30.
                                 </div>
                                 <div class="col-12 text-muted">
-                                    Si <code>code_barre</code> est renseigné, un produit existant avec ce code sera mis à jour.
-                                    Sinon, un nouveau produit est toujours créé.
+                                    Mise à jour : d’abord par <code>code_barre</code> s’il est renseigné, sinon par
+                                    <code>sku</code> (même entreprise, d’après la colonne <code>entreprise</code>).
+                                    Si les deux sont vides, un nouveau produit est créé.
                                 </div>
                             </div>
                         </div>

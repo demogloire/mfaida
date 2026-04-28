@@ -58,8 +58,10 @@
                 <i class="ti ti-clipboard-list text-primary fs-5"></i>
                 <h5 class="card-title mb-0">Journal des actions</h5>
             </div>
-            <form hx-get="{% url 'user:audit-personnel' %}"
+            <form id="audit-filter-form"
+                  hx-get="{% url 'user:audit-personnel' %}"
                   hx-target="#audit-container"
+                  hx-swap="innerHTML"
                   hx-push-url="true"
                   class="d-flex gap-2 flex-wrap">
                 <select name="verbe" class="form-select form-select-sm" style="width:auto;">
@@ -73,77 +75,15 @@
                 <input type="date" name="date_debut" value="{{ date_debut }}" class="form-control form-control-sm" style="width:140px;">
                 <input type="date" name="date_fin" value="{{ date_fin }}" class="form-control form-control-sm" style="width:140px;">
                 <button type="submit" class="btn btn-sm btn-outline-primary">
-                    <i class="ti ti-filter"></i>
+                    <i class="ti ti-filter"></i> Filtrer
                 </button>
+                <a href="{% url 'user:audit-personnel' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="ti ti-x"></i>
+                </a>
             </form>
         </div>
         <div class="card-body p-0" id="audit-container">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Date / Heure</th>
-                            <th>Action</th>
-                            <th>Module</th>
-                            <th>Description</th>
-                            <th>IP</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for a in page_actions %}
-                        <tr>
-                            <td class="text-nowrap">{{ a.date_heure|date:"d/m/Y H:i" }}</td>
-                            <td>
-                                {% if a.verbe == 'creation' %}
-                                    <span class="badge bg-success">{{ a.get_verbe_display }}</span>
-                                {% elif a.verbe == 'suppression' %}
-                                    <span class="badge bg-danger">{{ a.get_verbe_display }}</span>
-                                {% elif a.verbe == 'modification' %}
-                                    <span class="badge bg-warning text-dark">{{ a.get_verbe_display }}</span>
-                                {% elif a.verbe == 'connexion' %}
-                                    <span class="badge bg-primary">{{ a.get_verbe_display }}</span>
-                                {% elif a.verbe == 'deconnexion' %}
-                                    <span class="badge bg-secondary">{{ a.get_verbe_display }}</span>
-                                {% else %}
-                                    <span class="badge bg-light text-dark">{{ a.get_verbe_display }}</span>
-                                {% endif %}
-                            </td>
-                            <td><code class="small">{{ a.module|default:"—" }}</code></td>
-                            <td>{{ a.description|default:"—"|truncatechars:80 }}</td>
-                            <td>{{ a.adresse_ip|default:"—" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
-                                <i class="ti ti-clipboard-off fs-3 d-block mb-2"></i>
-                                Aucune action enregistrée pour les critères sélectionnés.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% if page_actions.has_other_pages %}
-            <div class="d-flex justify-content-center py-3">
-                <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        {% if page_actions.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page_a={{ page_actions.previous_page_number }}&verbe={{ verbe }}&module={{ module }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">&laquo;</a>
-                        </li>
-                        {% endif %}
-                        <li class="page-item disabled">
-                            <span class="page-link">{{ page_actions.number }} / {{ page_actions.paginator.num_pages }}</span>
-                        </li>
-                        {% if page_actions.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page_a={{ page_actions.next_page_number }}&verbe={{ verbe }}&module={{ module }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">&raquo;</a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            </div>
-            {% endif %}
+            {% include 'user/audit/partial/table_actions.html' %}
         </div>
     </div>
 

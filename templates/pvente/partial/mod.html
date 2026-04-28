@@ -1,12 +1,1 @@
-
-<div class="card flex-fill mb-0">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
-        <h4 class="fs-18 fw-bold mb-0">Modifier point de vente</h4>
-        <a hx-get="{% url 'entreprise:pvente-liste-tous' %}" hx-target="body" hx-push-url="true" class="btn btn-secondary btn-sm">
-            Retour
-        </a>
-    </div>
-    <div class="card-body">
-        {% include 'pvente/partial/form_mod.html' %}
-    </div>
-</div>
+{% include 'pvente/partial/form_mod.html' %}

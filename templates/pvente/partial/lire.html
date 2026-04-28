@@ -1,68 +1,104 @@
-<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div>
-        <h4 class="fw-bold mb-1">Points de vente</h4>
-        <p class="text-muted mb-0">Gérez les points de vente liés à la branche sélectionnée.</p>
-    </div>
-
+{# Liste des points de vente d'une branche #}
+<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2 py-3">
     <div class="d-flex align-items-center gap-2">
-        <a hx-get="{% url 'entreprise:branche-liste'%}" hx-target="body" hx-push-url="true" class="btn btn-outline-secondary">
-            Retour
-        </a>
-        <a hx-get="{% url 'entreprise:pvente-ajouter' pk %}" hx-target="body" hx-push-url="true" class="btn btn-primary">
-            <i class="ti ti-circle-plus me-1"></i>
-            Ajouter un PDVente
-        </a>
-    </div>
-</div>
-
-<div class="card-body pb-0">
-    <div class="row">
-        <div class="table-responsive mb-4">
-            <table class="table table-hover border mb-0">
-                <thead class="thead-light">
-                    <tr>
-                        <th>Code </th>
-                        <th>Nom du Point.</th>
-                        <th>Adresse </th>
-                        <th>Dépôt source </th>
-                        <th>Branche </th>
-                        <th class="no-sort"></th>
-                    </tr>
-                </thead>
-                <tbody>
-
-                    {%for point in pventes%}
-                    <tr>
-                        <td>
-                            {{point.code_pointvente}}
-                        </td>
-                        <td>
-                            {{point.nom}}
-                        </td>
-                        <td>{{point.adresse}}</td>
-                        <td>
-                            {%if point.depot_source.nom%}
-                                {{point.depot_source.nom}}
-                            {% else %}
-                                <span class="text-muted">Aucun dépôt</span>
-                            {% endif %}
-
-                        </td>
-                        <td>{{point.branche.nom}}</td>
-
-                        <td class="action-table-data">
-                            <div class="edit-delete-action">
-                                <a href="{% url 'entreprise:pvente-maj' point.pk %}" hx-target="body" hx-push-url="true">
-                                    <i data-feather="edit" class="feather-edit"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {%endfor%}
-
-                </tbody>
-            </table>
+        <span class="d-flex align-items-center justify-content-center rounded-2 bg-success bg-opacity-10 text-success"
+              style="width:38px;height:38px;">
+            <i class="ti ti-shopping-cart fs-5"></i>
+        </span>
+        <div>
+            <h5 class="fw-bold mb-0">Points de vente</h5>
+            <p class="text-muted mb-0 small">Points de vente rattachés à cette branche</p>
         </div>
     </div>
+    <div class="d-flex align-items-center gap-2">
+        <a hx-get="{% url 'entreprise:branche-liste' %}" hx-target="body" hx-push-url="true"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="ti ti-arrow-left me-1"></i>Branches
+        </a>
+        <a hx-get="{% url 'entreprise:pvente-ajouter' pk %}" hx-target="body" hx-push-url="true"
+           class="btn btn-success btn-sm">
+            <i class="ti ti-circle-plus me-1"></i>Nouveau PDV
+        </a>
+    </div>
 </div>
 
+<div class="card-body p-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Code</th>
+                    <th>Nom du point de vente</th>
+                    <th>Adresse</th>
+                    <th>Dépôt source</th>
+                    <th class="text-center">Statut</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for point in pventes %}
+                <tr>
+                    <td class="ps-3">
+                        <span class="badge bg-light text-dark border fw-semibold">
+                            {{ point.code_pointvente }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-flex align-items-center justify-content-center rounded-2 bg-success bg-opacity-10 text-success flex-shrink-0"
+                                  style="width:32px;height:32px;">
+                                <i class="ti ti-shopping-cart"></i>
+                            </span>
+                            <div>
+                                <span class="fw-semibold text-dark d-block lh-sm">{{ point.nom }}</span>
+                                <span class="text-muted small">{{ point.branche.nom }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-muted small">
+                        {% if point.adresse %}
+                            <i class="ti ti-map-pin me-1 text-danger"></i>{{ point.adresse }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if point.depot_source %}
+                            <span class="d-flex align-items-center gap-1 text-muted small">
+                                <i class="ti ti-building-warehouse text-primary"></i>
+                                {{ point.depot_source.nom }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if point.est_actif %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-3">
+                        <a hx-get="{% url 'entreprise:pvente-maj' point.pk %}" hx-target="body" hx-push-url="true"
+                           class="btn btn-outline-primary btn-sm" title="Modifier">
+                            <i class="ti ti-edit"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="ti ti-shopping-cart-off d-block mb-2" style="font-size:2.5rem;opacity:.3;"></i>
+                        <p class="mb-2">Aucun point de vente pour cette branche.</p>
+                        <a hx-get="{% url 'entreprise:pvente-ajouter' pk %}" hx-target="body" hx-push-url="true"
+                           class="btn btn-success btn-sm">
+                            <i class="ti ti-circle-plus me-1"></i>Créer le premier PDV
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

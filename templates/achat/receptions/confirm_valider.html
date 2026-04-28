@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="row justify-content-center">
+        <div class="col-lg-5">
+            <div class="card border-success">
+                <div class="card-header bg-success-subtle">
+                    <h5 class="mb-0 text-success"><i class="ti ti-check me-2"></i>Valider la réception</h5>
+                </div>
+                <div class="card-body text-center py-4">
+                    <p class="mb-1">Valider le bon de réception :</p>
+                    <p class="fw-bold fs-5">{{ reception.numero_reception }}</p>
+                    <p class="text-muted small">Cette action est définitive. Le stock sera mis à jour.</p>
+                </div>
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <a href="{% url 'achat:detail-reception' reception.pk %}" class="btn btn-light">Annuler</a>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="ti ti-check me-1"></i>Confirmer la validation
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

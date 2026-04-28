@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Bons de commande fournisseur</h4>
+            <h6>Gestion des achats</h6>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'achat:creer-commande' %}" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i>Nouvelle commande
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <form hx-get="{% url 'achat:liste-commandes' %}" hx-target="#table-container"
+                  hx-trigger="input delay:400ms from:input, change from:select"
+                  class="d-flex gap-2 flex-wrap align-items-end w-100">
+                <div class="flex-grow-1">
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="N°, fournisseur, entreprise, dépôt, point de vente…">
+                </div>
+                <div>
+                    <select name="statut" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        {% for code, label in STATUTS %}
+                        <option value="{{ code }}" {% if statut == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0" id="table-container">
+            {% include 'achat/commandes/partial/table.html' %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

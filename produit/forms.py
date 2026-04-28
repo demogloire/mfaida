@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from entreprise.models import Categorie, SousCategorie, Produit, Entreprise
 
 
@@ -41,7 +42,7 @@ class ProduitForm(forms.ModelForm):
     class Meta:
         model = Produit
         fields = [
-            'sous_categorie', 'nom', 'code_barre', 'description',
+            'sous_categorie', 'nom', 'code_barre', 'sku', 'description',
             'prix_achat_ht', 'prix_vente_ht', 'tva_taux',
             'unite_mesure', 'stock_alerte', 'image', 'est_actif',
             'methode_gestion', 'vie',
@@ -50,6 +51,7 @@ class ProduitForm(forms.ModelForm):
             'sous_categorie': forms.Select(attrs={'class': 'form-select'}),
             'nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom du produit'}),
             'code_barre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 6901234567890 (optionnel)'}),
+            'sku': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: CAT-REF-001 (optionnel)'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'prix_achat_ht': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'id': 'id_prix_achat_ht'}),
             'prix_vente_ht': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'id': 'id_prix_vente_ht'}),
@@ -68,6 +70,22 @@ class ProduitForm(forms.ModelForm):
                 categorie__entreprise__user=user
             ).select_related('categorie', 'categorie__entreprise').order_by('categorie__entreprise__nom', 'categorie__nom', 'nom')
         self.fields['sous_categorie'].empty_label = "— Choisir une sous-catégorie —"
+
+    def clean_sku(self):
+        raw = self.cleaned_data.get('sku')
+        sku = raw.strip() if raw else ''
+        sku = sku or None
+        sc = self.cleaned_data.get('sous_categorie')
+        if sku and sc:
+            ent_id = sc.categorie.entreprise_id
+            qs = Produit.objects.filter(entreprise_id=ent_id, sku=sku)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError(
+                    'Un produit avec ce SKU existe déjà pour cette entreprise.'
+                )
+        return sku
 
 
 class ImportExcelForm(forms.Form):

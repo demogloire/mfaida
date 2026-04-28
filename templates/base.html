@@ -1333,40 +1333,31 @@
 							<a href=""><i class="ti ti-home fs-16 me-2"></i><span>Dashboard</span></a>
 						</li>
 						<li class="submenu">
-							<a href="javascript:void(0);"><i class="ti ti-layout-grid fs-16 me-2"></i><span>Vente &amp;
-									Achat</span> <span class="menu-arrow"></span></a>
+							<a href="javascript:void(0);"><i class="ti ti-shopping-cart fs-16 me-2"></i><span>Vente &amp; Achat</span> <span class="menu-arrow"></span></a>
 							<ul>
 								<li class="submenu">
-									<a href="javascript:void(0);"><span>Bon de commande</span><span
-											class="menu-arrow"></span></a>
+									<a href="javascript:void(0);"><span>Achats</span><span class="menu-arrow"></span></a>
 									<ul>
-										<li><a href="manage-stocks.html"><span>Commandes</span></a></li>
-										<li><a href="stock-adjustment.html"><span>Livraisons</span></a></li>
-										<li><a href="stock-transfer.html"><span>Fournisseurs</span></a></li>
+										<li><a href="{% url 'achat:liste-commandes' %}">Bons de commande</a></li>
+										<li><a href="{% url 'achat:creer-commande' %}">Nouvelle commande</a></li>
+										<li><a href="{% url 'achat:liste-receptions' %}">Réceptions</a></li>
+									</ul>
+								</li>
+								<li class="submenu">
+									<a href="javascript:void(0);"><span>Tiers</span><span class="menu-arrow"></span></a>
+									<ul>
+										<li><a href="{% url 'tiers:liste-clients' %}">Clients</a></li>
+										<li><a href="{% url 'tiers:creer-client' %}">Nouveau client</a></li>
+										<li><a href="{% url 'tiers:liste-fournisseurs' %}">Fournisseurs</a></li>
+										<li><a href="{% url 'tiers:creer-fournisseur' %}">Nouveau fournisseur</a></li>
 									</ul>
 								</li>
 								<li class="submenu">
 									<a href="javascript:void(0);"><span>Vente</span><span class="menu-arrow"></span></a>
 									<ul>
-										<li class="submenu">
-											<a href="javascript:void(0);"><span>Facturation</span><span
-													class="menu-arrow"></span></a>
-											<ul>
-												<li><a href="online-orders.html">Liste des factures</a></li>
-												<li><a href="pos-orders.html">Cash</a></li>
-												<li><a href="pos-orders.html">Crédit</a></li>
-												<li><a href="pos-orders.html">Annulée</a></li>
-											</ul>
-										</li>
-										<li><a href="invoice.html"><span>Proforma</span></a></li>
-										<li><a href="sales-returns.html"><span>Vente retournée</span></a></li>
-										<li class="submenu">
-											<a href="javascript:void(0);"><span>Clients</span><span
-													class="menu-arrow"></span></a>
-											<ul>
-												<li><a href="pos-2.html">Configuration</a></li>
-											</ul>
-										</li>
+										<li><a href="#">Liste des factures</a></li>
+										<li><a href="#">Proforma</a></li>
+										<li><a href="#">Ventes retournées</a></li>
 									</ul>
 								</li>
 							</ul>
@@ -1535,10 +1526,10 @@
 												<li><a hx-get="{% url 'entreprise:devise-liste' %}" hx-target="body" hx-push-url="true">Devise</a></li>
 											</ul>
 										</li>
-										<li><a hx-get="{% url 'entreprise:fournisseur-liste' %}" hx-target="body" hx-push-url="true">Fournisseur</a></li>
+										<li><a href="{% url 'tiers:liste-fournisseurs' %}">Fournisseurs</a></li>
 									</ul>
 								</li>
-							<li class="submenu">
+								<li class="submenu">
 								<a href="javascript:void(0);"><span>Produit</span><span
 										class="menu-arrow"></span></a>
 								<ul>
@@ -1546,7 +1537,7 @@
 									<li><a hx-get="{% url 'produit:sous-categories' %}" hx-target="body" hx-push-url="true">Sous-catégorie</a></li>
 									<li><a hx-get="{% url 'produit:liste' %}" hx-target="body" hx-push-url="true">Produits</a></li>
 									<li><a hx-get="{% url 'produit:import' %}" hx-target="body" hx-push-url="true">Import Excel</a></li>
-									</ul>
+								</ul>
 								</li>
 
 							<li class="submenu">
@@ -1717,6 +1708,22 @@
 		// Some HTMX flows fire htmx:load for new content
 		document.addEventListener('htmx:load', function (event) {
 			rebindUi(event.target);
+		});
+
+		// CSRF pour HTMX (DELETE, PATCH, etc.) — cookie csrftoken → en-tête X-CSRFToken
+		function _csrfCookie() {
+			const name = 'csrftoken';
+			if (!document.cookie) return null;
+			for (const part of document.cookie.split(';')) {
+				const c = part.trim();
+				if (c.startsWith(name + '='))
+					return decodeURIComponent(c.slice(name.length + 1));
+			}
+			return null;
+		}
+		document.body.addEventListener('htmx:configRequest', function (evt) {
+			const tok = _csrfCookie();
+			if (tok) evt.detail.headers['X-CSRFToken'] = tok;
 		});
 
 

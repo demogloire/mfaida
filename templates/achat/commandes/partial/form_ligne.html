@@ -1,0 +1,39 @@
+{% load widget_tweaks %}
+<div class="border rounded p-3 bg-light">
+    <h6 class="fw-semibold mb-3">Ajouter un produit</h6>
+    <form hx-post="{% url 'achat:ajouter-ligne' commande.pk %}"
+          hx-target="#lignes-container"
+          hx-swap="innerHTML">
+        {% csrf_token %}
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label small fw-medium">Produit</label>
+                {% render_field form.produit class="form-select form-select-sm" %}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-medium">Quantité</label>
+                {% render_field form.quantite_commandee class="form-control form-control-sm" placeholder="0" %}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-medium">Prix HT</label>
+                {% render_field form.prix_unitaire_ht class="form-control form-control-sm" placeholder="0.00" %}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-medium">Unité</label>
+                {% render_field form.unite class="form-control form-control-sm" placeholder="PCS" %}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-medium">Lot/Batch</label>
+                {% render_field form.lot_batch class="form-control form-control-sm" placeholder="LOT-001" %}
+            </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-2">
+            <button type="button" class="btn btn-sm btn-light" onclick="document.getElementById('form-ligne-container').innerHTML=''">
+                Annuler
+            </button>
+            <button type="submit" class="btn btn-sm btn-primary">
+                <i class="ti ti-plus me-1"></i>Ajouter
+            </button>
+        </div>
+    </form>
+</div>

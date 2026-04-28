@@ -1,5 +1,6 @@
 from django.db import models
-from entreprise.models import Produit, PointVente, Depot, Location, LigneOrdreAchat
+from entreprise.models import Produit, PointVente, Depot, Location
+from achat.models import LigneOrdreAchat
 from utilisateur.models import Profil
 
 

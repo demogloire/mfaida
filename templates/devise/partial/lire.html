@@ -1,107 +1,142 @@
-<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div>
-        <h4 class="fw-bold mb-1">Liste des devises</h4>
-        <p class="text-muted mb-0">Gérez les monnaies et taux de change.</p>
-    </div>
-
-    <div class="d-flex flex-column align-items-end gap-2">
-        <div class="input-group" style="max-width: 320px;">
-            <span class="input-group-text bg-white"><i class="ti ti-search"></i></span>
-            <input
-                type="search"
-                name="q"
-                class="form-control"
-                placeholder="Rechercher…"
-                value="{{ q|default:'' }}"
-                hx-get="{% url 'entreprise:devise-liste' %}"
-                hx-target="#devise-list"
-                hx-push-url="true"
-                hx-trigger="keyup changed delay:300ms, search">
+{# Liste des devises avec recherche et pagination #}
+<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2 py-3">
+    <div class="d-flex align-items-center gap-2">
+        <span class="d-flex align-items-center justify-content-center rounded-2 bg-warning bg-opacity-10 text-warning"
+              style="width:38px;height:38px;">
+            <i class="ti ti-currency-dollar fs-5"></i>
+        </span>
+        <div>
+            <h5 class="fw-bold mb-0">Devises</h5>
+            <p class="text-muted mb-0 small">Monnaies et taux de change par entreprise</p>
         </div>
-        <a hx-get="{% url 'entreprise:devise-ajouter' %}" hx-target="body" hx-push-url="true" class="btn btn-primary">
-            <i class="ti ti-circle-plus me-1"></i>
-            Ajouter devise
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="input-group" style="max-width:240px;">
+            <span class="input-group-text bg-white border-end-0"><i class="ti ti-search text-muted"></i></span>
+            <input type="search" name="q" class="form-control border-start-0 ps-0"
+                   placeholder="Rechercher…"
+                   value="{{ q|default:'' }}"
+                   hx-get="{% url 'entreprise:devise-liste' %}"
+                   hx-target="#devise-list"
+                   hx-push-url="true"
+                   hx-trigger="keyup changed delay:300ms, search">
+        </div>
+        <a hx-get="{% url 'entreprise:devise-ajouter' %}" hx-target="body" hx-push-url="true"
+           class="btn btn-warning btn-sm text-white">
+            <i class="ti ti-circle-plus me-1"></i>Nouvelle devise
         </a>
     </div>
 </div>
 
-<div class="card-body pb-0">
-    <div class="row">
-        <div class="table-responsive mb-4">
-            <table class="table table-hover border mb-0">
-                <thead class="thead-light">
-                    <tr>
-                        <th>Entreprise</th>
-                        <th>Code</th>
-                        <th>Symbole</th>
-                        <th>Taux</th>
-                        <th>Principale</th>
-                        <th class="no-sort"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in devises %}
-                    <tr>
-                        <td>{{ d.entreprise.nom }}</td>
-                        <td>{{ d.code }}</td>
-                        <td>{{ d.symbole }}</td>
-                        <td>{{ d.taux_echange }}</td>
-                        <td>
-                            {% if d.est_principale %}
-                                <span class="badge bg-success">Oui</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Non</span>
-                            {% endif %}
-                        </td>
-                        <td class="action-table-data">
-                            <div class="edit-delete-action">
-                                <a href="{% url 'entreprise:devise-maj' d.pk %}" hx-target="body" hx-push-url="true">
-                                    <i data-feather="edit" class="feather-edit"></i>
-                                </a>
-                                <form hx-post="{% url 'entreprise:devise-supprimer' d.pk %}" hx-target="#devise-list" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-link p-0 ms-2" title="Supprimer">
-                                        <i data-feather="trash-2" class="feather-trash-2"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td class="text-center text-muted">Aucune devise.</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="card-body p-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Entreprise</th>
+                    <th>Devise</th>
+                    <th class="text-center">Symbole</th>
+                    <th class="text-end">Taux d'échange</th>
+                    <th class="text-center">Principale</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in devises %}
+                <tr>
+                    <td class="ps-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-flex align-items-center justify-content-center rounded-2 bg-primary bg-opacity-10 text-primary flex-shrink-0"
+                                  style="width:30px;height:30px;font-size:.75rem;font-weight:700;">
+                                {{ d.entreprise.nom|slice:":2"|upper }}
+                            </span>
+                            <span class="fw-semibold small">{{ d.entreprise.nom }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle fw-bold" style="min-width:48px;">
+                                {{ d.code }}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="fw-bold text-muted fs-5">{{ d.symbole }}</span>
+                    </td>
+                    <td class="text-end">
+                        <span class="fw-semibold">{{ d.taux_echange }}</span>
+                    </td>
+                    <td class="text-center">
+                        {% if d.est_principale %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="ti ti-star-filled me-1"></i>Principale
+                            </span>
+                        {% else %}
+                            <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-3">
+                        <div class="d-flex justify-content-end gap-1">
+                            <a hx-get="{% url 'entreprise:devise-maj' d.pk %}" hx-target="body" hx-push-url="true"
+                               class="btn btn-outline-primary btn-sm" title="Modifier">
+                                <i class="ti ti-edit"></i>
+                            </a>
+                            <form hx-post="{% url 'entreprise:devise-supprimer' d.pk %}"
+                                  hx-target="#devise-list"
+                                  hx-swap="innerHTML"
+                                  hx-confirm="Supprimer la devise {{ d.code }} ?"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Supprimer">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="ti ti-currency-off d-block mb-2" style="font-size:2.5rem;opacity:.3;"></i>
+                        {% if q %}
+                            <p class="mb-0">Aucun résultat pour <strong>« {{ q }} »</strong>.</p>
+                        {% else %}
+                            <p class="mb-2">Aucune devise enregistrée.</p>
+                            <a hx-get="{% url 'entreprise:devise-ajouter' %}" hx-target="body" hx-push-url="true"
+                               class="btn btn-warning btn-sm text-white">
+                                <i class="ti ti-circle-plus me-1"></i>Créer la première devise
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
 {% if devises.paginator.num_pages > 1 %}
-<div class="card-footer bg-white border-top">
-    <nav aria-label="Pagination devises">
-        <ul class="pagination mb-0 flex-wrap">
+<div class="card-footer bg-white border-top d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
+    <small class="text-muted">
+        Page {{ devises.number }} / {{ devises.paginator.num_pages }} &mdash; {{ devises.paginator.count }} devise(s)
+    </small>
+    <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1">
             <li class="page-item {% if not devises.has_previous %}disabled{% endif %}">
-                <a class="page-link"
+                <a class="page-link rounded"
                    hx-get="{% url 'entreprise:devise-liste' %}?q={{ q|urlencode }}&page={{ devises.previous_page_number }}"
-                   hx-target="#devise-list" hx-push-url="true">Précédent</a>
-            </li>
-            <li class="page-item disabled">
-                <span class="page-link">Page {{ devises.number }} / {{ devises.paginator.num_pages }}</span>
+                   hx-target="#devise-list" hx-push-url="true">
+                    <i class="ti ti-chevron-left"></i>
+                </a>
             </li>
             <li class="page-item {% if not devises.has_next %}disabled{% endif %}">
-                <a class="page-link"
+                <a class="page-link rounded"
                    hx-get="{% url 'entreprise:devise-liste' %}?q={{ q|urlencode }}&page={{ devises.next_page_number }}"
-                   hx-target="#devise-list" hx-push-url="true">Suivant</a>
+                   hx-target="#devise-list" hx-push-url="true">
+                    <i class="ti ti-chevron-right"></i>
+                </a>
             </li>
         </ul>
     </nav>
 </div>
 {% endif %}
-

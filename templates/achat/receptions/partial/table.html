@@ -1,0 +1,54 @@
+{% if receptions %}
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>N° Réception</th>
+                <th>Commande</th>
+                <th>Fournisseur</th>
+                <th>Dépôt</th>
+                <th>Date</th>
+                <th>Reçu par</th>
+                <th>Statut</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in receptions %}
+            <tr>
+                <td><a href="{% url 'achat:detail-reception' r.pk %}" class="fw-medium text-decoration-none"><code>{{ r.numero_reception }}</code></a></td>
+                <td><code class="small">{{ r.ordre_achat.numero_commande }}</code></td>
+                <td class="small">{{ r.ordre_achat.fournisseur.nom_societe }}</td>
+                <td class="small text-muted">{{ r.depot_destination.nom }}</td>
+                <td class="small text-muted">{{ r.date_reception|date:"d/m/Y H:i" }}</td>
+                <td class="small text-muted">{{ r.recu_par.get_full_name|default:r.recu_par.username }}</td>
+                <td>
+                    {% if r.statut == 'EN_COURS' %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">En cours</span>
+                    {% elif r.statut == 'VALIDE' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Validé</span>
+                    {% elif r.statut == 'ANNULE' %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Annulé</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'achat:detail-reception' r.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="ti ti-eye"></i>
+                    </a>
+                    {% if r.statut == 'EN_COURS' %}
+                    <a href="{% url 'achat:valider-reception' r.pk %}" class="btn btn-sm btn-outline-success" title="Valider">
+                        <i class="ti ti-check"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="ti ti-package-import fs-1 d-block mb-2"></i>
+    Aucune réception enregistrée.
+</div>
+{% endif %}

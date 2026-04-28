@@ -39,6 +39,9 @@
                                                 <span class="badge bg-info-subtle text-info border border-info-subtle">
                                                     {{ produit.sous_categorie.nom }}
                                                 </span>
+                                                {% if produit.sku %}
+                                                <code class="px-2 py-1 rounded bg-light border small" title="SKU">SKU {{ produit.sku }}</code>
+                                                {% endif %}
                                                 {% if produit.code_barre %}
                                                 <code class="px-2 py-1 rounded bg-light border small">{{ produit.code_barre }}</code>
                                                 {% endif %}
@@ -72,54 +75,73 @@
                         {# ── Prix & TVA ── #}
                         <div class="col-lg-8">
                             <div class="card mb-0 h-100">
-                                <div class="card-header">
+                                <div class="card-header d-flex align-items-center justify-content-between">
                                     <h6 class="fw-bold mb-0">
                                         <i class="ti ti-coin me-2 text-success"></i>Prix & TVA
                                     </h6>
+                                    <span class="badge bg-light text-muted border">{{ produit.get_unite_mesure_display }}</span>
                                 </div>
                                 <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-md-3">
-                                            <div class="p-3 rounded border bg-light text-center">
-                                                <div class="text-muted small mb-1">Prix achat HT</div>
-                                                <div class="fw-bold fs-5">{{ produit.prix_achat_ht|floatformat:2 }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="p-3 rounded border bg-light text-center">
-                                                <div class="text-muted small mb-1">Prix vente HT</div>
-                                                <div class="fw-bold fs-5 text-success">{{ produit.prix_vente_ht|floatformat:2 }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="p-3 rounded border bg-light text-center">
-                                                <div class="text-muted small mb-1">TVA</div>
-                                                <div class="fw-bold fs-5 text-info">{{ produit.tva_taux|floatformat:2 }} %</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="p-3 rounded border border-success border-opacity-50 bg-success bg-opacity-10 text-center">
-                                                <div class="text-muted small mb-1">Prix vente TTC</div>
-                                                <div class="fw-bold fs-5 text-success">{{ produit.prix_vente_ttc|floatformat:2 }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="p-3 rounded border bg-light text-center">
-                                                <div class="text-muted small mb-1">Marge brute (HT)</div>
-                                                {% with marge=produit.prix_vente_ht|add:"-"|add:produit.prix_achat_ht %}
-                                                <div class="fw-bold fs-5 {% if produit.prix_vente_ht >= produit.prix_achat_ht %}text-success{% else %}text-danger{% endif %}">
-                                                    {{ produit.prix_vente_ht|floatformat:2 }}
+
+                                    {# Ligne 1 : prix principaux #}
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-sm-6 col-xl-3">
+                                            <div class="p-3 rounded-3 border bg-light text-center h-100">
+                                                <div class="text-muted small mb-1">
+                                                    <i class="ti ti-shopping-cart me-1"></i>Prix achat HT
                                                 </div>
-                                                {% endwith %}
+                                                <div class="fw-bold fs-4">{{ produit.prix_achat_ht|floatformat:2 }}</div>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="p-3 rounded border bg-light text-center">
-                                                <div class="text-muted small mb-1">Unité de mesure</div>
-                                                <div class="fw-bold">{{ produit.get_unite_mesure_display }}</div>
+                                        <div class="col-sm-6 col-xl-3">
+                                            <div class="p-3 rounded-3 border bg-light text-center h-100">
+                                                <div class="text-muted small mb-1">
+                                                    <i class="ti ti-tag me-1"></i>Prix vente HT
+                                                </div>
+                                                <div class="fw-bold fs-4 text-primary">{{ produit.prix_vente_ht|floatformat:2 }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6 col-xl-3">
+                                            <div class="p-3 rounded-3 border bg-info bg-opacity-10 border-info border-opacity-25 text-center h-100">
+                                                <div class="text-muted small mb-1">
+                                                    <i class="ti ti-percentage me-1"></i>TVA ({{ produit.tva_taux|floatformat:0 }}%)
+                                                </div>
+                                                <div class="fw-bold fs-4 text-info">+ {{ montant_tva|floatformat:2 }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6 col-xl-3">
+                                            <div class="p-3 rounded-3 border border-success border-opacity-50 bg-success bg-opacity-10 text-center h-100">
+                                                <div class="text-muted small mb-1">
+                                                    <i class="ti ti-cash me-1"></i>Prix vente TTC
+                                                </div>
+                                                <div class="fw-bold fs-4 text-success">{{ produit.prix_vente_ttc|floatformat:2 }}</div>
                                             </div>
                                         </div>
                                     </div>
+
+                                    {# Ligne 2 : marge #}
+                                    <div class="p-3 rounded-3 border {% if marge_brute >= 0 %}border-success bg-success bg-opacity-10{% else %}border-danger bg-danger bg-opacity-10{% endif %}">
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="ti ti-trending-up fs-4 {% if marge_brute >= 0 %}text-success{% else %}text-danger{% endif %}"></i>
+                                                <div>
+                                                    <div class="text-muted small">Marge brute (PV HT − PA HT)</div>
+                                                    <div class="fw-bold fs-5 {% if marge_brute >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                        {% if marge_brute >= 0 %}+{% endif %}{{ marge_brute|floatformat:2 }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% if taux_marge is not None %}
+                                            <div class="text-end">
+                                                <div class="text-muted small">Taux de marge</div>
+                                                <span class="badge fs-6 {% if taux_marge >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                                    {% if taux_marge >= 0 %}+{% endif %}{{ taux_marge|floatformat:1 }} %
+                                                </span>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
