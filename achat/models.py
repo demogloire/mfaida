@@ -199,15 +199,50 @@ class BonReception(models.Model):
 
     numero_reception = models.CharField(max_length=50, unique=True, editable=False)
     ordre_achat = models.ForeignKey(
-        OrdreAchat, on_delete=models.PROTECT, related_name='receptions'
+        OrdreAchat,
+        on_delete=models.PROTECT,
+        related_name='receptions',
+        null=True,
+        blank=True,
+        verbose_name="Bon de commande",
+    )
+    fournisseur = models.ForeignKey(
+        'tiers.Fournisseur',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='receptions_directes',
+        verbose_name="Fournisseur",
+        help_text="Pour une réception sans bon de commande.",
     )
     depot_destination = models.ForeignKey(
-        'entreprise.Depot', on_delete=models.PROTECT, related_name='receptions'
+        'entreprise.Depot',
+        on_delete=models.PROTECT,
+        related_name='receptions',
+        null=True,
+        blank=True,
+        verbose_name="Dépôt de réception",
+    )
+    point_destination = models.ForeignKey(
+        'entreprise.PointVente',
+        on_delete=models.PROTECT,
+        related_name='receptions',
+        null=True,
+        blank=True,
+        verbose_name="Point de vente (boutique) de réception",
     )
 
     date_reception = models.DateTimeField(auto_now_add=True)
     recu_par = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='receptions'
+    )
+    cree_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='receptions_creees',
+        verbose_name='Créé par',
     )
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='EN_COURS')
     notes = models.TextField(blank=True)
@@ -219,6 +254,17 @@ class BonReception(models.Model):
 
     def __str__(self):
         return f"BR {self.numero_reception}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        ok_dep = bool(self.depot_destination_id)
+        ok_pv = bool(self.point_destination_id)
+        if ok_dep == ok_pv:
+            raise ValidationError(
+                "Indiquez exactement une destination : un dépôt ou un point de vente (boutique)."
+            )
 
     def save(self, *args, **kwargs):
         if not self.numero_reception:
@@ -250,12 +296,47 @@ class BonReception(models.Model):
 class LigneBonReception(models.Model):
     bon_reception = models.ForeignKey(BonReception, on_delete=models.CASCADE, related_name='lignes')
     ligne_ordre_achat = models.ForeignKey(
-        LigneOrdreAchat, on_delete=models.PROTECT, related_name='lignes_reception'
+        LigneOrdreAchat,
+        on_delete=models.PROTECT,
+        related_name='lignes_reception',
+        null=True,
+        blank=True,
+    )
+    produit = models.ForeignKey(
+        'entreprise.Produit',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='lignes_bon_reception',
+        verbose_name="Produit (réception simple)",
+        help_text="Pour un bon sans commande.",
     )
 
     quantite_recue_effective = models.DecimalField(max_digits=15, decimal_places=2)
-    quantite_ecartee = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
-    motif_ecart = models.CharField(max_length=255, blank=True)
+    prix_unitaire_ht = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Prix d'achat unitaire HT",
+        help_text="Réception hors commande : si vide, le prix catalogue du produit est utilisé.",
+    )
+    quantite_ecarter = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0.00,
+        verbose_name='Quantité à l’écart',
+        help_text='Quantité mise à l’écart à la réception (+ écarter → − stock actif sur la ligne de lot créée).',
+    )
+    motif_ecarter = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name='Motif mise à l’écart',
+    )
+    marque = models.CharField(max_length=100, blank=True, verbose_name="Marque")
+    conditionnement = models.CharField(max_length=100, blank=True, verbose_name="Taille du conditionnement")
+    dateproduction = models.DateField(null=True, blank=True, verbose_name="Date de production")
+    dateexpiration = models.DateField(null=True, blank=True, verbose_name="Date d'expiration")
     lot_batch = models.CharField(max_length=20, blank=True, default="")
     location = models.ForeignKey(
         'entreprise.Location', on_delete=models.SET_NULL, null=True, blank=True
@@ -266,4 +347,47 @@ class LigneBonReception(models.Model):
         verbose_name_plural = "Lignes de bon de réception"
 
     def __str__(self):
-        return f"{self.ligne_ordre_achat.produit.nom} × {self.quantite_recue_effective}"
+        p = self.produit if self.produit_id else (self.ligne_ordre_achat.produit if self.ligne_ordre_achat_id else None)
+        lib = p.nom if p else "?"
+        return f"{lib} × {self.quantite_recue_effective}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if self.ligne_ordre_achat_id and self.produit_id:
+            raise ValidationError("Ne pas renseigner produit et ligne de commande en même temps.")
+        if not self.ligne_ordre_achat_id and not self.produit_id:
+            raise ValidationError("Renseignez une ligne de commande ou un produit.")
+        if self.bon_reception_id:
+            br = self.bon_reception
+            if br.ordre_achat_id:
+                if not self.ligne_ordre_achat_id:
+                    raise ValidationError("Rattachez une ligne de bon de commande.")
+                if self.produit_id:
+                    raise ValidationError(
+                        "Ne pas renseigner le produit pour une réception liée à un bon de commande."
+                    )
+                if self.ligne_ordre_achat.ordre_achat_id != br.ordre_achat_id:
+                    raise ValidationError(
+                        "La ligne de commande n'appartient pas au bon de commande indiqué sur ce bon de réception."
+                    )
+            else:
+                if not self.produit_id:
+                    raise ValidationError("Renseignez le produit.")
+                if self.ligne_ordre_achat_id:
+                    raise ValidationError(
+                        "Réception sans bon de commande : ne pas rattacher une ligne de BC."
+                    )
+        qc = self.quantite_recue_effective
+        if qc is not None:
+            from decimal import Decimal as D
+
+            qd = D(str(qc))
+            ec = D(str(self.quantite_ecarter)) if self.quantite_ecarter is not None else D('0')
+            if ec < 0:
+                raise ValidationError({'quantite_ecarter': 'La quantité à l’écart ne peut pas être négative.'})
+            if ec > qd:
+                raise ValidationError(
+                    {'quantite_ecarter': 'La quantité à l’écart ne peut pas dépasser la quantité reçue.'}
+                )

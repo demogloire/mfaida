@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Mise à l’écart — point de vente</h4>
+            <h6>Choisissez une ligne de lot du PDV ; « Actif » diminue et « Écart » augmente sur cette ligne.</h6>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <a href="{% url 'stock:liste-stock-pdv' %}" class="btn btn-outline-secondary">Détail lots</a>
+            <a href="{% url 'stock:liste-stock-pdv-synthese' %}" class="btn btn-outline-primary">Synthèse produits</a>
+            <a href="{% url 'stock:mise-a-ecart-depot' %}" class="btn btn-outline-warning btn-sm">Mise à l’écart dépôt</a>
+            {% include 'stock/includes/export_excel_pdf.html' with excel_name='stock:export-mise-a-ecart-pdv-excel' pdf_name='stock:export-mise-a-ecart-pdv-pdf' %}
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><span class="fw-semibold">Filtrer le tableau</span></div>
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Point de vente</label>
+                    <select name="point_vente" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        {% for pv in points_vente %}
+                        <option value="{{ pv.pk }}" {% if filt_pk_pv == pv.pk|stringformat:"s" %}selected{% endif %}>{{ pv.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col">
+                    <label class="form-label small mb-0">Recherche</label>
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Produit, SKU, motif…">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-primary">Filtrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><span class="fw-semibold">Nouvelle mise à l’écart</span></div>
+        <div class="card-body">
+            <form method="post" class="row g-3" id="form-mise-ecart">
+                {% csrf_token %}
+                {% for fd in form.hidden_fields %}{{ fd }}{% endfor %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.point_vente.label }}</label>
+                    {% render_field form.point_vente class="form-select" %}
+                    {% for e in form.point_vente.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-outline-primary" id="btn-ouvrir-lignes" data-bs-toggle="modal" data-bs-target="#modalLignesEcarter">
+                        <i class="ti ti-list-search me-1"></i>Choisir la ligne de lot</button>
+                    <button type="button" class="btn btn-link btn-sm text-danger d-none p-0 ms-3" id="btn-effacer-ligne">Effacer</button>
+                    <div id="resume-ligne" class="alert alert-light border mt-3 d-none mb-0">
+                        <strong>Ligne sélectionnée.</strong>
+                        <div id="resume-ligne-texte" class="small mt-1"></div>
+                        <div id="resume-ligne-dispo" class="small text-muted"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.quantite.label }}</label>
+                    {% render_field form.quantite class="form-control" id="id_qty_ecart" %}
+                    {% for e in form.quantite.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">{{ form.motif.label }}</label>
+                    {% render_field form.motif class="form-control" %}
+                    {% for e in form.motif.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% if form.non_field_errors %}
+                <div class="col-12">{% for e in form.non_field_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}</div>
+                {% endif %}
+                <div class="col-12">
+                    <button type="submit" class="btn btn-warning" id="btn-submit-ecart" disabled>Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span class="fw-semibold">Historique — quantités encore à l’écart</span></div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Ligne mouv.</th>
+                        <th>Produit</th>
+                        <th>PDV</th>
+                        <th class="small text-muted">Dépôt stock</th>
+                        <th class="text-end">Qté</th>
+                        <th>Motif</th>
+                        <th>Par</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mi in mises %}
+                    <tr>
+                        <td class="small">{{ mi.date_creation|date:"d/m/Y H:i" }}</td>
+                        <td>{% if mi.mouvement_stock_id %}#{{ mi.mouvement_stock_id }}{% else %}—{% endif %}</td>
+                        <td><a href="{% url 'stock:detail-produit-stock' mi.produit_id %}">{{ mi.produit.libelle_ligne_achat }}</a></td>
+                        <td>{{ mi.pointdevente.nom }}</td>
+                        <td class="small text-muted">{{ mi.depot.nom }}</td>
+                        <td class="text-end fw-medium">{{ mi.quantite }}</td>
+                        <td class="small text-wrap" style="max-width:12rem">{{ mi.motif|truncatechars:80 }}</td>
+                        <td class="small">{% if mi.cree_par %}{{ mi.cree_par.get_full_name|default:mi.cree_par.username }}{% else %}—{% endif %}</td>
+                        <td class="text-end">
+                            {% if mi.pk in peut_retirer_ids %}
+                            <form method="post" action="{% url 'stock:mise-a-ecart-retirer' mi.pk %}" class="d-inline" onsubmit="return confirm('Rendre cette quantité au disponible du lot ?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-success btn-sm">Retirer l’écart</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">Aucune quantité à l’écart.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalLignesEcarter" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Lignes avec quantité active</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="lignes-spin" class="small text-muted d-none">Chargement…</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date mouv.</th><th>Produit</th>
+                                    <th class="text-end">Actif</th><th class="text-end">Reçu</th>
+                                    <th>Empl.</th><th>Lot</th><th>Origine</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-lignes-ecart"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    const pickerUrl = "{{ picker_url|escapejs }}";
+    const filtreParam = "{{ filtre_param|escapejs }}";
+    const filtEl = document.querySelector('#form-mise-ecart [name="{{ filtre_param }}"]');
+    const tbody = document.getElementById("tbody-lignes-ecart");
+    const midInput = document.getElementById("id_mouvement_stock_id");
+    const modalEl = document.getElementById("modalLignesEcarter");
+    const resumeWrap = document.getElementById("resume-ligne");
+    const resumeTexte = document.getElementById("resume-ligne-texte");
+    const resumeDispo = document.getElementById("resume-ligne-dispo");
+    const btnClear = document.getElementById("btn-effacer-ligne");
+    const btnSubmit = document.getElementById("btn-submit-ecart");
+    const inpQty = document.getElementById("id_qty_ecart");
+    let actifCourant = null;
+
+    function setLigne(id, libelle, actif) {
+        midInput.value = id;
+        actifCourant = actif != null ? String(actif).replace(",", ".") : null;
+        resumeTexte.textContent = libelle;
+        resumeDispo.textContent = actifCourant !== null ? "Maximum à l’écart (quantité active) : " + actifCourant : "";
+        resumeWrap.classList.remove("d-none");
+        btnClear.classList.remove("d-none");
+        btnSubmit.disabled = false;
+        if (inpQty && actifCourant !== null) inpQty.setAttribute("max", actifCourant);
+    }
+    function clearLigne() {
+        midInput.value = "";
+        actifCourant = null;
+        resumeWrap.classList.add("d-none");
+        btnClear.classList.add("d-none");
+        resumeTexte.textContent = "";
+        resumeDispo.textContent = "";
+        btnSubmit.disabled = true;
+        if (inpQty) inpQty.removeAttribute("max");
+    }
+
+    if (filtEl) filtEl.addEventListener("change", function () {
+        clearLigne();
+        tbody.innerHTML = "";
+    });
+
+    if (modalEl) modalEl.addEventListener("show.bs.modal", function () {
+        const v = filtEl && filtEl.value;
+        if (!v) {
+            tbody.innerHTML = "<tr><td colspan='8' class='text-warning'>Choisissez d’abord le point de vente.</td></tr>";
+            return;
+        }
+        const sep = pickerUrl.includes("?") ? "&" : "?";
+        const url = pickerUrl + sep + encodeURIComponent(filtreParam) + "=" + encodeURIComponent(v);
+        const spin = document.getElementById("lignes-spin");
+        if (spin) spin.classList.remove("d-none");
+        tbody.innerHTML = "";
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "text/html" }})
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                tbody.innerHTML = html;
+                tbody.querySelectorAll(".btn-choix-ligne").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        const tr = btn.closest("tr");
+                        let libelle = "";
+                        if (tr && tr.cells.length > 1) libelle = tr.cells[1].innerText.trim();
+                        setLigne(btn.getAttribute("data-id"), libelle, btn.getAttribute("data-actif"));
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    });
+                });
+            })
+            .catch(function () {
+                tbody.innerHTML = "<tr><td colspan='8' class='text-danger'>Chargement impossible.</td></tr>";
+            })
+            .finally(function () { if (spin) spin.classList.add("d-none"); });
+    });
+
+    if (midInput && midInput.value) {
+        resumeWrap.classList.remove("d-none");
+        btnClear.classList.remove("d-none");
+        btnSubmit.disabled = false;
+        if (!resumeTexte.textContent.trim()) resumeTexte.textContent = "Ligne n° " + midInput.value + " …";
+    }
+    btnClear.addEventListener("click", clearLigne);
+})();
+</script>
+{% endblock %}

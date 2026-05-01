@@ -1,0 +1,25 @@
+{% load l10n %}
+{% if erreur %}
+<tr><td colspan="8" class="text-warning small">{{ erreur }}</td></tr>
+{% else %}
+{% for m in lignes %}
+<tr>
+    <td class="small">{{ m.date_creation|date:"d/m/Y H:i" }}</td>
+    <td><span class="text-break">{{ m.produit.libelle_ligne_achat }}</span></td>
+    <td class="text-end fw-semibold">{{ m.quantite_active }}</td>
+    <td class="text-end">{{ m.quantite_recu }}</td>
+    <td class="small">{% if m.location %}{{ m.location.code }}{% elif m.location_code %}{{ m.location_code }}{% else %}—{% endif %}</td>
+    <td class="small">{{ m.lot_batch|default:"—" }}</td>
+    <td class="small">{{ m.get_origine_display }}</td>
+    <td>
+        <button type="button" class="btn btn-sm btn-primary btn-choix-ligne"
+            data-id="{{ m.pk }}"
+            data-actif="{% localize off %}{{ m.quantite_active }}{% endlocalize %}">
+            Choisir
+        </button>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="8" class="text-muted text-center py-3">Aucune ligne avec quantité active dans ce périmètre.</td></tr>
+{% endfor %}
+{% endif %}

@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% load l10n %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex justify-content-between flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold">{{ titre }}</h4>
+            <h6 class="text-muted">{{ sous_titre }}</h6>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ lien_liste_bons }}" class="btn btn-outline-dark btn-sm">Bons d’ajustement</a>
+            <a href="{{ lien_niveaux }}" class="btn btn-outline-secondary btn-sm">{{ label_lien_niveaux }}</a>
+            <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary btn-sm">Sommaire</a>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            {% if bon_courant %}
+            <div class="alert alert-light border mb-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    Bon <strong>{{ bon_courant.numero }}</strong>
+                    — {{ lignes_bon|length }} ligne(s). Ajoutez d’autres lignes avec le même numéro (tracé commun).
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <a href="{% url 'stock:detail-bon-ajustement' bon_courant.pk %}" class="btn btn-outline-primary">Fiche du bon</a>
+                    <a href="{{ url_ajuster_courante }}" class="btn btn-outline-secondary">Nouveau bon</a>
+                    <a href="{{ lien_mouvements }}" class="btn btn-outline-primary">Voir les mouvements</a>
+                </div>
+            </div>
+            {% if lignes_bon %}
+            <p class="small text-muted fw-bold mb-1">Historique pour ce bon</p>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Heure</th>
+                            <th>Mouvement</th>
+                            <th>Produit</th>
+                            <th>Sens</th>
+                            <th class="text-end">Qté</th>
+                            <th>Motif (extrait)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ln in lignes_bon %}
+                        <tr>
+                            <td>{{ ln.date_creation|date:"d/m/Y H:i" }}</td>
+                            <td>#{{ ln.mouvement_stock_id }}</td>
+                            <td>{{ ln.mouvement_stock.produit.nom }}</td>
+                            <td>{% if ln.sens == 1 %}Entrée{% else %}Sortie{% endif %}</td>
+                            {% localize off %}
+                            <td class="text-end">{{ ln.quantite }}</td>
+                            {% endlocalize %}
+                            <td class="small">{{ ln.motif|truncatechars:80 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% endif %}
+            <form method="post" class="row g-3" id="form-ajustement-stock">
+                {% csrf_token %}
+                {% for fd in form.hidden_fields %}{{ fd }}{% endfor %}
+
+                {% if lieu == 'depot' %}
+                {% if bon_courant %}
+                <div class="col-md-12">
+                    <p class="small text-muted mb-0">
+                        <strong>Dépôt</strong> : {{ bon_courant.depot.nom }}
+                        <span class="fst-italic">(même dépôt que pour la 1<sup>re</sup> ligne du bon)</span>
+                    </p>
+                    {% for e in form.depot.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% else %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.depot.label }}</label>
+                    {% render_field form.depot class="form-select" %}
+                    {% for e in form.depot.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
+                {% if bon_courant %}
+                <div class="col-md-12">
+                    <p class="small text-muted mb-0">
+                        <strong>Point de vente</strong> : {{ bon_courant.pointvente.nom }}
+                        <span class="text-muted">— {{ bon_courant.depot.nom }}</span>
+                        <span class="fst-italic">(même lieu que pour la 1<sup>re</sup> ligne du bon)</span>
+                    </p>
+                    {% for e in form.point_vente.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% else %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.point_vente.label }}</label>
+                    {% render_field form.point_vente class="form-select" %}
+                    {% for e in form.point_vente.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-outline-primary" id="btn-ouvrir-lignes" data-bs-toggle="modal" data-bs-target="#modalLignesAjuster">
+                        <i class="ti ti-list-search me-1"></i>Choisir la ligne à ajuster
+                    </button>
+                    <button type="button" class="btn btn-link btn-sm text-danger d-none p-0 ms-3" id="btn-effacer-ligne">Effacer le choix</button>
+                    <div id="resume-ligne" class="alert alert-light border mt-3 d-none mb-0" role="status">
+                        <strong>Ligne sélectionnée.</strong>
+                        <div id="resume-ligne-texte" class="small mt-1"></div>
+                        <div id="resume-ligne-dispo" class="small text-muted"></div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.sens.label }}</label>
+                    {% render_field form.sens class="form-select" id="id_sens_ajust" %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.quantite.label }}</label>
+                    {% render_field form.quantite class="form-control" id="id_quantite_ajust" %}
+                </div>
+
+                {% if form.prix_unitaire_ht %}
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.prix_unitaire_ht.label }}</label>
+                    {% render_field form.prix_unitaire_ht class="form-control" %}
+                    {% if form.prix_unitaire_ht.help_text %}<div class="form-text">{{ form.prix_unitaire_ht.help_text }}</div>{% endif %}
+                </div>
+                {% endif %}
+
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.motif.label }}</label>
+                    {% render_field form.motif class="form-control" %}
+                </div>
+                {% if form.reference_piece %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.reference_piece.label }}</label>
+                    {% render_field form.reference_piece class="form-control" %}
+                    {% if form.reference_piece.help_text %}<div class="form-text">{{ form.reference_piece.help_text }}</div>{% endif %}
+                </div>
+                {% endif %}
+                {% if form.non_field_errors %}
+                <div class="col-12">
+                    {% for e in form.non_field_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
+                {% for field in form %}
+                    {% if field.errors and field.name != 'depot' and field.name != 'point_vente' %}
+                        {% if not field.is_hidden %}
+                        {% for e in field.errors %}<div class="col-12 text-danger small">{{ field.label }}: {{ e }}</div>{% endfor %}
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary" id="btn-submit-ajust" disabled>Enregistrer cette ligne</button>
+                    {% if lien_mouvements %}
+                    <a href="{{ lien_mouvements }}" class="btn btn-outline-secondary">{{ label_lien_mouvements|default:'Voir les mouvements' }}</a>
+                    {% endif %}
+                    <a href="{{ lien_bas }}" class="btn btn-outline-info">{{ label_lien_bas }}</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal sélection ligne -->
+    <div class="modal fade" id="modalLignesAjuster" tabindex="-1" aria-labelledby="titModalLignes" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titModalLignes">Lignes de stock disponibles</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Seules les lignes avec une <strong>quantité active</strong> &gt; 0 sont listées.</p>
+                    <div id="lignes-chargement" class="small text-muted d-none">Chargement…</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date mouv.</th><th>Produit</th>
+                                    <th class="text-end">Actif</th><th class="text-end">Reçu</th>
+                                    <th>Empl.</th><th>Lot</th><th>Origine</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-lignes-ajust"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    const pickerUrl = "{{ picker_url|escapejs }}";
+    const filtreParam = "{{ filtre_param|escapejs }}";
+    const filtEl = document.querySelector('#form-ajustement-stock [name="{{ filtre_param }}"]');
+    const tbody = document.getElementById("tbody-lignes-ajust");
+    const midInput = document.getElementById("id_mouvement_stock_id");
+    const modalEl = document.getElementById("modalLignesAjuster");
+    const resumeWrap = document.getElementById("resume-ligne");
+    const resumeTexte = document.getElementById("resume-ligne-texte");
+    const resumeDispo = document.getElementById("resume-ligne-dispo");
+    const btnClear = document.getElementById("btn-effacer-ligne");
+    const btnSubmit = document.getElementById("btn-submit-ajust");
+    const selSens = document.getElementById("id_sens_ajust");
+    const inpQty = document.getElementById("id_quantite_ajust");
+    let actifCourant = null;
+
+    function setLigne(id, libelle, actif) {
+        midInput.value = id;
+        actifCourant = actif != null ? String(actif).replace(",", ".") : null;
+        resumeTexte.textContent = libelle;
+        resumeDispo.textContent = actifCourant !== null ? "Quantité disponible sur cette ligne (sortie max) : " + actifCourant : "";
+        resumeWrap.classList.remove("d-none");
+        btnClear.classList.remove("d-none");
+        btnSubmit.disabled = false;
+        updateQtyMax();
+    }
+    function clearLigne() {
+        midInput.value = "";
+        actifCourant = null;
+        resumeWrap.classList.add("d-none");
+        btnClear.classList.add("d-none");
+        resumeTexte.textContent = "";
+        resumeDispo.textContent = "";
+        btnSubmit.disabled = true;
+        if (inpQty) { inpQty.removeAttribute("max"); }
+    }
+
+    function updateQtyMax() {
+        if (!inpQty || !selSens) return;
+        const sens = parseInt(selSens.value, 10);
+        if (sens === -1 && actifCourant !== null) {
+            inpQty.setAttribute("max", actifCourant);
+            inpQty.setAttribute("title", "Maximum sortie : " + actifCourant);
+        } else {
+            inpQty.removeAttribute("max");
+            inpQty.removeAttribute("title");
+        }
+    }
+
+    if (filtEl) filtEl.addEventListener("change", function () {
+        clearLigne();
+        tbody.innerHTML = "";
+    });
+
+    if (modalEl) modalEl.addEventListener("show.bs.modal", function () {
+        const v = filtEl && filtEl.value;
+        if (!v) {
+            tbody.innerHTML = "<tr><td colspan='8' class='text-warning'>Sélectionnez d’abord le lieu (dépôt ou point de vente) ci-dessus.</td></tr>";
+
+            return;
+        }
+        const sep = pickerUrl.includes("?") ? "&" : "?";
+        const url = pickerUrl + sep + encodeURIComponent(filtreParam) + "=" + encodeURIComponent(v);
+        const spin = document.getElementById("lignes-chargement");
+        if (spin) spin.classList.remove("d-none");
+        tbody.innerHTML = "";
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "text/html" }})
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                tbody.innerHTML = html;
+                tbody.querySelectorAll(".btn-choix-ligne").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        const tr = btn.closest("tr");
+                        let libelle = "";
+                        if (tr && tr.cells.length > 1) {
+                            libelle = tr.cells[1].innerText.trim();
+                        }
+                        setLigne(btn.getAttribute("data-id"), libelle, btn.getAttribute("data-actif"));
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    });
+                });
+            })
+            .catch(function () {
+                tbody.innerHTML = "<tr><td colspan='8' class='text-danger'>Impossible de charger les lignes.</td></tr>";
+            })
+            .finally(function () { if (spin) spin.classList.add("d-none"); });
+    });
+
+    if (midInput && midInput.value) {
+        resumeWrap.classList.remove("d-none");
+        btnClear.classList.remove("d-none");
+        btnSubmit.disabled = false;
+        if (!resumeTexte.textContent.trim()) {
+            resumeTexte.textContent = "Ligne n° " + midInput.value + " — corrigez puis ré-enregistrez.";
+        }
+    }
+
+    btnClear.addEventListener("click", clearLigne);
+    if (selSens) selSens.addEventListener("change", updateQtyMax);
+
+})();
+</script>
+{% endblock %}

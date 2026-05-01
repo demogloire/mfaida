@@ -9,10 +9,25 @@
 
     <!-- Pour les messages après redirection (chargement de page) -->
     {% for message in messages %}
-    <div class="toast align-items-center border-0 text-white bg-{{ message.tags }}" role="alert">
-        <div class="d-flex">
-            <div class="toast-body">{{ message }}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    <div class="toast align-items-start border-0 text-white bg-{{ message.tags }}" role="alert" aria-live="polite">
+        <div class="d-flex w-100">
+            <div class="toast-body pe-4">
+                {% if 'success' in message.tags %}
+                <div class="fw-semibold mb-1">Succès</div>
+                <div>{{ message }}</div>
+                <p class="small mb-0 mt-2 opacity-90">L'activité s'est effectuée avec succès.</p>
+                {% elif 'danger' in message.tags %}
+                <div class="fw-semibold mb-1">Erreur</div>
+                <div>{{ message }}</div>
+                {% elif 'warning' in message.tags %}
+                <div class="fw-semibold mb-1">Attention</div>
+                <div>{{ message }}</div>
+                {% else %}
+                <div class="fw-semibold mb-1">Information</div>
+                <div>{{ message }}</div>
+                {% endif %}
+            </div>
+            <button type="button" class="btn-close btn-close-white ms-auto me-2 mt-2" data-bs-dismiss="toast"></button>
         </div>
     </div>
     {% endfor %}

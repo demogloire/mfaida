@@ -2,24 +2,45 @@
 {% block content %}
 <div class="content">
     <div class="row justify-content-center">
-        <div class="col-lg-5">
-            <div class="card border-success">
-                <div class="card-header bg-success-subtle">
-                    <h5 class="mb-0 text-success"><i class="ti ti-check me-2"></i>Valider la réception</h5>
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm {% if bloque_validation %}border-warning{% else %}border-success{% endif %}">
+                <div class="card-header {% if bloque_validation %}bg-warning-subtle{% else %}bg-success-subtle{% endif %} py-4">
+                    <h5 class="mb-0 {% if bloque_validation %}text-warning-emphasis{% else %}text-success{% endif %}">
+                        <i class="ti ti-check me-2"></i>Valider la réception
+                    </h5>
                 </div>
-                <div class="card-body text-center py-4">
-                    <p class="mb-1">Valider le bon de réception :</p>
-                    <p class="fw-bold fs-5">{{ reception.numero_reception }}</p>
-                    <p class="text-muted small">Cette action est définitive. Le stock sera mis à jour.</p>
+                <div class="card-body p-4">
+                    <p class="mb-1 text-muted small">Bon de réception</p>
+                    <p class="fw-bold fs-5 mb-3">{{ reception.numero_reception }}</p>
+                    <p class="text-muted small mb-4">Une fois validé, les mouvements de stock sont créés&nbsp;; cette étape doit être utilisée lorsque les emplacements et le responsable sont correctement renseignés.</p>
+
+                    {% if bloque_validation %}
+                    <div class="alert alert-warning border-warning-subtle mb-4">
+                        <p class="fw-semibold mb-2">Complétez le bon avant validation :</p>
+                        <ul class="mb-0 small">
+                            {% for p in problemes_validation %}
+                            <li>{{ p }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="card-footer d-flex justify-content-end gap-2">
-                    <a href="{% url 'achat:detail-reception' reception.pk %}" class="btn btn-light">Annuler</a>
+                <div class="card-footer bg-light d-flex justify-content-between flex-wrap gap-2 py-3">
+                    <a href="{% url 'achat:detail-reception' reception.pk %}" class="btn btn-light">
+                        {% if bloque_validation %}Retour au brouillon{% else %}Annuler{% endif %}
+                    </a>
+                    {% if bloque_validation %}
+                    <button type="button" class="btn btn-secondary" disabled title="Complétez les points ci-dessus">
+                        Confirmer indisponible
+                    </button>
+                    {% else %}
                     <form method="post">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-success">
                             <i class="ti ti-check me-1"></i>Confirmer la validation
                         </button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>

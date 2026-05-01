@@ -6,9 +6,9 @@
                 <th>N° Réception</th>
                 <th>Commande</th>
                 <th>Fournisseur</th>
-                <th>Dépôt</th>
+                <th>Destination</th>
                 <th>Date</th>
-                <th>Reçu par</th>
+                <th>Créé par</th>
                 <th>Statut</th>
                 <th class="text-end">Actions</th>
             </tr>
@@ -17,11 +17,35 @@
             {% for r in receptions %}
             <tr>
                 <td><a href="{% url 'achat:detail-reception' r.pk %}" class="fw-medium text-decoration-none"><code>{{ r.numero_reception }}</code></a></td>
-                <td><code class="small">{{ r.ordre_achat.numero_commande }}</code></td>
-                <td class="small">{{ r.ordre_achat.fournisseur.nom_societe }}</td>
-                <td class="small text-muted">{{ r.depot_destination.nom }}</td>
+                <td class="small">
+                    {% if r.ordre_achat_id %}
+                    <code>{{ r.ordre_achat.numero_commande }}</code>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td class="small">
+                    {% if r.ordre_achat_id %}
+                    {{ r.ordre_achat.fournisseur.nom_societe }}
+                    {% elif r.fournisseur_id %}
+                    {{ r.fournisseur.nom_societe }}
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td class="small text-muted">
+                    {% if r.depot_destination_id %}
+                    <span class="text-body">{{ r.depot_destination.nom }}</span> <span class="badge bg-primary-subtle text-primary border rounded-pill">dépôt</span>
+                    {% elif r.point_destination_id %}
+                    <span class="text-body">{{ r.point_destination.nom }}</span> <span class="badge bg-info-subtle text-info border rounded-pill">boutique</span>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
                 <td class="small text-muted">{{ r.date_reception|date:"d/m/Y H:i" }}</td>
-                <td class="small text-muted">{{ r.recu_par.get_full_name|default:r.recu_par.username }}</td>
+                <td class="small text-muted">
+                    {% if r.cree_par_id %}{{ r.cree_par.get_full_name|default:r.cree_par.username }}{% else %}—{% endif %}
+                </td>
                 <td>
                     {% if r.statut == 'EN_COURS' %}
                     <span class="badge bg-warning-subtle text-warning border border-warning-subtle">En cours</span>
@@ -32,13 +56,27 @@
                     {% endif %}
                 </td>
                 <td class="text-end">
-                    <a href="{% url 'achat:detail-reception' r.pk %}" class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'achat:detail-reception' r.pk %}" class="btn btn-sm btn-outline-primary" title="Détail">
                         <i class="ti ti-eye"></i>
+                    </a>
+                    <a href="{% url 'achat:export-reception-pdf' r.pk %}" class="btn btn-sm btn-outline-secondary" title="Exporter PDF" target="_blank" rel="noopener noreferrer">
+                        <i class="ti ti-file-type-pdf"></i>
                     </a>
                     {% if r.statut == 'EN_COURS' %}
                     <a href="{% url 'achat:valider-reception' r.pk %}" class="btn btn-sm btn-outline-success" title="Valider">
                         <i class="ti ti-check"></i>
                     </a>
+                    {% endif %}
+                    {% if r.statut != 'VALIDE' %}
+                    <form method="post"
+                          action="{% url 'achat:supprimer-reception' r.pk %}"
+                          class="d-inline"
+                          onsubmit="return confirm('Supprimer définitivement le bon {{ r.numero_reception }} ? Les quantités reçues seront déduites du bon de commande lié si applicable.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                            <i class="ti ti-trash"></i>
+                        </button>
+                    </form>
                     {% endif %}
                 </td>
             </tr>

@@ -64,6 +64,23 @@
                 <div class="alert alert-danger">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
                 {% endif %}
 
+                {% if form.entreprise %}
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-secondary-subtle text-secondary rounded">
+                            <i class="ti ti-building"></i>
+                        </span>
+                        <h6 class="mb-0 fw-semibold">Rattachement</h6>
+                    </div>
+                    <div class="card-body">
+                        <label class="form-label fw-medium">Entreprise <span class="text-danger">*</span></label>
+                        {% render_field form.entreprise class="form-select" %}
+                        {% if form.entreprise.help_text %}<div class="form-text">{{ form.entreprise.help_text }}</div>{% endif %}
+                        {% if form.entreprise.errors %}<div class="invalid-feedback d-block">{{ form.entreprise.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
                 {# Section 1 : Identité société #}
                 <div class="card mb-3">
                     <div class="card-header d-flex align-items-center gap-2">

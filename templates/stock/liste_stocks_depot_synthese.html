@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Stock dépôt — synthèse par produit</h4>
+            <h6>{{ entreprise.nom }} — quantités agrégées et valeur (HT, selon prix unitaire des lots)</h6>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary">Sommaire</a>
+            <a href="{% url 'stock:liste-stock-depot' %}" class="btn btn-outline-primary">Détail par lots</a>
+            <a href="{% url 'stock:liste-stock-pdv' %}" class="btn btn-outline-info btn-sm">Stock PDV</a>
+            <a href="{% url 'stock:mise-a-ecart-depot' %}" class="btn btn-outline-warning btn-sm">Mettre à l’écart</a>
+            {% include 'stock/includes/export_excel_pdf.html' with excel_name='stock:export-synthese-depot-excel' pdf_name='stock:export-synthese-depot-pdf' %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-5 col-lg-4">
+                    <label class="form-label small mb-0" for="id-filtre-depot-synthese">Dépôt</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-2" aria-hidden="true"><i class="ti ti-building-warehouse text-muted"></i></span>
+                        <select id="id-filtre-depot-synthese" name="depot" class="form-select border-start-0 ps-0" onchange="this.form.submit()" title="Filtrer par dépôt">
+                            <option value="">Tous</option>
+                            {% for d in depots %}
+                            <option value="{{ d.pk }}" {% if filt_pk == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <label class="form-label small mb-0" for="id-filtre-q-synthese-depot">Recherche produit</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-2" aria-hidden="true"><i class="ti ti-search text-muted"></i></span>
+                        <input type="search" id="id-filtre-q-synthese-depot" name="q" value="{{ q }}" class="form-control border-start-0" placeholder="Nom, SKU, code-barres…" autocomplete="off">
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filtrer</button>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Produit</th>
+                            <th class="text-end" title="Moyenne pondérée par lot actif ; sinon prix d’achat fiche produit">PU réf. HT</th>
+                            <th class="text-end" title="Somme Stock (dépôt, sans PDV)">Physique</th>
+                            <th class="text-end text-warning" title="Hors disponibilité (casse, contrôle…)">À l’écart</th>
+                            <th class="text-end fw-semibold" title="Physique − à l’écart">Disponible</th>
+                            <th class="text-end text-warning">Valeur à l’écart HT</th>
+                            <th class="text-end fw-semibold">Valeur disponible HT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in lignes_synthese %}
+                        <tr class="{% if r.sous_seuil %}table-warning{% endif %}">
+                            <td><a href="{% url 'stock:detail-produit-stock' r.produit.pk %}">{{ r.produit.libelle_ligne_achat }}</a></td>
+                            <td class="text-end">{{ r.prix_unitaire_ref|floatformat:2 }}</td>
+                            <td class="text-end">{{ r.physique }}</td>
+                            <td class="text-end">{{ r.a_ecart }}</td>
+                            <td class="text-end">{{ r.disponible }}</td>
+                            <td class="text-end">{{ r.valeur_ecart|floatformat:2 }}</td>
+                            <td class="text-end">{{ r.valeur_disponible|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center text-muted py-4">Aucune ligne agrégée pour ces filtres.</td></tr>
+                        {% endfor %}
+                        {% if lignes_synthese %}
+                        <tr class="table-light fw-semibold">
+                            <td colspan="5" class="text-end">Totaux valeur</td>
+                            <td class="text-end">{{ total_valeur_ecart|floatformat:2 }}</td>
+                            <td class="text-end">{{ total_valeur_disponible|floatformat:2 }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <p class="text-muted small mt-2">Les colonnes valeur = quantité × PU réf. : le PU est la moyenne pondérée des <code>prix_unitaire</code> des lots encore actifs ; si aucun lot n’est trouvé pour le produit, le <strong>prix d’achat HT</strong> de la fiche article est utilisé. La colonne « Disponible » reste indicative : les ventes consomment les lots (<a href="{% url 'stock:liste-stock-depot' %}">vue détail</a>).</p>
+</div>
+{% endblock %}

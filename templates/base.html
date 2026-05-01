@@ -1355,7 +1355,8 @@
 								<li class="submenu">
 									<a href="javascript:void(0);"><span>Vente</span><span class="menu-arrow"></span></a>
 									<ul>
-										<li><a href="#">Liste des factures</a></li>
+										<li><a href="{% url 'facturation:liste-factures' %}">Liste des factures</a></li>
+										<li><a href="{% url 'facturation:nouvelle-facture' %}">Nouvelle facture</a></li>
 										<li><a href="#">Proforma</a></li>
 										<li><a href="#">Ventes retournées</a></li>
 									</ul>
@@ -1370,9 +1371,37 @@
 								<li class="submenu">
 									<a href="javascript:void(0);"><span>Stock</span><span class="menu-arrow"></span></a>
 									<ul>
-										<li><a href="manage-stocks.html"><span>Gestion de Stock</span></a></li>
-										<li><a href="stock-adjustment.html"><span>Adjustment de Stock</span></a></li>
-										<li><a href="stock-adjustment.html"><span>Correction interne</span></a></li>
+										<li><a href="{% url 'stock:hub-stock' %}"><span>Sommaire stock</span></a></li>
+										<li class="submenu">
+											<a href="javascript:void(0);"><span>Dépôt</span><span class="menu-arrow"></span></a>
+											<ul>
+												<li><a href="{% url 'stock:liste-stock-depot' %}"><span>Niveaux de stock (lots)</span></a></li>
+												<li><a href="{% url 'stock:liste-stock-depot-synthese' %}"><span>Synthèse par produit</span></a></li>
+												<li><a href="{% url 'stock:liste-mouvements-depot' %}"><span>Mouvements</span></a></li>
+												<li><a href="{% url 'stock:liste-bons-ajustement-depot' %}"><span>Bons d'ajustement</span></a></li>
+												<li><a href="{% url 'stock:mise-a-ecart-depot' %}"><span>Mise à l'écart</span></a></li>
+												<li><a href="{% url 'stock:liste-inventaires' %}?lieu=depot"><span>Campagnes d'inventaire</span></a></li>
+											</ul>
+										</li>
+										<li class="submenu">
+											<a href="javascript:void(0);"><span>Point de vente</span><span class="menu-arrow"></span></a>
+											<ul>
+												<li><a href="{% url 'stock:liste-stock-pdv' %}"><span>Niveaux de stock (lots)</span></a></li>
+												<li><a href="{% url 'stock:liste-stock-pdv-synthese' %}"><span>Synthèse par produit</span></a></li>
+												<li><a href="{% url 'stock:liste-mouvements-pdv' %}"><span>Mouvements</span></a></li>
+												<li><a href="{% url 'stock:liste-bons-ajustement-pdv' %}"><span>Bons d'ajustement</span></a></li>
+												<li><a href="{% url 'stock:mise-a-ecart-pdv' %}"><span>Mise à l'écart</span></a></li>
+												<li><a href="{% url 'stock:liste-inventaires' %}?lieu=pv"><span>Campagnes d'inventaire</span></a></li>
+											</ul>
+										</li>
+										<li class="submenu">
+											<a href="javascript:void(0);"><span>Correction interne</span><span class="menu-arrow"></span></a>
+											<ul>
+												<li><a href="{% url 'stock:correction-interne-depot' %}"><span>Lignes dépôt (lot, dates, emplacement…)</span></a></li>
+												<li><a href="{% url 'stock:correction-interne-pdv' %}"><span>Lignes point de vente</span></a></li>
+											</ul>
+										</li>
+										<li><a href="{% url 'stock:liste-inventaires' %}"><span>Toutes les campagnes d'inventaire</span></a></li>
 									</ul>
 								</li>
 								<li class="submenu">
@@ -1387,7 +1416,7 @@
 								</li>
 								<li><a href="account-list-2.html"><span>Faible Stock</span></a></li>
 								<li><a href="money-transfer.html"><span>Produit en Expiration</span></a></li>
-								<li><a href="account-list-2.html"><span>Inventaire</span></a></li>
+								<li><a href="{% url 'stock:liste-inventaires' %}"><span>Inventaire</span></a></li>
 								<li><a href="account-list-2.html"><span>Stock Rétourné</span></a></li>
 							</ul>
 						</li>

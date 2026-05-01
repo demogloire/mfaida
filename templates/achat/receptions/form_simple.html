@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Réception simple</h4>
+        </div>
+        <div class="page-btn">
+            <a href="{% url 'achat:liste-receptions' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left me-1"></i>Retour
+            </a>
+        </div>
+    </div>
+
+    <style>
+    .htmx-indicator { opacity: 0; transition: opacity 120ms ease-in; pointer-events: none; }
+    .htmx-indicator.htmx-request { opacity: 1; }
+    </style>
+
+    <div id="reception-simple-panel" class="reception-simple-panel-root">
+        {% include 'achat/receptions/partial/reception_simple_panel.html' %}
+    </div>
+</div>
+{% endblock content %}

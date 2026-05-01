@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold">
+                {% if liste_scope == 'depot' %}
+                Bons d’ajustement — dépôts
+                {% else %}
+                Bons d’ajustement — points de vente
+                {% endif %}
+            </h4>
+            <h6 class="text-muted">{{ entreprise.nom }}</h6>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            {% if liste_scope == 'depot' %}
+            <a href="{% url 'stock:ajuster-stock-depot' %}" class="btn btn-primary btn-sm">Nouvel ajustement</a>
+            <a href="{% url 'stock:liste-bons-ajustement-pdv' %}" class="btn btn-outline-secondary btn-sm">Voir bons PDV</a>
+            {% else %}
+            <a href="{% url 'stock:ajuster-stock-pdv' %}" class="btn btn-primary btn-sm">Nouvel ajustement</a>
+            <a href="{% url 'stock:liste-bons-ajustement-depot' %}" class="btn btn-outline-secondary btn-sm">Voir bons dépôt</a>
+            {% endif %}
+            <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary btn-sm">Sommaire stock</a>
+        </div>
+    </div>
+    {% if not bons %}
+    <div class="alert alert-light border">Aucun bon dans ce périmètre.</div>
+    {% else %}
+    <div class="card">
+        <div class="card-body p-0 table-responsive">
+            <table class="table mb-0 table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Créé le</th>
+                        {% if liste_scope == 'depot' %}<th>Dépôt</th>{% else %}<th>Point de vente</th>{% endif %}
+                        <th class="text-center">Lignes</th>
+                        <th>Créé par</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in bons %}
+                    <tr>
+                        <td><strong>{{ b.numero }}</strong></td>
+                        <td>{{ b.date_creation|date:"d/m/Y H:i" }}</td>
+                        {% if liste_scope == 'depot' %}
+                        <td>{{ b.depot.nom }}</td>
+                        {% else %}
+                        <td>{{ b.pointvente.nom }}</td>
+                        {% endif %}
+                        {% localize off %}
+                        <td class="text-center">{{ b.nl }}</td>
+                        {% endlocalize %}
+                        <td class="small">{% if b.cree_par %}{{ b.cree_par.get_full_name|default:b.cree_par.username }}{% else %}—{% endif %}</td>
+                        <td><a href="{% url 'stock:detail-bon-ajustement' b.pk %}" class="btn btn-outline-primary btn-sm">Ouvrir</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

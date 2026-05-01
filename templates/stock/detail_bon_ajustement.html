@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold">Bon d’ajustement {{ bon.numero }}</h4>
+            <h6 class="text-muted mb-0">
+                {% if bon.pointvente_id %}
+                Point de vente : {{ bon.pointvente.nom }} — {{ bon.depot.nom }}
+                {% else %}
+                Dépôt : {{ bon.depot.nom }}
+                {% endif %}
+                · {{ bon.date_creation|date:"d/m/Y H:i" }}
+                {% if bon.cree_par %}
+                · par {{ bon.cree_par.get_full_name|default:bon.cree_par }}
+                {% endif %}
+            </h6>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ liste_retour_url }}" class="btn btn-outline-secondary btn-sm">Liste des bons</a>
+            <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary btn-sm">Sommaire</a>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <p class="mb-0 small text-muted">{{ lignes|length }} ligne(s) sur ce bon. Vous pouvez consulter l’historique ci-dessous ou ajouter une nouvelle ligne d’ajustement rattachée au même numéro.</p>
+            {% if peut_ajouter %}
+            <a href="{{ ajouter_url }}" class="btn btn-primary btn-sm">Ajouter une ligne</a>
+            {% else %}
+            <span class="text-muted small fst-italic">Droits insuffisants pour ajouter une ligne depuis ce périmètre.</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if lignes %}
+    <div class="card">
+        <div class="card-header"><h6 class="mb-0">Lignes ajustées</h6></div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table mb-0 table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Heure</th>
+                        <th>Mouvement</th>
+                        <th>Produit</th>
+                        <th>Sens</th>
+                        <th class="text-end">Qté</th>
+                        <th class="text-end">PU HT</th>
+                        <th>Motif</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ln in lignes %}
+                    <tr>
+                        <td>{{ ln.date_creation|date:"d/m/Y H:i" }}</td>
+                        <td>#{{ ln.mouvement_stock_id }}</td>
+                        <td>{{ ln.mouvement_stock.produit.nom }}</td>
+                        <td>{% if ln.sens == 1 %}Entrée{% else %}Sortie{% endif %}</td>
+                        {% localize off %}
+                        <td class="text-end">{{ ln.quantite }}</td>
+                        <td class="text-end">{% if ln.prix_unitaire_ht != None %}{{ ln.prix_unitaire_ht }}{% else %}—{% endif %}</td>
+                        {% endlocalize %}
+                        <td class="small">{{ ln.motif|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-light border mb-0">Aucune ligne enregistrée sur ce bon (cas inhabituel).</div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -12,6 +12,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count
 
 from entreprise.models import Categorie, SousCategorie, Produit, Entreprise
+from utilisateur.permissions import peut_voir_prix_achat_ht
 from utilities.utility import error_message_list
 from .forms import CategorieForm, SousCategorieForm, ProduitForm, ImportExcelForm
 
@@ -40,7 +41,7 @@ def liste_categories(request):
         'cat_actif': True,
         'produit_actif': True,
     }
-    if request.headers.get('HX-Request') and request.headers.get('HX-Target') == 'cat-contenu':
+    if request.htmx and request.htmx.target == 'cat-contenu':
         return render(request, 'produit/categories/partial/contenu.html', context)
     return render(request, 'produit/categories/liste.html', context)
 
@@ -85,7 +86,7 @@ def modifier_categorie(request, pk):
         messages.info(request, error_message_list(form))
         return render(request, 'produit/categories/partial/form_mod.html', context)
 
-    if request.headers.get('HX-Request'):
+    if request.htmx:
         return render(request, 'produit/categories/partial/form_mod.html', context)
     return redirect('produit:categories')
 
@@ -134,7 +135,7 @@ def liste_sous_categories(request):
         'souscat_actif': True,
         'produit_actif': True,
     }
-    if request.headers.get('HX-Request') and request.headers.get('HX-Target') == 'souscat-contenu':
+    if request.htmx and request.htmx.target == 'souscat-contenu':
         return render(request, 'produit/sous-categories/partial/contenu.html', context)
     return render(request, 'produit/sous-categories/liste.html', context)
 
@@ -180,7 +181,7 @@ def modifier_sous_categorie(request, pk):
         messages.info(request, error_message_list(form))
         return render(request, 'produit/sous-categories/partial/form_mod.html', context)
 
-    if request.headers.get('HX-Request'):
+    if request.htmx:
         return render(request, 'produit/sous-categories/partial/form_mod.html', context)
     return redirect('produit:sous-categories')
 
@@ -251,7 +252,7 @@ def liste_produits(request):
         'produit_liste_actif': True,
         'produit_actif': True,
     }
-    if request.headers.get('HX-Request') and request.headers.get('HX-Target') == 'produits-table':
+    if request.htmx and request.htmx.target == 'produits-table':
         return render(request, 'produit/produits/partial/table.html', context)
     return render(request, 'produit/produits/liste.html', context)
 
@@ -263,14 +264,19 @@ def detail_produit(request, pk):
     )
     stocks = produit.niveaux_stock.select_related('depot', 'pointdevente').all()
 
-    # Calculs de prix/marge
-    marge_brute = produit.prix_vente_ht - produit.prix_achat_ht
+    voir_pa = peut_voir_prix_achat_ht(request.user)
+    if voir_pa:
+        marge_brute = produit.prix_vente_ht - produit.prix_achat_ht
+        taux_marge = (
+            (marge_brute / produit.prix_achat_ht * 100)
+            if produit.prix_achat_ht > 0 else None
+        )
+    else:
+        marge_brute = None
+        taux_marge = None
+
     prix_ttc = produit.prix_vente_ttc
     montant_tva = prix_ttc - produit.prix_vente_ht
-    taux_marge = (
-        (marge_brute / produit.prix_achat_ht * 100)
-        if produit.prix_achat_ht > 0 else None
-    )
 
     return render(request, 'produit/produits/detail.html', {
         'produit': produit,
@@ -278,6 +284,7 @@ def detail_produit(request, pk):
         'marge_brute': marge_brute,
         'montant_tva': montant_tva,
         'taux_marge': taux_marge,
+        'voir_prix_achat_ht': voir_pa,
         'produit_liste_actif': True,
         'produit_actif': True,
     })
@@ -432,6 +439,9 @@ def import_produits(request):
                         'methode_gestion': methode,
                         'vie': int(to_dec(data.get('vie'), 30)),
                     }
+
+                    if not peut_voir_prix_achat_ht(request.user):
+                        defaults.pop('prix_achat_ht', None)
 
                     code_barre = str(data.get('code_barre') or '').strip() or None
 

@@ -30,7 +30,7 @@ class HtmxMessageMiddleware(MiddlewareMixin):
             return response
 
         # CAS 1 : Requête HTMX
-        if request.headers.get('HX-Request'):
+        if request.htmx:
             # Sous-cas A : HX-Redirect → on remet les messages en session pour la page cible
             if response.get("HX-Redirect"):
                 for m in original_messages:

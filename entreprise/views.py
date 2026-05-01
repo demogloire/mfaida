@@ -46,7 +46,7 @@ def Information(request):
             error_msg = " | ".join([", ".join(e) for e in form.errors.values()])
             messages.warning(request, error_msg)
             # Requête HTMX : retourner seulement le formulaire partiel (pas la page complète)
-            if request.headers.get('HX-Request'):
+            if request.htmx:
                 context["form"] = form
                 return render(request, 'entreprise/partial/ajouter/info-entre.html', context)
 
@@ -88,7 +88,7 @@ def ModifierEntreprise(request, pk):
             messages.warning(request, error_msg)
             context["form"] = form
             # Requête HTMX : retourner seulement le formulaire partiel (pas la page complète)
-            if request.headers.get('HX-Request'):
+            if request.htmx:
                 return render(request, 'entreprise/partial/modifier/info-mod.html', context)
 
     return render(request, 'entreprise/info-mod.html', context)
@@ -145,7 +145,7 @@ def ModifierBranche(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Entreprise est modifiée")
-            if request.headers.get('HX-Request'):
+            if request.htmx:
                 response = HttpResponse()
                 response['HX-Redirect'] = reverse('entreprise:branche-liste')
                 return response
@@ -167,7 +167,7 @@ def Etagere(request, pk):
             nouveau_code = f"{initiale}{reference}"
 
             if Location.objects.filter(code=nouveau_code, branche_id=pk).exists():
-                if request.headers.get('HX-Request'):
+                if request.htmx:
                     messages.info(request, "Cette étagère existe déjà dans cette branche.")
                     return render(request, 'etagere/partial/form_etagere.html', {"branche1":True,"subdrop":True,"branch":True,"form":form, "pk":pk})
 
@@ -210,7 +210,7 @@ def EtagereModifier(request, pk, branche_id):
 
             if code_existe_deja:
                 Location.objects.filter(pk=pk).update(ramassage=nouveau_ramassage,capacite=capacite)
-                if request.headers.get('HX-Request'):
+                if request.htmx:
                     messages.info(request, "Ce code existe déjà. Seul le statut de ramassage a été mis à jour.")
                     return render(request, 'etagere/partial/form_etagere_mod.html', context)
 
@@ -244,7 +244,7 @@ def UploadExcel(request, pk):
             file=form.cleaned_data["file_excel"]
             erreur, data = import_csv(file)
             if erreur > 0:
-                if request.headers.get('HX-Request'):
+                if request.htmx:
                     messages.info(request, "Vérifier le fichier, il y'a une erreur sur une ou plusieurs lignes")
                     return render(request, 'etagere/partial/excel.html', context)
             
@@ -298,7 +298,7 @@ def AjouterDepot(request, pk):
             est_principal=form.cleaned_data["est_principal"]
             q=Depot.objects.filter(branche_id=pk, est_principal=True).all()
             if q and est_principal:
-                if request.headers.get('HX-Request'):
+                if request.htmx:
                     messages.info(request, "Un autré dépôt principal existe")
                     return render(request, 'depot/partial/form_add.html', {"branche1":True,"subdrop":True,"branch":True,"form":form, "branche_id":pk})
             
@@ -310,7 +310,7 @@ def AjouterDepot(request, pk):
             response['HX-Redirect'] = reverse('entreprise:depot-liste', kwargs={'pk': pk})
             return response
         else:
-            if request.headers.get('HX-Request'):
+            if request.htmx:
                 error_msg=error_message_list(form)
                 messages.info(request, error_msg)
                 return render(request, 'depot/partial/form_add.html', {"branche1":True,"subdrop":True,"branch":True,"form":form, "branche_id":pk})
@@ -344,7 +344,7 @@ def ListeDepotTous(request):
         "depots": page_obj,
         "q": search,
     }
-    if request.headers.get("HX-Request") and request.headers.get("HX-Target") == "depot-list":
+    if request.htmx and request.htmx.target == "depot-list":
         return render(request, "depot/partial/lire_tous.html", context)
     return render(request, "depot/liste_tous.html", context)
 
@@ -360,7 +360,7 @@ def MajDepot(request, pk):
             est_principal=form.cleaned_data["est_principal"]
             q=Depot.objects.filter(branche_id=depot_unique.branche_id, est_principal=True).exclude(pk=pk).exists()
             if q and est_principal:
-                if request.headers.get('HX-Request'):
+                if request.htmx:
                     messages.info(request, "Un autré dépôt principal existe")
                     return render(request, 'depot/partial/form_mod.html', context)
             form.save()
@@ -369,7 +369,7 @@ def MajDepot(request, pk):
             response['HX-Redirect'] = reverse('entreprise:depot-liste', kwargs={'pk': depot_unique.branche_id})
             return response
         else:
-            if request.headers.get('HX-Request'):
+            if request.htmx:
                 error_msg=error_message_list(form)
                 messages.info(request, error_msg)
                 return render(request, 'depot/partial/form_mod.html',context)
@@ -397,7 +397,7 @@ def AjouterPoindeVente(request, pk):
             response['HX-Redirect'] = reverse('entreprise:pvente-liste', kwargs={'pk': pk})
             return response
         else:
-            if request.headers.get('HX-Request'):
+            if request.htmx:
                 error_msg=error_message_list(form)
                 messages.info(request, error_msg)
                 return render(request, 'pvente/partial/form_add.html', context)
@@ -426,7 +426,7 @@ def ListePVenteTous(request):
     page_obj = paginator.get_page(request.GET.get("page") or 1)
 
     context = {"branche1": True, "subdrop": True, "pdvente": True, "pventes": page_obj, "q": search}
-    if request.headers.get("HX-Request") and request.headers.get("HX-Target") == "pvente-list":
+    if request.htmx and request.htmx.target == "pvente-list":
         return render(request, "pvente/partial/lire_tous.html", context)
     return render(request, "pvente/liste_tous.html", context)
 
@@ -447,7 +447,7 @@ def MajPDVente(request, pk):
             response['HX-Redirect'] = reverse('entreprise:pvente-liste', kwargs={'pk': pdvente_unique.branche_id})
             return response
         else:
-            if request.headers.get('HX-Request'):
+            if request.htmx:
                 error_msg=error_message_list(form)
                 messages.info(request, error_msg)
                 return render(request, 'pvente/partial/form_mod.html',context)
@@ -492,7 +492,7 @@ def DeviseListe(request):
     page_obj = paginator.get_page(request.GET.get("page") or 1)
 
     context = {"devise": True, "devises": page_obj, "q": search}
-    if request.headers.get("HX-Request") and request.headers.get("HX-Target") == "devise-list":
+    if request.htmx and request.htmx.target == "devise-list":
         return render(request, "devise/partial/lire.html", context)
     return render(request, "devise/liste.html", context)
 

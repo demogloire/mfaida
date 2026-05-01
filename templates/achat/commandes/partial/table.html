@@ -49,10 +49,21 @@
                         <i class="ti ti-edit"></i>
                     </a>
                     {% endif %}
-                    {% if cmd.statut in 'ENVOYE RECU_PARTIEL' %}
-                    <a href="{% url 'achat:creer-reception' cmd.pk %}" class="btn btn-sm btn-outline-success" title="Réceptionner">
+                    {% if cmd.statut == 'ENVOYE' or cmd.statut == 'RECU_PARTIEL' %}
+                    {% if not admin %}
+                    <a href="{% url 'achat:creer-reception' cmd.pk %}" class="btn btn-sm btn-outline-success" title="Créer un bon de réception (dépôt ou boutique)">
                         <i class="ti ti-package-import"></i>
                     </a>
+                    {% elif entreprise_bc_scope and entreprise_bc_scope.pk == cmd.entreprise_id %}
+                    <a href="{% url 'achat:creer-reception' cmd.pk %}" class="btn btn-sm btn-outline-success" title="Créer un bon de réception (dépôt ou boutique)">
+                        <i class="ti ti-package-import"></i>
+                    </a>
+                    {% else %}
+                    <span class="btn btn-sm btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"
+                          title="Réception disponible uniquement pour les BC de votre entreprise.">
+                        <i class="ti ti-package-import"></i>
+                    </span>
+                    {% endif %}
                     {% endif %}
                 </td>
             </tr>

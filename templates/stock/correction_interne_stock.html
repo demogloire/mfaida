@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex justify-content-between flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold">{{ titre_page }}</h4>
+            <h6 class="text-muted">
+                Modifier lot, dates de production / expiration, emplacement (référencé ou code libre), marque et conditionnement.
+                Les quantités et le stock agrégé ne changent pas. Un motif est obligatoire (traçabilité).
+            </h6>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ liste_stock_url }}" class="btn btn-outline-secondary btn-sm">Niveaux stock</a>
+            <a href="{{ lien_autre_lieu_url }}" class="btn btn-outline-primary btn-sm">{{ lien_autre_lieu_label }}</a>
+            <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary btn-sm">Sommaire</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" class="row g-3" id="form-correction-interne">
+                {% csrf_token %}
+                {% for fd in form.hidden_fields %}{{ fd }}{% endfor %}
+
+                {% if lieu == 'depot' %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.depot.label }}</label>
+                    {% render_field form.depot class="form-select" %}
+                    {% for e in form.depot.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% else %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.point_vente.label }}</label>
+                    {% render_field form.point_vente class="form-select" %}
+                    {% for e in form.point_vente.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalLignesCorrection">
+                        <i class="ti ti-list-search me-1"></i>Choisir la ligne à corriger
+                    </button>
+                    <button type="button" class="btn btn-link btn-sm text-danger d-none p-0 ms-2" id="btn-effacer-ligne-correction">Effacer</button>
+                    <div id="resume-ligne-correction" class="alert alert-light border mt-3 d-none mb-0" role="status">
+                        <strong>Ligne sélectionnée.</strong>
+                        <div id="resume-ligne-correction-texte" class="small mt-1"></div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.lot_batch.label }}</label>
+                    {% render_field form.lot_batch class="form-control" %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.dateproduction.label }}</label>
+                    {% render_field form.dateproduction class="form-control" %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.dateexpiration.label }}</label>
+                    {% render_field form.dateexpiration class="form-control" %}
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.location.label }}</label>
+                    {% render_field form.location class="form-select" %}
+                    {% if form.location.help_text %}<div class="form-text">{{ form.location.help_text }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.location_code.label }}</label>
+                    {% render_field form.location_code class="form-control" %}
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.marque.label }}</label>
+                    {% render_field form.marque class="form-control" %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.conditionnement.label }}</label>
+                    {% render_field form.conditionnement class="form-control" %}
+                    {% if form.conditionnement.help_text %}<div class="form-text">{{ form.conditionnement.help_text }}</div>{% endif %}
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">{{ form.motif.label }}</label>
+                    {% render_field form.motif class="form-control" %}
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="col-12">
+                    {% for e in form.non_field_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
+                {% for field in form %}
+                    {% if field.errors and field.name != 'depot' and field.name != 'point_vente' %}
+                        {% if not field.is_hidden %}
+                        {% for e in field.errors %}<div class="col-12 text-danger small">{{ field.label }}: {{ e }}</div>{% endfor %}
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary" id="btn-submit-correction" disabled>Enregistrer la correction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalLignesCorrection" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Lignes (stock disponible ou constat inventaire)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">Les valeurs du formulaire se remplissent à partir de la ligne choisie ; vous pouvez les ajuster avant enregistrement.</p>
+                    <div id="lignes-spin-correction" class="small text-muted d-none">Chargement…</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date mouv.</th><th>Produit</th>
+                                    <th class="text-end">Actif</th><th class="text-end">Reçu</th>
+                                    <th>Empl.</th><th>Lot</th><th>Origine</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-lignes-correction"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    const pickerUrl = "{{ picker_url|escapejs }}";
+    const filtreParam = "{{ filtre_param|escapejs }}";
+    const filtEl = document.querySelector('#form-correction-interne [name="' + filtreParam + '"]');
+    const tbody = document.getElementById("tbody-lignes-correction");
+    const midInput = document.getElementById("id_mouvement_stock_id");
+    const modalEl = document.getElementById("modalLignesCorrection");
+    const resumeWrap = document.getElementById("resume-ligne-correction");
+    const resumeTexte = document.getElementById("resume-ligne-correction-texte");
+    const btnClear = document.getElementById("btn-effacer-ligne-correction");
+    const btnSubmit = document.getElementById("btn-submit-correction");
+
+    const elLot = document.getElementById("id_lot_batch");
+    const elDprod = document.getElementById("id_dateproduction");
+    const elDexp = document.getElementById("id_dateexpiration");
+    const elLoc = document.getElementById("id_location");
+    const elLocCode = document.getElementById("id_location_code");
+    const elMarque = document.getElementById("id_marque");
+    const elCond = document.getElementById("id_conditionnement");
+
+    function setMetaFrom(btn) {
+        if (elLot) elLot.value = btn.getAttribute("data-lot") || "";
+        if (elDprod) elDprod.value = btn.getAttribute("data-dprod") || "";
+        if (elDexp) elDexp.value = btn.getAttribute("data-dexp") || "";
+        if (elLocCode) elLocCode.value = btn.getAttribute("data-loc-code") || "";
+        if (elMarque) elMarque.value = btn.getAttribute("data-marque") || "";
+        if (elCond) elCond.value = btn.getAttribute("data-cond") || "";
+        const lid = btn.getAttribute("data-location-id") || "";
+        if (elLoc) {
+            elLoc.value = lid ? String(lid) : "";
+        }
+    }
+
+    function setLigne(id, libelle, btnMeta) {
+        midInput.value = id;
+        resumeTexte.textContent = libelle;
+        resumeWrap.classList.remove("d-none");
+        btnClear.classList.remove("d-none");
+        btnSubmit.disabled = false;
+        if (btnMeta) setMetaFrom(btnMeta);
+    }
+
+    function clearLigne() {
+        midInput.value = "";
+        resumeWrap.classList.add("d-none");
+        btnClear.classList.add("d-none");
+        resumeTexte.textContent = "";
+        btnSubmit.disabled = true;
+        if (elLot) elLot.value = "";
+        if (elDprod) elDprod.value = "";
+        if (elDexp) elDexp.value = "";
+        if (elLoc) elLoc.selectedIndex = 0;
+        if (elLocCode) elLocCode.value = "";
+        if (elMarque) elMarque.value = "";
+        if (elCond) elCond.value = "";
+    }
+
+    if (filtEl) filtEl.addEventListener("change", function () {
+        clearLigne();
+        tbody.innerHTML = "";
+    });
+
+    if (modalEl) modalEl.addEventListener("show.bs.modal", function () {
+        const v = filtEl && filtEl.value;
+        if (!v) {
+            tbody.innerHTML = "<tr><td colspan='8' class='text-warning'>Choisissez d’abord le dépôt ou le point de vente.</td></tr>";
+            return;
+        }
+        const sep = pickerUrl.includes("?") ? "&" : "?";
+        const url = pickerUrl + sep + encodeURIComponent(filtreParam) + "=" + encodeURIComponent(v);
+        const spin = document.getElementById("lignes-spin-correction");
+        if (spin) spin.classList.remove("d-none");
+        tbody.innerHTML = "";
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "text/html" }})
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                tbody.innerHTML = html;
+                tbody.querySelectorAll(".btn-choix-ligne-correction").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        const tr = btn.closest("tr");
+                        let libelle = "";
+                        if (tr && tr.cells.length > 1) libelle = tr.cells[1].innerText.trim();
+                        setLigne(btn.getAttribute("data-id"), libelle, btn);
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    });
+                });
+            })
+            .catch(function () {
+                tbody.innerHTML = "<tr><td colspan='8' class='text-danger'>Chargement impossible.</td></tr>";
+            })
+            .finally(function () { if (spin) spin.classList.add("d-none"); });
+    });
+
+    if (midInput && midInput.value) {
+        resumeWrap.classList.remove("d-none");
+        btnClear.classList.remove("d-none");
+        btnSubmit.disabled = false;
+        if (!resumeTexte.textContent.trim()) {
+            resumeTexte.textContent = "Ligne n° " + midInput.value;
+        }
+    }
+
+    if (btnClear) btnClear.addEventListener("click", clearLigne);
+})();
+</script>
+{% endblock %}

@@ -1,5 +1,7 @@
 from django import template
 
+from utilisateur.permissions import peut_voir_prix_achat_ht as _peut_voir_prix_achat_ht
+
 register = template.Library()
 
 
@@ -24,3 +26,9 @@ def in_set(value, container):
         return value in container
     except TypeError:
         return False
+
+
+@register.filter(name='peut_voir_prix_achat_ht')
+def peut_voir_prix_achat_ht_filter(user):
+    """True si l'utilisateur peut voir les prix d'achat / coûts (PA HT, etc.)."""
+    return _peut_voir_prix_achat_ht(user)

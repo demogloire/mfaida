@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-center">
+        <div class="page-title">
+            <h4 class="fw-bold">Inventaire {{ inventaire.lot }}</h4>
+            <h6>{{ inventaire.date_inventaire }} — {% if inventaire.depot %}Dépôt : {{ inventaire.depot.nom }}{% else %}PDV : {{ inventaire.pointdevente.nom }}{% endif %}</h6>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <a href="{% url 'stock:liste-inventaires' %}" class="btn btn-outline-secondary">Liste</a>
+            {% include 'stock/includes/export_excel_pdf_pk.html' with excel_name='stock:export-inventaire-detail-excel' pdf_name='stock:export-inventaire-detail-pdf' pk=inventaire.pk %}
+        </div>
+    </div>
+
+    {% if inventaire.cloture %}
+    <div class="alert alert-success">Campagne clôturée {% if inventaire.valide_par %} par {{ inventaire.valide_par.get_full_name }}{% endif %}.</div>
+    {% endif %}
+
+    <div class="card mb-3">
+        <div class="card-header"><h6 class="mb-0">Ajouter / mettre à jour une ligne</h6></div>
+        <div class="card-body">
+            {% if not inventaire.cloture %}
+            <form method="post" action="{% url 'stock:inventaire-ajouter-ligne' inventaire.pk %}" class="row g-2">
+                {% csrf_token %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ ligne_form.produit.label }}</label>
+                    {% render_field ligne_form.produit class="form-select" %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">{{ ligne_form.quantite_physique.label }}</label>
+                    {% render_field ligne_form.quantite_physique class="form-control" %}
+                </div>
+                <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-primary w-100">OK</button></div>
+                {{ ligne_form.non_field_errors }}
+            </form>
+
+            <hr class="my-4">
+            <h6 class="text-muted fw-semibold small text-uppercase mb-3">Import Excel</h6>
+            <p class="small text-muted mb-3">
+                Fichier <strong>.xlsx</strong> avec en-têtes reconnaissant au minimum une colonne <strong>quantité physique</strong>
+                (« Qté physique », « Quantité physique »…) et <strong>SKU</strong> et/ou <strong>code-barres</strong>.
+                Vous pouvez aussi exporter cette campagne depuis le bouton Excel ci-dessus, modifier les quantités, puis ré-importer ce fichier.
+            </p>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <a href="{% url 'stock:inventaire-modele-import-lignes' inventaire.pk %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-file-spreadsheet me-1"></i>Modèle vierge (.xlsx)
+                </a>
+            </div>
+            <form method="post" action="{% url 'stock:inventaire-import-excel-lignes' inventaire.pk %}" enctype="multipart/form-data" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <div class="col-md-auto">
+                    <label class="form-label">Fichier</label>
+                    <input type="file" name="fichier" class="form-control form-control-sm" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary btn-sm">Importer les lignes</button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Lignes</h6>
+            {% if peut_cloturer %}
+            <form method="post" action="{% url 'stock:inventaire-cloturer' inventaire.pk %}" class="mb-0" onsubmit="return confirm('Clôturer cet inventaire ? Les écarts seront appliqués au stock.\n\nLe « système » par ligne = disponibilité sur les lots (SKU / lieu).\nExcédents : nouvelle ligne de lot avec la quantité physique constatée (entrée Δ). Manquants : réduction FIFO/FEFO/LIFO puis ligne constat avec la quantité physique (active = 0).');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Clôturer et appliquer les écarts</button>
+            </form>
+            {% endif %}
+        </div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Produit</th><th class="text-end">Dispo. lots</th><th class="text-end">Physique</th><th class="text-end">Écart</th>
+                        {% if not inventaire.cloture %}<th></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in lignes %}
+                    {% with li=e.ligne %}
+                    <tr>
+                        <td>{{ li.produit.libelle_ligne_achat }}</td>
+                        <td class="text-end">{{ e.theorique_actuel }}</td>
+                        <td class="text-end">{{ li.quantite_physique }}</td>
+                        <td class="text-end {% if li.ecart != 0 %}fw-bold text-primary{% endif %}">{{ li.ecart }}</td>
+                        {% if not inventaire.cloture %}
+                        <td>
+                            <form method="post" action="{% url 'stock:inventaire-supprimer-ligne' inventaire.pk li.pk %}" class="d-inline" onsubmit="return confirm('Supprimer ?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">×</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">Aucune ligne.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

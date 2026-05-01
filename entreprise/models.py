@@ -149,6 +149,7 @@ class Produit(models.Model):
     def __str__(self):
         return self.nom
 
+    @property
     def libelle_ligne_achat(self):
         """Affichage BC / réceptions : SKU - nom - unité (code PCS, KG…)."""
         sku_txt = (self.sku or '').strip() or '-'

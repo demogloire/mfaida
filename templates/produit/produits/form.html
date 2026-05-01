@@ -120,6 +120,7 @@
                                             </div>
                                             <div class="card-body">
                                                 <div class="row g-3">
+                                                    {% if 'prix_achat_ht' in form.fields %}
                                                     <div class="col-md-4">
                                                         <label class="form-label fw-medium">Prix achat HT <span class="text-danger">*</span></label>
                                                         <div class="input-group">
@@ -128,13 +129,16 @@
                                                         </div>
                                                     </div>
                                                     <div class="col-md-4">
+                                                    {% else %}
+                                                    <div class="col-md-6">
+                                                    {% endif %}
                                                         <label class="form-label fw-medium">Prix vente HT <span class="text-danger">*</span></label>
                                                         <div class="input-group">
                                                             {% render_field form.prix_vente_ht id="id_prix_vente_ht" %}
                                                             <span class="input-group-text bg-white text-muted small">HT</span>
                                                         </div>
                                                     </div>
-                                                    <div class="col-md-4">
+                                                    <div class="col-md-{% if 'prix_achat_ht' in form.fields %}4{% else %}6{% endif %}">
                                                         <label class="form-label fw-medium">Taux TVA</label>
                                                         <div class="input-group">
                                                             {% render_field form.tva_taux id="id_tva_taux" %}
@@ -145,6 +149,7 @@
                                                     {# Calculs automatiques #}
                                                     <div class="col-12">
                                                         <div class="row g-2 text-center">
+                                                            {% if 'prix_achat_ht' in form.fields %}
                                                             <div class="col-4">
                                                                 <div class="p-3 rounded bg-light border">
                                                                     <div class="text-muted small mb-1">Marge brute</div>
@@ -158,6 +163,9 @@
                                                                 </div>
                                                             </div>
                                                             <div class="col-4">
+                                                            {% else %}
+                                                            <div class="col-12 col-md-6 mx-auto">
+                                                            {% endif %}
                                                                 <div class="p-3 rounded bg-success bg-opacity-10 border border-success border-opacity-25">
                                                                     <div class="text-muted small mb-1">Prix vente TTC</div>
                                                                     <div class="fw-bold text-success" id="calc-ttc">—</div>
@@ -249,6 +257,7 @@
     </div>
 </div>
 
+{% if 'prix_achat_ht' in form.fields %}
 <script>
 (function () {
     const pa = document.getElementById('id_prix_achat_ht');
@@ -276,4 +285,20 @@
     compute();
 })();
 </script>
+{% else %}
+<script>
+(function () {
+    const pv = document.getElementById('id_prix_vente_ht');
+    const tva = document.getElementById('id_tva_taux');
+    const elTtc = document.getElementById('calc-ttc');
+    function compute() {
+        const pv_val = parseFloat(pv?.value) || 0;
+        const tva_val = parseFloat(tva?.value) || 0;
+        elTtc.textContent = (pv_val * (1 + tva_val / 100)).toFixed(2);
+    }
+    [pv, tva].forEach(el => el?.addEventListener('input', compute));
+    compute();
+})();
+</script>
+{% endif %}
 {% endblock %}

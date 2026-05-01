@@ -1,3 +1,4 @@
+{% load acces_tags %}
 <div class="card-body pb-0 pt-2">
     <div class="table-responsive">
         <table class="table table-sm table-hover border mb-0 align-middle">
@@ -8,7 +9,9 @@
                     <th class="text-nowrap">Entreprise</th>
                     <th>Catégorie</th>
                     <th class="text-center text-nowrap" title="Unité de mesure (code)">UM</th>
+                    {% if request.user|peut_voir_prix_achat_ht %}
                     <th class="text-end text-nowrap">PA HT</th>
+                    {% endif %}
                     <th class="text-end text-nowrap">PV HT</th>
                     <th class="text-end text-nowrap">PV TTC</th>
                     <th class="text-center text-nowrap">Statut</th>
@@ -51,7 +54,9 @@
                         <span class="badge bg-light text-dark border font-monospace"
                               title="{{ p.get_unite_mesure_display }}">{{ p.unite_mesure }}</span>
                     </td>
+                    {% if request.user|peut_voir_prix_achat_ht %}
                     <td class="text-end text-nowrap fw-medium">{{ p.prix_achat_ht|floatformat:2 }}</td>
+                    {% endif %}
                     <td class="text-end text-nowrap fw-medium text-success">{{ p.prix_vente_ht|floatformat:2 }}</td>
                     <td class="text-end text-nowrap fw-medium text-primary">{{ p.prix_vente_ttc|floatformat:2 }}</td>
                     <td class="text-center text-nowrap">

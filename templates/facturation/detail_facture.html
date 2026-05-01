@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex justify-content-between flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold">Facture {{ facture.numero_facture }}</h4>
+            <h6>{{ facture.point_vente.nom }} — {{ facture.client.nom }}</h6>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge {% if facture.statut == 'VALIDEE' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ facture.statut }}</span>
+            <a href="{% url 'facturation:liste-factures' %}" class="btn btn-outline-secondary btn-sm">Liste</a>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body row">
+            <div class="col-md-4"><strong>Tot. HT</strong> {{ facture.total_ht }}</div>
+            <div class="col-md-4"><strong>TVA</strong> {{ facture.total_tva }}</div>
+            <div class="col-md-4"><strong>TTC</strong> {{ facture.total_ttc }}</div>
+        </div>
+    </div>
+
+    {% if facture.statut == 'BROUILLON' %}
+    <div class="card mb-3">
+        <div class="card-header"><h6 class="mb-0">Ajouter une ligne (mouvement / lot disponible)</h6></div>
+        <div class="card-body">
+            <form method="post" action="{% url 'facturation:ajouter-ligne-facture' facture.pk %}" class="row g-2">
+                {% csrf_token %}
+                <div class="col-md-5">
+                    <label class="form-label">{{ ligne_form.mouvement_stock.label }}</label>
+                    {% render_field ligne_form.mouvement_stock class="form-select" %}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">{{ ligne_form.quantite.label }}</label>
+                    {% render_field ligne_form.quantite class="form-control" %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">{{ ligne_form.prix_unitaire_ht.label }}</label>
+                    {% render_field ligne_form.prix_unitaire_ht class="form-control" %}
+                </div>
+                <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100" type="submit">Ajouter</button></div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body p-0 table-responsive">
+            <table class="table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Produit</th><th>Mouvement</th><th class="text-end">Qté</th><th class="text-end">Prix HT</th><th class="text-end">TVA</th>
+                        {% if facture.statut == 'BROUILLON' %}<th></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in lignes %}
+                    <tr>
+                        <td>{{ l.produit.libelle_ligne_achat }}</td>
+                        <td class="small">#{{ l.mouvement_stock_id }} — actif {{ l.mouvement_stock.quantite_active }}</td>
+                        <td class="text-end">{{ l.quantite }}</td>
+                        <td class="text-end">{{ l.prix_unitaire_ht }}</td>
+                        <td class="text-end">{{ l.tva_montant }}</td>
+                        {% if facture.statut == 'BROUILLON' %}
+                        <td>
+                            <form method="post" action="{% url 'facturation:supprimer-ligne-facture' facture.pk l.pk %}" class="mb-0" onsubmit="return confirm('Supprimer ?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">×</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-4 text-muted">Pas de lignes.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if facture.statut == 'BROUILLON' and lignes %}
+        <div class="card-footer">
+            <form method="post" action="{% url 'facturation:valider-facture' facture.pk %}" onsubmit="return confirm('Valider : déstockage et coûts comptabilisés ?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">Valider la facture</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% load widget_tweaks %}
+<form method="post"
+      action="{% url 'achat:creer-reception-simple' %}"
+      hx-post="{% url 'achat:creer-reception-simple' %}"
+      hx-target="#reception-simple-panel"
+      hx-swap="innerHTML"
+      hx-indicator="#reception-simple-htmx-spinner"
+      class="reception-simple-form">
+    {% csrf_token %}
+
+    {% if succes_reception %}
+    <div class="alert alert-success shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <i class="ti ti-check me-2"></i>
+            Bon enregistré sous le numéro <strong><code>{{ succes_reception.numero }}</code></strong>
+            <span class="text-muted small ms-1">— vous pouvez saisir une nouvelle réception ci-dessous.</span>
+        </div>
+        <a href="{% url 'achat:detail-reception' succes_reception.pk %}" class="btn btn-sm btn-outline-success">
+            <i class="ti ti-eye me-1"></i>Ouvrir le bon
+        </a>
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 fw-semibold">Destination du stock</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% if form.fournisseur %}
+                        <div class="col-lg-6">
+                            <label class="form-label fw-medium">{{ form.fournisseur.label }}</label>
+                            {% render_field form.fournisseur class="form-select" %}
+                        </div>
+                        {% endif %}
+                        <div class="col-lg-6">
+                            <label class="form-label fw-medium">Dépôt</label>
+                            <select name="{{ form.depot_destination.html_name }}" id="{{ form.depot_destination.id_for_label }}" class="form-select">
+                                <option value="" {% if not form.depot_destination.value %}selected{% endif %}>———</option>
+                                {% for d in form.depot_destination.field.queryset %}
+                                <option value="{{ d.pk }}" data-branche-id="{{ d.branche_id }}"
+                                    {% if form.depot_destination.value|stringformat:'s' == d.pk|stringformat:'s' %} selected{% endif %}>{{ d.branche.nom }} — {{ d.nom }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.depot_destination.errors %}<div class="text-danger small">{{ form.depot_destination.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label fw-medium">Boutique</label>
+                            <select name="{{ form.point_destination.html_name }}" id="{{ form.point_destination.id_for_label }}" class="form-select">
+                                <option value="" {% if not form.point_destination.value %}selected{% endif %}>———</option>
+                                {% for pv in form.point_destination.field.queryset %}
+                                <option value="{{ pv.pk }}" data-branche-id="{{ pv.branche_id }}"
+                                    {% if form.point_destination.value|stringformat:'s' == pv.pk|stringformat:'s' %} selected{% endif %}>{{ pv.branche.nom }} — {{ pv.nom }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.point_destination.errors %}<div class="text-danger small">{{ form.point_destination.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <p class="small text-muted mb-0">
+                                {% if entreprise %}
+                                Dépôt et boutique proposés pour <strong>{{ entreprise.nom }}</strong> uniquement.
+                                {% else %}
+                                Mode administrateur : dépôt, boutique et emplacements peuvent correspondre à toutes les entreprises.
+                                {% endif %}
+                                Une seule destination doit être choisie ; les emplacements se filtrent automatiquement sur la branche de cette destination.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light d-flex align-items-center gap-2">
+                    <h6 class="mb-0 fw-semibold">Lignes produits ({% if entreprise %}catalogue entreprise{% else %}tous catalogues{% endif %})</h6>
+                    <span id="reception-simple-htmx-spinner" class="spinner-border spinner-border-sm text-primary htmx-indicator ms-auto" role="status" aria-hidden="true"></span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width:220px">Produit</th>
+                                    <th class="text-end">Qté reçue</th>
+                                    <th style="min-width:150px">Emplacement</th>
+                                    <th class="text-end">Prix HT (opt.)</th>
+                                    <th class="text-end">Écarter</th>
+                                    <th>Lot</th>
+                                    <th>Marque</th>
+                                    <th>Conditionnement</th>
+                                    <th>D. prod.</th>
+                                    <th>D. exp.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in ligne_rows %}
+                                <tr>
+                                    <td>
+                                        <select name="produit_{{ row.idx }}" class="form-select form-select-sm">
+                                            <option value="">—</option>
+                                            {% for p in produits %}
+                                            <option value="{{ p.pk }}"{% if row.produit == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.libelle_ligne_achat }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="qte_{{ row.idx }}" value="{{ row.qte }}"
+                                               class="form-control form-control-sm text-end" min="0" step="0.01" placeholder="0" style="width:88px;">
+                                    </td>
+                                    <td>
+                                        <select name="loc_{{ row.idx }}" class="form-select form-select-sm reception-loc-par-branche">
+                                            <option value="">—</option>
+                                            {% for loc in locations_catalogue %}
+                                            <option value="{{ loc.pk }}" data-branche-id="{{ loc.branche_id }}"{% if row.loc == loc.pk|stringformat:"s" %} selected{% endif %}>{{ loc.code }} · {{ loc.branche.nom }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="prix_{{ row.idx }}" value="{{ row.prix }}"
+                                               class="form-control form-control-sm text-end" min="0" step="0.01" placeholder="catalogue" style="width:100px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" name="ecart_{{ row.idx }}" value="{{ row.ecart }}"
+                                               class="form-control form-control-sm text-end" min="0" step="0.01" style="width:72px;">
+                                    </td>
+                                    <td><input type="text" name="lot_{{ row.idx }}" value="{{ row.lot }}" class="form-control form-control-sm" maxlength="20" style="min-width:72px;"></td>
+                                    <td><input type="text" name="marque_{{ row.idx }}" value="{{ row.marque }}" class="form-control form-control-sm" maxlength="100" style="min-width:84px;"></td>
+                                    <td><input type="text" name="cond_{{ row.idx }}" value="{{ row.cond }}" class="form-control form-control-sm" maxlength="100" style="min-width:90px;"></td>
+                                    <td><input type="date" name="dprod_{{ row.idx }}" value="{{ row.dprod }}" class="form-control form-control-sm" style="width:132px;"></td>
+                                    <td><input type="date" name="dexp_{{ row.idx }}" value="{{ row.dexp }}" class="form-control form-control-sm" style="width:132px;"></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 d-flex justify-content-end gap-2 pb-2">
+            <button type="submit" class="btn btn-success position-relative">
+                <span class="me-1"><i class="ti ti-package-import"></i></span>Enregistrer
+            </button>
+        </div>
+    </div>
+{% include 'achat/receptions/partial/filter_locations_par_branche_script.html' %}
+</form>

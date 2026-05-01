@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex justify-content-between flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold">Campagne d'inventaire — dépôt</h4>
+            <h6 class="text-muted">{{ entreprise.nom }}</h6>
+        </div>
+        <a href="{% url 'stock:liste-inventaires' %}?lieu=depot" class="btn btn-outline-secondary btn-sm">Retour aux inventaires dépôt</a>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="col-md-4">
+                    <label class="form-label">{{ field.label }}</label>
+                    {% if field.name == 'depot' or field.name == 'pointdevente' %}
+                        {% render_field field class="form-select" %}
+                    {% elif field.name == 'date_inventaire' %}
+                        <div class="input-group">
+                            <span class="input-group-text bg-white" title="Date de l’inventaire"><i class="ti ti-calendar-event"></i></span>
+                            {% render_field field %}
+                        </div>
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                    {% else %}
+                        {% render_field field class="form-control" %}
+                    {% endif %}
+                    {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                {% if form.non_field_errors %}
+                    {% for e in form.non_field_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}
+                {% endif %}
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Créer</button>
+                    <a href="{% url 'stock:creer-inventaire-pdv' %}" class="btn btn-outline-primary">Campagne PDV à la place</a>
+                    <a href="{% url 'stock:liste-inventaires' %}" class="btn btn-outline-secondary">Liste</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

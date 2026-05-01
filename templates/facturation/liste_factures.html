@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header"><h4 class="fw-bold">Factures</h4></div>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between">
+            <span>Liste (500 dernières)</span>
+            <a href="{% url 'facturation:nouvelle-facture' %}" class="btn btn-sm btn-primary">Nouvelle facture</a>
+        </div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table mb-0">
+                <thead class="table-light"><tr><th>N°</th><th>Date</th><th>PV</th><th>Client</th><th>Statut</th><th class="text-end">TTC</th><th></th></tr></thead>
+                <tbody>
+                    {% for f in factures %}
+                    <tr>
+                        <td>{{ f.numero_facture }}</td>
+                        <td>{{ f.date_facture|date:"d/m/Y" }}</td>
+                        <td>{{ f.point_vente.nom }}</td>
+                        <td>{{ f.client.nom }}</td>
+                        <td>{{ f.statut }}</td>
+                        <td class="text-end">{{ f.total_ttc }}</td>
+                        <td><a href="{% url 'facturation:detail-facture' f.pk %}">Ouvrir</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-4 text-muted">Aucune facture.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

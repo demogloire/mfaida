@@ -1,0 +1,227 @@
+{# {% include 'stock/includes/liste_stock_colonnes_prefs.html' with prefs_key='liste_depot' variant='depot' %} #}
+{# variant : depot | pv #}
+{% load acces_tags %}
+<div class="px-3 py-2 border-bottom bg-light d-flex flex-wrap align-items-center gap-2">
+    <span class="small text-muted fw-semibold me-1">Affichage :</span>
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+        data-bs-target="#collapseCols{{ prefs_key }}" aria-expanded="false">Colonnes</button>
+    <button class="btn btn-sm btn-outline-secondary btn-stock-cols-all" type="button"
+        data-prefs-key="{{ prefs_key }}">Tout afficher</button>
+</div>
+<div class="collapse" id="collapseCols{{ prefs_key }}">
+    <div class="px-3 py-2 bg-light border-bottom small">
+        <div class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-2" id="colToggles{{ prefs_key }}" data-prefs-key="{{ prefs_key }}">
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="produit"
+                    id="cc{{ prefs_key }}-produit" data-col-id="produit">
+                <label class="form-check-label" for="cc{{ prefs_key }}-produit">Produit</label>
+            </div>
+            {% if variant == 'pv' %}
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="point_vente"
+                    id="cc{{ prefs_key }}-point_vente" data-col-id="point_vente">
+                <label class="form-check-label" for="cc{{ prefs_key }}-point_vente">Point de vente</label>
+            </div>
+            {% endif %}
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="depot"
+                    id="cc{{ prefs_key }}-depot" data-col-id="depot">
+                <label class="form-check-label" for="cc{{ prefs_key }}-depot">{% if variant == 'pv' %}Dépôt (logistique){% else %}Dépôt{% endif %}</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="recu"
+                    id="cc{{ prefs_key }}-recu" data-col-id="recu">
+                <label class="form-check-label" for="cc{{ prefs_key }}-recu">Qté reçue</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="actif"
+                    id="cc{{ prefs_key }}-actif" data-col-id="actif">
+                <label class="form-check-label" for="cc{{ prefs_key }}-actif">Qté active</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="affectee"
+                    id="cc{{ prefs_key }}-affectee" data-col-id="affectee">
+                <label class="form-check-label" for="cc{{ prefs_key }}-affectee">Qté affectée</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="ecart"
+                    id="cc{{ prefs_key }}-ecart" data-col-id="ecart">
+                <label class="form-check-label" for="cc{{ prefs_key }}-ecart">Qté écart</label>
+            </div>
+            {% if request.user|peut_voir_prix_achat_ht %}
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="pa_ht"
+                    id="cc{{ prefs_key }}-pa_ht" data-col-id="pa_ht">
+                <label class="form-check-label" for="cc{{ prefs_key }}-pa_ht">PA HT</label>
+            </div>
+            {% endif %}
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="pv_ht"
+                    id="cc{{ prefs_key }}-pv_ht" data-col-id="pv_ht">
+                <label class="form-check-label" for="cc{{ prefs_key }}-pv_ht">PV HT</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="pv_ttc"
+                    id="cc{{ prefs_key }}-pv_ttc" data-col-id="pv_ttc">
+                <label class="form-check-label" for="cc{{ prefs_key }}-pv_ttc">PV TTC</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="emplacement"
+                    id="cc{{ prefs_key }}-emplacement" data-col-id="emplacement">
+                <label class="form-check-label" for="cc{{ prefs_key }}-emplacement">Emplacement</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="lot"
+                    id="cc{{ prefs_key }}-lot" data-col-id="lot">
+                <label class="form-check-label" for="cc{{ prefs_key }}-lot">Lot</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="fabrication"
+                    id="cc{{ prefs_key }}-fabrication" data-col-id="fabrication">
+                <label class="form-check-label" for="cc{{ prefs_key }}-fabrication">Date fab.</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="expiration"
+                    id="cc{{ prefs_key }}-expiration" data-col-id="expiration">
+                <label class="form-check-label" for="cc{{ prefs_key }}-expiration">Date exp.</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="origine"
+                    id="cc{{ prefs_key }}-origine" data-col-id="origine">
+                <label class="form-check-label" for="cc{{ prefs_key }}-origine">Origine</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="motif"
+                    id="cc{{ prefs_key }}-motif" data-col-id="motif">
+                <label class="form-check-label" for="cc{{ prefs_key }}-motif">Motif</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="cmd_achat"
+                    id="cc{{ prefs_key }}-cmd_achat" data-col-id="cmd_achat">
+                <label class="form-check-label" for="cc{{ prefs_key }}-cmd_achat">Cmd achat</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="ref_piece"
+                    id="cc{{ prefs_key }}-ref_piece" data-col-id="ref_piece">
+                <label class="form-check-label" for="cc{{ prefs_key }}-ref_piece">Réf. pièce</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="marque"
+                    id="cc{{ prefs_key }}-marque" data-col-id="marque">
+                <label class="form-check-label" for="cc{{ prefs_key }}-marque">Marque</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="conditionnement"
+                    id="cc{{ prefs_key }}-conditionnement" data-col-id="conditionnement">
+                <label class="form-check-label" for="cc{{ prefs_key }}-conditionnement">Conditionnement</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="unite"
+                    id="cc{{ prefs_key }}-unite" data-col-id="unite">
+                <label class="form-check-label" for="cc{{ prefs_key }}-unite">Unité</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="date_mouv"
+                    id="cc{{ prefs_key }}-date_mouv" data-col-id="date_mouv">
+                <label class="form-check-label" for="cc{{ prefs_key }}-date_mouv">Date mouvement</label>
+            </div>
+            <div class="form-check mb-0">
+                <input class="form-check-input stock-col-checkbox" type="checkbox" checked value="effectue_par"
+                    id="cc{{ prefs_key }}-effectue_par" data-col-id="effectue_par">
+                <label class="form-check-label" for="cc{{ prefs_key }}-effectue_par">Enregistré par</label>
+            </div>
+        </div>
+        <p class="text-muted small mb-0 mt-2">Préférences enregistrées dans ce navigateur (localStorage).</p>
+    </div>
+</div>
+
+<script>
+(function () {
+    var LS = 'mfaida_stock_liste_colonnes';
+    var tableId = 'stock-liste-table-{{ prefs_key }}';
+
+    function readMap() {
+        try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) { return {}; }
+    }
+    function writeMap(m) {
+        localStorage.setItem(LS, JSON.stringify(m));
+    }
+
+    function getHidden(prefsKey) {
+        var m = readMap();
+        var raw = m[prefsKey];
+        if (!Array.isArray(raw)) return new Set();
+        return new Set(raw);
+    }
+
+    function setHidden(prefsKey, hiddenSet) {
+        var m = readMap();
+        m[prefsKey] = Array.from(hiddenSet).sort();
+        writeMap(m);
+    }
+
+    function apply(prefsKey) {
+        var table = document.getElementById(tableId);
+        if (!table) return;
+        var hidden = getHidden(prefsKey);
+
+        table.querySelectorAll('[data-stock-col]').forEach(function (el) {
+            var id = el.getAttribute('data-stock-col');
+            if (hidden.has(id)) el.classList.add('d-none');
+            else el.classList.remove('d-none');
+        });
+
+        var vis = table.querySelectorAll('thead th[data-stock-col]:not(.d-none)').length;
+        table.querySelectorAll('tr.stock-liste-msg-vide td').forEach(function (td) {
+            td.setAttribute('colspan', Math.max(vis, 1));
+        });
+    }
+
+    function syncCheckboxes(prefsKey) {
+        var hidden = getHidden(prefsKey);
+        var wrap = document.getElementById('colToggles' + prefsKey);
+        if (!wrap) return;
+        wrap.querySelectorAll('.stock-col-checkbox').forEach(function (cb) {
+            var id = cb.getAttribute('data-col-id');
+            cb.checked = !hidden.has(id);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var prefsKey = '{{ prefs_key|escapejs }}';
+
+        var wrap = document.getElementById('colToggles' + prefsKey);
+        if (!wrap || wrap.getAttribute('data-prefs-key') !== prefsKey) return;
+
+        syncCheckboxes(prefsKey);
+        apply(prefsKey);
+
+        wrap.addEventListener('change', function (e) {
+            if (!e.target.classList.contains('stock-col-checkbox')) return;
+            var id = e.target.getAttribute('data-col-id');
+            var hidden = getHidden(prefsKey);
+            if (e.target.checked) hidden.delete(id);
+            else hidden.add(id);
+
+            if (hidden.size >= wrap.querySelectorAll('.stock-col-checkbox').length) {
+                hidden.delete(id);
+                e.target.checked = true;
+                return;
+            }
+
+            setHidden(prefsKey, hidden);
+            apply(prefsKey);
+        });
+
+        document.querySelectorAll('.btn-stock-cols-all[data-prefs-key="' + prefsKey + '"]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var m = readMap();
+                delete m[prefsKey];
+                writeMap(m);
+                syncCheckboxes(prefsKey);
+                apply(prefsKey);
+            });
+        });
+    });
+})();
+</script>

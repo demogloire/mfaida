@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from entreprise.models import Categorie, SousCategorie, Produit, Entreprise
+from utilisateur.permissions import peut_voir_prix_achat_ht
 
 
 class CategorieForm(forms.ModelForm):
@@ -70,6 +71,8 @@ class ProduitForm(forms.ModelForm):
                 categorie__entreprise__user=user
             ).select_related('categorie', 'categorie__entreprise').order_by('categorie__entreprise__nom', 'categorie__nom', 'nom')
         self.fields['sous_categorie'].empty_label = "— Choisir une sous-catégorie —"
+        if user is not None and not peut_voir_prix_achat_ht(user):
+            self.fields.pop('prix_achat_ht', None)
 
     def clean_sku(self):
         raw = self.cleaned_data.get('sku')

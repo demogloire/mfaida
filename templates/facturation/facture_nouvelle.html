@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header"><h4 class="fw-bold">Nouvelle facture (brouillon)</h4></div>
+    <div class="card"><div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="col-md-6">
+                <label class="form-label">{{ field.label }}</label>
+                {% if field.name == 'taux_echange_appliqué' %}
+                    {% render_field field class="form-control" %}
+                {% else %}
+                    {% render_field field class="form-select" %}
+                {% endif %}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+            {% endfor %}
+            {% for e in form.non_field_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Créer le brouillon</button>
+                <a href="{% url 'facturation:liste-factures' %}" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+        </form>
+    </div></div>
+</div>
+{% endblock %}

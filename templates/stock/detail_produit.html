@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex justify-content-between flex-wrap gap-2">
+        <div class="page-title">
+            <h4 class="fw-bold">{{ produit.libelle_ligne_achat }}</h4>
+            <h6>Stock par dépôt, par point de vente et mouvements récents</h6>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary">Sommaire stock</a>
+            <a href="{% url 'stock:liste-stock-depot' %}" class="btn btn-outline-secondary">Niveaux dépôt</a>
+            <a href="{% url 'stock:liste-stock-pdv' %}" class="btn btn-outline-secondary">Niveaux PDV</a>
+            {% include 'stock/includes/export_excel_pdf_pk.html' with excel_name='stock:export-produit-stock-excel' pdf_name='stock:export-produit-stock-pdf' pk=produit.pk %}
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><h6 class="mb-0">Stock dépôt (sans PDV)</h6></div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead><tr><th>Dépôt</th><th class="text-end">Qté</th></tr></thead>
+                        <tbody>
+                            {% for s in niveaux_depot %}
+                            <tr>
+                                <td>{{ s.depot.nom }}</td>
+                                <td class="text-end">{{ s.quantite_reelle }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="2" class="text-muted text-center py-3">Aucun niveau dépôt.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><h6 class="mb-0">Stock points de vente</h6></div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead><tr><th>PDV</th><th>Dépôt source</th><th class="text-end">Qté</th></tr></thead>
+                        <tbody>
+                            {% for s in niveaux_pdv %}
+                            <tr>
+                                <td>{{ s.pointdevente.nom }}</td>
+                                <td class="small text-muted">{{ s.depot.nom }}</td>
+                                <td class="text-end">{{ s.quantite_reelle }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-muted text-center py-3">Aucun niveau PDV.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><h6 class="mb-0">Mouvements dépôt (récents)</h6></div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th><th>Origine</th><th>Dépôt</th><th class="text-end">Reçu</th>
+                        <th class="text-end">Actif</th><th class="text-end">Affecté</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in mouvements_depot %}
+                    <tr>
+                        <td class="small">{{ m.date_creation|date:"d/m/Y H:i" }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ m.get_origine_display }}</span></td>
+                        <td>{{ m.depot.nom }}</td>
+                        <td class="text-end">{{ m.quantite_recu }}</td>
+                        <td class="text-end">{{ m.quantite_active }}</td>
+                        <td class="text-end">{{ m.quantite_affectee }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">Aucun mouvement dépôt.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h6 class="mb-0">Mouvements points de vente (récents)</h6></div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th><th>Origine</th><th>PDV</th><th>Dépôt</th>
+                        <th class="text-end">Reçu</th><th class="text-end">Actif</th><th class="text-end">Affecté</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in mouvements_pdv %}
+                    <tr>
+                        <td class="small">{{ m.date_creation|date:"d/m/Y H:i" }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ m.get_origine_display }}</span></td>
+                        <td>{{ m.pointvente.nom }}</td>
+                        <td class="small text-muted">{{ m.depot.nom }}</td>
+                        <td class="text-end">{{ m.quantite_recu }}</td>
+                        <td class="text-end">{{ m.quantite_active }}</td>
+                        <td class="text-end">{{ m.quantite_affectee }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-3">Aucun mouvement PDV.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

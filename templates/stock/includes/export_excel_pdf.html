@@ -1,0 +1,5 @@
+{% load stock_export_tags %}
+<div class="btn-group btn-group-sm flex-shrink-0" role="group" aria-label="Export">
+    <a class="btn btn-outline-success btn-sm" href="{% url excel_name %}{% stock_export_qs request %}">Excel</a>
+    <a class="btn btn-outline-danger btn-sm" href="{% url pdf_name %}{% stock_export_qs request %}">PDF</a>
+</div>

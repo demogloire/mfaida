@@ -1,0 +1,93 @@
+<div id="reception-detail-header-root" class="card border-0 shadow-sm mb-3 overflow-hidden">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h4 class="fw-bold mb-0">BR {{ reception.numero_reception }}</h4>
+                    {% if reception.statut == 'EN_COURS' %}
+                    <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning-subtle">Brouillon</span>
+                    {% elif reception.statut == 'VALIDE' %}
+                    <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">Validé</span>
+                    {% else %}
+                    <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle">Annulé</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-0 mt-1">{{ reception.date_reception|date:"d/m/Y H:i" }}</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                {% if reception.statut == 'EN_COURS' %}
+                <a href="{% url 'achat:valider-reception' reception.pk %}" class="btn btn-success btn-sm">
+                    <i class="ti ti-check me-1"></i>Valider la réception
+                </a>
+                {% endif %}
+                <a href="{% url 'achat:export-reception-pdf' reception.pk %}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener noreferrer">
+                    <i class="ti ti-file-type-pdf me-1"></i>PDF
+                </a>
+                {% if reception.statut != 'VALIDE' %}
+                <form method="post"
+                      action="{% url 'achat:supprimer-reception' reception.pk %}"
+                      class="d-inline"
+                      onsubmit="return confirm('Supprimer définitivement ce bon de réception ? Les quantités reçues sur le bon de commande lié seront corrigées.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="ti ti-trash me-1"></i>Supprimer le bon
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'achat:liste-receptions' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-arrow-left me-1"></i>Liste des réceptions
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-2">
+            {% if reception.ordre_achat_id %}
+            <div class="col-md-4">
+                <p class="text-uppercase text-muted fw-semibold small mb-1" style="font-size:.7rem;">Commande liée</p>
+                <a href="{% url 'achat:detail-commande' reception.ordre_achat.pk %}" class="fw-semibold text-decoration-none">
+                    <code>{{ reception.ordre_achat.numero_commande }}</code>
+                </a>
+                <p class="small text-muted mb-0">{{ reception.ordre_achat.fournisseur.nom_societe }}</p>
+            </div>
+            {% else %}
+            <div class="col-md-4">
+                <p class="text-uppercase text-muted fw-semibold small mb-1" style="font-size:.7rem;">Origine</p>
+                <span class="badge bg-secondary-subtle text-secondary border">Hors bon de commande</span>
+                {% if reception.fournisseur_id %}
+                <p class="small mb-0 mt-1">{{ reception.fournisseur.nom_societe }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            <div class="col-md-4">
+                <p class="text-uppercase text-muted fw-semibold small mb-1" style="font-size:.7rem;">Stock — destination</p>
+                {% if reception.depot_destination_id %}
+                <p class="mb-0 fw-medium"><span class="badge bg-primary-subtle text-primary border me-1">Dépôt</span>{{ reception.depot_destination.nom }}</p>
+                {% elif reception.point_destination_id %}
+                <p class="mb-0 fw-medium"><span class="badge bg-info-subtle text-info border me-1">Boutique</span>{{ reception.point_destination.nom }}</p>
+                {% else %}
+                <p class="mb-0 text-muted">—</p>
+                {% endif %}
+            </div>
+            <div class="col-md-4">
+                <p class="text-uppercase text-muted fw-semibold small mb-1" style="font-size:.7rem;">Traçabilité</p>
+                <p class="small mb-1">
+                    <strong>Créé par</strong> :
+                    {% if reception.cree_par_id %}
+                    {{ reception.cree_par.get_full_name|default:reception.cree_par.username }}
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </p>
+                <p class="small mb-0">
+                    <strong>Réception (compte)</strong> :
+                    {% if reception.recu_par_id %}
+                    {{ reception.recu_par.get_full_name|default:reception.recu_par.username }}
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                    <span class="text-muted">(automatique)</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

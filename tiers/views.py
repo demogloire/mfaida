@@ -258,15 +258,50 @@ def creer_fournisseur(request):
 @login_requis
 def modifier_fournisseur(request, pk):
     entreprise = _get_entreprise(request.user)
-    fournisseur = get_object_or_404(Fournisseur, pk=pk, entreprise=entreprise)
-    form = FournisseurForm(request.POST or None, instance=fournisseur, entreprise=entreprise)
+    admin = _est_admin(request.user)
+    if admin:
+        fournisseur = get_object_or_404(
+            Fournisseur.objects.select_related('entreprise'),
+            pk=pk,
+        )
+    else:
+        if not entreprise:
+            messages.error(request, 'Aucune entreprise associée à votre compte.')
+            return redirect('tiers:liste-fournisseurs')
+        fournisseur = get_object_or_404(
+            Fournisseur.objects.select_related('entreprise'),
+            pk=pk,
+            entreprise=entreprise,
+        )
+
+    form = FournisseurForm(
+        request.POST or None,
+        instance=fournisseur,
+        entreprise=entreprise,
+        admin=admin,
+    )
     if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, "Fournisseur mis à jour.")
+        if admin:
+            inst = form.save(commit=False)
+            inst.entreprise = form.cleaned_data['entreprise']
+            inst.save()
+        else:
+            form.save()
+        messages.success(request, 'Fournisseur mis à jour.')
         return redirect('tiers:detail-fournisseur', pk=pk)
     if request.htmx and request.htmx.target == 'form-container':
-        return render(request, 'tiers/fournisseurs/partial/form.html', {'form': form, 'objet': fournisseur})
-    ctx = {'form': form, 'actif': 'fournisseurs', 'titre': 'Modifier le fournisseur', 'objet': fournisseur}
+        return render(
+            request,
+            'tiers/fournisseurs/partial/form.html',
+            {'form': form, 'objet': fournisseur},
+        )
+    ctx = {
+        'form': form,
+        'actif': 'fournisseurs',
+        'titre': 'Modifier le fournisseur',
+        'objet': fournisseur,
+        'est_super_admin': admin,
+    }
     return render(request, 'tiers/fournisseurs/form.html', ctx)
 
 

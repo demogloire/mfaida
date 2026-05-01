@@ -1,0 +1,295 @@
+<div id="reception-lignes-augment-block">
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="ti ti-list-details me-1"></i>Lignes du bon</h6>
+            <p class="text-muted small mb-0">Tant que le bon est en brouillon, vous pouvez modifier ou retirer une ligne avant validation.</p>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Produit</th>
+                            <th style="min-width:120px">Emplacement</th>
+                            {% if reception.ordre_achat_id %}
+                            <th class="text-end">Qté commandée</th>
+                            <th class="text-end small text-muted">Cumul BC</th>
+                            <th class="text-end small text-primary">Restante</th>
+                            {% endif %}
+                            <th class="text-end">Qté reçue</th>
+                            <th class="text-end">Écarter</th>
+                            <th>Lot</th>
+                            <th class="small">Marque / Cond.</th>
+                            <th class="small">D. prod.</th>
+                            <th class="small">D. exp.</th>
+                            {% if reception.statut == 'EN_COURS' %}
+                            <th class="text-end small">Actions</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in lignes %}
+                        <tr>
+                            <td class="fw-medium">
+                                {% if l.produit_id %}
+                                    {{ l.produit.libelle_ligne_achat }}
+                                {% else %}
+                                    {{ l.ligne_ordre_achat.produit.libelle_ligne_achat }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if l.location_id %}
+                                    <span class="badge bg-light text-dark border font-monospace">{{ l.location.code }}</span>
+                                {% else %}
+                                    <span class="text-danger small">À définir</span>
+                                {% endif %}
+                            </td>
+                            {% if reception.ordre_achat_id %}
+                            <td class="text-end">{% if l.ligne_ordre_achat_id %}{{ l.ligne_ordre_achat.quantite_commandee }}{% else %}—{% endif %}</td>
+                            <td class="text-end small text-muted">{% if l.ligne_ordre_achat_id %}{{ l.ligne_ordre_achat.quantite_recue }}{% else %}—{% endif %}</td>
+                            <td class="text-end small fw-semibold text-primary">{% if l.restant_bc_ligne is not None %}{{ l.restant_bc_ligne }}{% else %}—{% endif %}</td>
+                            {% endif %}
+                            <td class="text-end text-success fw-semibold">{{ l.quantite_recue_effective }}</td>
+                            <td class="text-end {% if l.quantite_ecarter > 0 %}text-danger{% else %}text-muted{% endif %}">{{ l.quantite_ecarter }}</td>
+                            <td class="text-muted small">{{ l.lot_batch|default:"—" }}</td>
+                            <td class="text-muted small">
+                                {{ l.marque|default:"—" }} {% if l.conditionnement %}<span class="text-secondary">/</span> {{ l.conditionnement }}{% endif %}
+                            </td>
+                            <td class="text-muted small">
+                                {% if l.dateproduction %}{{ l.dateproduction|date:"d/m/Y" }}{% else %}—{% endif %}
+                            </td>
+                            <td class="text-muted small">
+                                {% if l.dateexpiration %}{{ l.dateexpiration|date:"d/m/Y" }}{% else %}—{% endif %}
+                            </td>
+                            {% if reception.statut == 'EN_COURS' %}
+                            <td class="text-end text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditLigne{{ l.pk }}">
+                                    <i class="ti ti-edit"></i>
+                                </button>
+                                <form method="post"
+                                      action="{% url 'achat:supprimer-ligne-reception' reception.pk %}"
+                                      class="d-inline-block ms-1"
+                                      onsubmit="return confirm('Retirer cette ligne du bon de réception ?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="ligne_pk" value="{{ l.pk }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="ti ti-trash"></i></button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="20" class="text-center text-muted py-4">Aucune ligne pour l’instant.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if reception.statut == 'EN_COURS' %}
+    {% for l in lignes %}
+    <div class="modal fade" id="modalEditLigne{{ l.pk }}" tabindex="-1" aria-labelledby="titEdit{{ l.pk }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titEdit{{ l.pk }}">Modifier la ligne</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <form method="post"
+                      action="{% url 'achat:modifier-ligne-reception' reception.pk %}"
+                >
+                    {% csrf_token %}
+                    <input type="hidden" name="ligne_pk" value="{{ l.pk }}">
+                    <div class="modal-body row g-3">
+                        {% if l.ligne_ordre_achat_id %}
+                        <div class="col-12">
+                            <div class="alert alert-light border small py-2 mb-0">
+                                <strong>Plafond lié au bon de commande :</strong>
+                                reste <strong>{{ l.restant_bc_ligne }}</strong> à couvrir sur cette ligne (toutes réceptions confondues).
+                                Sur <em>ce</em> bon, vous pouvez saisir au plus <strong>{{ l.qte_max_modal }}</strong> (y compris la quantité déjà enregistrée sur cette ligne).
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-12">
+                            <label class="form-label small fw-medium">Emplacement <span class="text-danger">*</span></label>
+                            <select name="location" class="form-select" required>
+                                <option value="">—</option>
+                                {% for loc in locations_bon %}
+                                <option value="{{ loc.pk }}"{% if loc.pk == l.location_id %} selected{% endif %}>{{ loc.code }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Qté reçue (sur ce bon)</label>
+                            <input type="number" name="quantite_recue_effective" value="{{ l.quantite_recue_effective }}" min="0"{% if l.qte_max_modal %} max="{{ l.qte_max_modal }}"{% endif %} step="0.01" class="form-control text-end" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">À l'écart (écarter)</label>
+                            <input type="number" name="quantite_ecarter" value="{{ l.quantite_ecarter }}" min="0" step="0.01" class="form-control text-end">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Lot / batch</label>
+                            <input type="text" name="lot_batch" value="{{ l.lot_batch }}" class="form-control" maxlength="20">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Marque</label>
+                            <input type="text" name="marque" value="{{ l.marque }}" class="form-control" maxlength="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Conditionnement</label>
+                            <input type="text" name="conditionnement" value="{{ l.conditionnement }}" class="form-control" maxlength="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Date production</label>
+                            <input type="date" name="dateproduction" class="form-control" {% if l.dateproduction %}value="{{ l.dateproduction|date:'Y-m-d' }}"{% endif %}>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Date expiration</label>
+                            <input type="date" name="dateexpiration" class="form-control" {% if l.dateexpiration %}value="{{ l.dateexpiration|date:'Y-m-d' }}"{% endif %}>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if reception.statut == 'EN_COURS' %}
+    <div class="card border-primary-subtle mb-4 shadow-sm">
+        <div class="card-header bg-primary-subtle border-primary-subtle py-3">
+            <h6 class="mb-0 fw-semibold"><i class="ti ti-circle-plus me-1"></i>Ajouter des lignes au bon</h6>
+        </div>
+        <div class="card-body">
+            <form method="post"
+                  action="{% url 'achat:ajouter-lignes-reception' reception.pk %}"
+                  hx-post="{% url 'achat:ajouter-lignes-reception' reception.pk %}"
+                  hx-target="#reception-lignes-augment-block"
+                  hx-swap="innerHTML"
+                  class="reception-add-lignes-form">
+                {% csrf_token %}
+
+                {% if reception.ordre_achat_id %}
+                <p class="text-muted small mb-3">
+                    Saisissez les <strong>nouvelles</strong> quantités à rattacher à ce bon. La colonne <strong>Restante</strong> indique ce qu’il reste à couvrir sur le bon de commande : ne la dépassez pas. Chaque ligne avec quantité doit avoir un <strong>emplacement</strong> dans la même branche que la destination du bon.
+                </p>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produit</th>
+                                <th class="text-end">Qté commandée</th>
+                                <th class="text-end">Déjà reçue</th>
+                                <th class="text-end text-primary">Restante</th>
+                                <th class="text-end">À ajouter</th>
+                                <th style="min-width:140px">Emplacement <span class="text-danger">*</span></th>
+                                <th class="text-end">Écarter</th>
+                                <th>Lot</th>
+                                <th class="small">Marque</th>
+                                <th class="small">Cond.</th>
+                                <th class="small">D. prod.</th>
+                                <th class="small">D. exp.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in lignes_bc_ajout_rows %}
+                            <tr>
+                                <td class="small">{{ row.lc.produit.libelle_ligne_achat }}</td>
+                                <td class="text-end">{{ row.lc.quantite_commandee }}</td>
+                                <td class="text-end text-muted">{{ row.lc.quantite_recue }}</td>
+                                <td class="text-end fw-semibold text-primary">{{ row.restant }}</td>
+                                <td>
+                                    <input type="number" name="qte_{{ row.lc.pk }}" class="form-control form-control-sm text-end"
+                                           min="0" max="{{ row.restant }}" step="0.01" placeholder="—" style="width:92px;"
+                                           {% if row.restant == 0 %}readonly title="Rien à ajouter : ligne déjà couverte"{% endif %}>
+                                </td>
+                                <td>
+                                    <select name="loc_{{ row.lc.pk }}" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for loc in locations_bon %}
+                                        <option value="{{ loc.pk }}">{{ loc.code }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" name="ecart_{{ row.lc.pk }}" class="form-control form-control-sm text-end"
+                                           value="0" min="0" step="0.01" style="width:72px;">
+                                </td>
+                                <td><input type="text" name="lot_{{ row.lc.pk }}" maxlength="20" class="form-control form-control-sm" style="min-width:70px;"></td>
+                                <td><input type="text" name="marque_{{ row.lc.pk }}" maxlength="100" class="form-control form-control-sm"></td>
+                                <td><input type="text" name="cond_{{ row.lc.pk }}" maxlength="100" class="form-control form-control-sm"></td>
+                                <td><input type="date" name="dprod_{{ row.lc.pk }}" class="form-control form-control-sm" style="width:132px;"></td>
+                                <td><input type="date" name="dexp_{{ row.lc.pk }}" class="form-control form-control-sm" style="width:132px;"></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small mb-3">
+                    Catalogue selon votre destination. Sélectionnez le produit, la quantité et l’emplacement (<span class="text-danger">*</span> si quantité renseignée).
+                </p>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="min-width:200px">Produit</th>
+                                <th class="text-end">Qté</th>
+                                <th style="min-width:130px">Emplacement</th>
+                                <th class="text-end">Prix HT</th>
+                                <th class="text-end">Écarter</th>
+                                <th>Lot</th>
+                                <th>Marque</th>
+                                <th>Cond.</th>
+                                <th>D. prod.</th>
+                                <th>D. exp.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for idx in ligne_add_indices %}
+                            <tr>
+                                <td>
+                                    <select name="nproduit_{{ idx }}" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for p in produits_ajout %}
+                                        <option value="{{ p.pk }}">{{ p.libelle_ligne_achat }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td><input type="number" name="nqte_{{ idx }}" min="0" step="0.01" placeholder="—" class="form-control form-control-sm text-end" style="width:88px;"></td>
+                                <td>
+                                    <select name="nloc_{{ idx }}" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for loc in locations_bon %}
+                                        <option value="{{ loc.pk }}">{{ loc.code }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td><input type="number" name="nprix_{{ idx }}" min="0" step="0.01" placeholder="catalogue" class="form-control form-control-sm text-end" style="width:96px;"></td>
+                                <td><input type="number" name="necart_{{ idx }}" min="0" step="0.01" value="0" class="form-control form-control-sm text-end" style="width:72px;"></td>
+                                <td><input type="text" name="nlot_{{ idx }}" maxlength="20" class="form-control form-control-sm"></td>
+                                <td><input type="text" name="nmarque_{{ idx }}" maxlength="100" class="form-control form-control-sm"></td>
+                                <td><input type="text" name="ncond_{{ idx }}" maxlength="100" class="form-control form-control-sm"></td>
+                                <td><input type="date" name="ndprod_{{ idx }}" class="form-control form-control-sm" style="width:132px;"></td>
+                                <td><input type="date" name="ndexp_{{ idx }}" class="form-control form-control-sm" style="width:132px;"></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="ti ti-upload me-1"></i>Ajouter au bon
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>

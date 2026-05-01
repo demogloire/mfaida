@@ -1,10 +1,9 @@
 {% extends 'base.html' %}
-{% load widget_tweaks %}
 {% block content %}
 <div class="content">
     <div class="page-header">
         <div class="page-title">
-            <h4 class="fw-bold">Nouvelle réception</h4>
+            <h4 class="fw-bold">Nouvelle réception (bon de commande)</h4>
             <h6>BC {{ commande.numero_commande }} — {{ commande.fournisseur.nom_societe }}</h6>
         </div>
         <div class="page-btn">
@@ -17,7 +16,6 @@
     <form method="post">
         {% csrf_token %}
         <div class="row g-3">
-            {# ── En-tête réception ── #}
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex align-items-center gap-2">
@@ -25,60 +23,140 @@
                         <h6 class="mb-0 fw-semibold">Informations de la réception</h6>
                     </div>
                     <div class="card-body">
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+                        <div class="alert alert-light border small mb-4">
+                            <p class="mb-2 fw-semibold"><i class="ti ti-route me-1"></i>Liaison avec le bon de commande {{ commande.numero_commande }}</p>
+                            <p class="mb-1">
+                                Destination(s) prévue(s) sur le BC :
+                                {% if commande.depot_destination_id %}
+                                <span class="badge bg-primary-subtle text-primary border rounded-pill">Dépôt</span>
+                                {{ commande.depot_destination.nom }}
+                                {% endif %}
+                                {% if commande.depot_destination_id and commande.pointdevente_destination_id %}
+                                <span class="text-muted"> · </span>
+                                {% endif %}
+                                {% if commande.pointdevente_destination_id %}
+                                <span class="badge bg-info-subtle text-info border rounded-pill">Boutique</span>
+                                {{ commande.pointdevente_destination.nom }}
+                                {% endif %}
+                                {% if not commande.depot_destination_id and not commande.pointdevente_destination_id %}
+                                <span class="text-muted">non renseignée sur le bon</span>
+                                {% endif %}
+                            </p>
+                            <p class="mb-0 text-muted">
+                                Indiquez <strong>où</strong> vous enregistrez cette livraison aujourd’hui :
+                                soit dans <strong>le dépôt</strong>, soit dans <strong>la boutique</strong> — une seule destination à la fois.
+                                Les deux choix correspondent au flux « tout dépôt » ou « stock boutique », comme pour une réception simple.
+                                Les emplacements (rayons) sont filtrés selon cette destination.
+                            </p>
+                        </div>
+                        <p class="text-muted small mb-3">Le créateur et le réceptionneur sont enregistrés automatiquement avec votre compte utilisateur.</p>
                         <div class="row g-3">
-                            <div class="col-sm-6">
-                                <label class="form-label fw-medium">Dépôt de réception <span class="text-danger">*</span></label>
-                                {% render_field form.depot_destination class="form-select" %}
+                            <div class="col-lg-6">
+                                <label class="form-label fw-medium">Réception au dépôt</label>
+                                <select name="{{ form.depot_destination.html_name }}" id="{{ form.depot_destination.id_for_label }}" class="form-select">
+                                    <option value="" {% if not form.depot_destination.value %}selected{% endif %}>———</option>
+                                    {% for d in form.depot_destination.field.queryset %}
+                                    <option value="{{ d.pk }}" data-branche-id="{{ d.branche_id }}"
+                                        {% if form.depot_destination.value|stringformat:'s' == d.pk|stringformat:'s' %} selected{% endif %}>{{ d.branche.nom }} — {{ d.nom }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.depot_destination.errors %}<div class="text-danger small">{{ form.depot_destination.errors }}</div>{% endif %}
+                                {% if form.depot_destination.help_text %}
+                                <p class="text-info small mb-0 mt-1">{{ form.depot_destination.help_text }}</p>
+                                {% endif %}
+                                <p class="text-muted small mb-0 mt-1">Remplir dépôt <strong>ou</strong> boutique — pas les deux.</p>
                             </div>
-                            <div class="col-12">
-                                <label class="form-label fw-medium">Notes</label>
-                                {% render_field form.notes class="form-control" rows="2" placeholder="Observations sur la livraison…" %}
+                            <div class="col-lg-6">
+                                <label class="form-label fw-medium">Réception à la boutique (point de vente)</label>
+                                <select name="{{ form.point_destination.html_name }}" id="{{ form.point_destination.id_for_label }}" class="form-select">
+                                    <option value="" {% if not form.point_destination.value %}selected{% endif %}>———</option>
+                                    {% for pv in form.point_destination.field.queryset %}
+                                    <option value="{{ pv.pk }}" data-branche-id="{{ pv.branche_id }}"
+                                        {% if form.point_destination.value|stringformat:'s' == pv.pk|stringformat:'s' %} selected{% endif %}>{{ pv.branche.nom }} — {{ pv.nom }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.point_destination.errors %}<div class="text-danger small">{{ form.point_destination.errors }}</div>{% endif %}
+                                {% if form.point_destination.help_text %}
+                                <p class="text-info small mb-0 mt-1">{{ form.point_destination.help_text }}</p>
+                                {% endif %}
+                                <p class="text-muted small mb-0 mt-1">Réception boutique : stock rattaché au dépôt source du PDV. Emplacements = branche de la destination choisie.</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {# ── Lignes ── #}
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h6 class="mb-0 fw-semibold">Quantités reçues</h6>
-                        <p class="text-muted small mb-0">Saisissez les quantités réellement reçues pour chaque ligne.</p>
+                        <h6 class="mb-0 fw-semibold">Quantités reçues et traçabilité</h6>
+                        <p class="text-muted small mb-0">La colonne <strong>Restante</strong> indique ce qu’il reste à couvrir sur le bon de commande. Vous ne pouvez pas réceptionner plus que ce restant pour chaque ligne.</p>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-sm mb-0">
+                            <table class="table table-sm mb-0 align-middle">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Produit</th>
-                                        <th>Qté commandée</th>
-                                        <th>Qté reçue *</th>
-                                        <th>Qté écartée</th>
-                                        <th>Motif écart</th>
-                                        <th>Lot/Batch</th>
+                                        <th class="text-end">Qté cmdée</th>
+                                        <th class="text-end">Déjà reçue (BC)</th>
+                                        <th class="text-end">Restante</th>
+                                        <th class="text-end">À saisir (ce bon)</th>
+                                        <th>Emplacement</th>
+                                        <th class="text-end">Écarter</th>
+                                        <th>Lot</th>
+                                        <th>Marque</th>
+                                        <th>Cond.</th>
+                                        <th>D. prod.</th>
+                                        <th>D. exp.</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for l in lignes_commande %}
+                                    {% for row in lignes_bc_creer %}
                                     <tr>
-                                        <td class="fw-medium">{{ l.produit.libelle_ligne_achat }}</td>
-                                        <td class="fw-medium">{{ l.quantite_commandee }}</td>
+                                        <td class="fw-medium">{{ row.ligne.produit.libelle_ligne_achat }}</td>
+                                        <td class="text-end fw-medium">{{ row.ligne.quantite_commandee }}</td>
+                                        <td class="text-end small text-muted">{{ row.ligne.quantite_recue }}</td>
+                                        <td class="text-end fw-semibold text-primary">{{ row.restant_bc }}</td>
                                         <td>
-                                            <input type="number" name="qte_{{ l.pk }}" class="form-control form-control-sm"
-                                                   value="{{ l.quantite_commandee }}" min="0" step="0.01" style="min-width:90px;">
+                                            <input type="number" name="qte_{{ row.ligne.pk }}" class="form-control form-control-sm text-end"
+                                                   value="{{ row.restant_bc }}" min="0" max="{{ row.restant_bc }}" step="0.01" style="min-width:85px;"
+                                                   {% if row.restant_bc == 0 %}readonly title="Quantité maximale déjà couverte pour cette ligne"{% endif %}>
                                         </td>
                                         <td>
-                                            <input type="number" name="ecart_{{ l.pk }}" class="form-control form-control-sm"
-                                                   value="0" min="0" step="0.01" style="min-width:80px;">
+                                            <select name="loc_{{ row.ligne.pk }}" class="form-select form-select-sm reception-loc-par-branche" style="min-width:110px;">
+                                                <option value="">—</option>
+                                                {% for loc in locations_lignes %}
+                                                <option value="{{ loc.pk }}" data-branche-id="{{ loc.branche_id }}">{{ loc.code }} · {{ loc.branche.nom }}</option>
+                                                {% endfor %}
+                                            </select>
                                         </td>
                                         <td>
-                                            <input type="text" name="motif_{{ l.pk }}" class="form-control form-control-sm"
-                                                   placeholder="Motif…" style="min-width:120px;">
+                                            <input type="number" name="ecart_{{ row.ligne.pk }}" class="form-control form-control-sm text-end"
+                                                   value="0" min="0" step="0.01" style="min-width:72px;">
                                         </td>
                                         <td>
-                                            <input type="text" name="lot_{{ l.pk }}" class="form-control form-control-sm"
-                                                   value="{{ l.lot_batch }}" placeholder="LOT-001" style="min-width:100px;">
+                                            <input type="text" name="lot_{{ row.ligne.pk }}" class="form-control form-control-sm"
+                                                   value="{{ row.ligne.lot_batch }}" placeholder="LOT" maxlength="20" style="min-width:90px;">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="marque_{{ row.ligne.pk }}" class="form-control form-control-sm"
+                                                   placeholder="Marque" maxlength="100" style="min-width:90px;">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="cond_{{ row.ligne.pk }}" class="form-control form-control-sm"
+                                                   placeholder="ex. carton 12u" maxlength="100" style="min-width:100px;">
+                                        </td>
+                                        <td>
+                                            <input type="date" name="dprod_{{ row.ligne.pk }}" class="form-control form-control-sm"
+                                                   {% if row.ligne.dateproduction %}value="{{ row.ligne.dateproduction|date:'Y-m-d' }}"{% endif %} style="min-width:132px;">
+                                        </td>
+                                        <td>
+                                            <input type="date" name="dexp_{{ row.ligne.pk }}" class="form-control form-control-sm"
+                                                   {% if row.ligne.dateexpiration %}value="{{ row.ligne.dateexpiration|date:'Y-m-d' }}"{% endif %} style="min-width:132px;">
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -99,5 +177,6 @@
             </div>
         </div>
     </form>
+{% include 'achat/receptions/partial/filter_locations_par_branche_script.html' %}
 </div>
 {% endblock content %}

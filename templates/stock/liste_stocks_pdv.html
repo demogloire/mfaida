@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load acces_tags %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Stock — points de vente</h4>
+            <h6>{{ entreprise.nom }} — lots disponibles ; constats inventaire manquants (physique dans « Reçu », actif 0) inclus ; détail réception comme en dépôt source</h6>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary">Sommaire stock</a>
+            <a href="{% url 'stock:liste-stock-pdv-synthese' %}" class="btn btn-outline-primary">Synthèse par produit</a>
+            <a href="{% url 'stock:mise-a-ecart-pdv' %}" class="btn btn-outline-warning btn-sm">Mise à l’écart</a>
+            <a href="{% url 'stock:liste-stock-depot' %}" class="btn btn-outline-primary">Voir stock dépôt</a>
+            {% include 'stock/includes/export_excel_pdf.html' with excel_name='stock:export-stock-pdv-excel' pdf_name='stock:export-stock-pdv-pdf' %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-5 col-lg-4">
+                    <label class="form-label small mb-0" for="id-filtre-pv-stock">Point de vente</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-2" aria-hidden="true"><i class="ti ti-shopping-bag text-muted"></i></span>
+                        <select id="id-filtre-pv-stock" name="point_vente" class="form-select border-start-0 ps-0" onchange="this.form.submit()" title="Filtrer par point de vente">
+                            <option value="">Tous</option>
+                            {% for pv in points_vente %}
+                            <option value="{{ pv.pk }}" {% if filt_pk == pv.pk|stringformat:"s" %}selected{% endif %}>{{ pv.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <label class="form-label small mb-0" for="id-filtre-q-stock-pdv">Recherche produit</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-2" aria-hidden="true"><i class="ti ti-search text-muted"></i></span>
+                        <input type="search" id="id-filtre-q-stock-pdv" name="q" value="{{ q }}" class="form-control border-start-0" placeholder="Nom, SKU, code-barres…" autocomplete="off">
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filtrer</button>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            {% include 'stock/includes/liste_stock_colonnes_prefs.html' with prefs_key='liste_pdv' variant='pv' %}
+            <div class="table-responsive">
+                <table id="stock-liste-table-liste_pdv" class="table table-hover table-sm align-middle mb-0 text-nowrap" style="font-size:.85rem">
+                    <thead class="table-light">
+                        <tr>
+                            <th data-stock-col="produit">Produit</th>
+                            <th data-stock-col="point_vente">Point de vente</th>
+                            <th data-stock-col="depot" title="Dépôt logistique (source PDV)">Dépôt</th>
+                            <th data-stock-col="recu" class="text-end" title="Quantité entrée à la création du mouvement">Reçu</th>
+                            <th data-stock-col="actif" class="text-end" title="Quantité encore disponible sur ce lot">Actif</th>
+                            <th data-stock-col="affectee" class="text-end">Affectée</th>
+                            <th data-stock-col="ecart" class="text-end" title="Quantité à l’écart (réception ou mise à l’écart) — pas l’écart inventaire campagne">Écarter</th>
+                            {% if request.user|peut_voir_prix_achat_ht %}
+                            <th data-stock-col="pa_ht" class="text-end">PA HT</th>
+                            {% endif %}
+                            <th data-stock-col="pv_ht" class="text-end">PV HT</th>
+                            <th data-stock-col="pv_ttc" class="text-end">PV TTC</th>
+                            <th data-stock-col="emplacement">Empl.</th>
+                            <th data-stock-col="lot">Lot</th>
+                            <th data-stock-col="fabrication">Fab.</th>
+                            <th data-stock-col="expiration">Exp.</th>
+                            <th data-stock-col="origine">Origine</th>
+                            <th data-stock-col="motif">Motif</th>
+                            <th data-stock-col="cmd_achat">Cmd achat</th>
+                            <th data-stock-col="ref_piece">Réf. pièce</th>
+                            <th data-stock-col="marque">Marque</th>
+                            <th data-stock-col="conditionnement">Condit.</th>
+                            <th data-stock-col="unite">Unité</th>
+                            <th data-stock-col="date_mouv">Date mouv.</th>
+                            <th data-stock-col="effectue_par">Enregistré par</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in lignes %}
+                        {% with m=r.mouvement %}
+                        <tr class="{% if r.sous_seuil %}table-warning{% elif m.origine == 'INVENTAIRE' and m.inventaire_id and m.quantite_active == 0 %}table-secondary bg-opacity-25{% endif %}">
+                            <td data-stock-col="produit"><a href="{% url 'stock:detail-produit-stock' m.produit_id %}">{{ m.produit.libelle_ligne_achat }}</a></td>
+                            <td data-stock-col="point_vente">{{ m.pointvente.nom }}</td>
+                            <td data-stock-col="depot">{{ m.depot.nom }}</td>
+                            <td data-stock-col="recu" class="text-end">{{ m.quantite_recu }}</td>
+                            <td data-stock-col="actif" class="text-end fw-semibold">{{ m.quantite_active }}</td>
+                            <td data-stock-col="affectee" class="text-end">{{ m.quantite_affectee }}</td>
+                            <td data-stock-col="ecart" class="text-end">{{ m.quantite_ecarter }}</td>
+                            {% if request.user|peut_voir_prix_achat_ht %}
+                            <td data-stock-col="pa_ht" class="text-end">{{ m.prix_unitaire }}</td>
+                            {% endif %}
+                            <td data-stock-col="pv_ht" class="text-end">{{ m.produit.prix_vente_ht }}</td>
+                            <td data-stock-col="pv_ttc" class="text-end">{{ m.produit.prix_vente_ttc }}</td>
+                            <td data-stock-col="emplacement" class="small">{% if m.location %}{{ m.location.code }}{% elif m.location_code %}{{ m.location_code }}{% else %}—{% endif %}</td>
+                            <td data-stock-col="lot">{{ m.lot_batch|default:"—" }}</td>
+                            <td data-stock-col="fabrication">{% if m.dateproduction %}{{ m.dateproduction|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                            <td data-stock-col="expiration">{% if m.dateexpiration %}{{ m.dateexpiration|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                            <td data-stock-col="origine"><span class="badge bg-light text-dark border">{{ m.get_origine_display }}</span></td>
+                            <td data-stock-col="motif" class="small text-wrap" style="max-width:7rem" {% if m.motif %}title="{{ m.motif|escape }}"{% endif %}>{{ m.motif|default:"—"|truncatechars:28 }}</td>
+                            <td data-stock-col="cmd_achat" class="small">{% if m.ligneordreachat_id %}{{ m.ligneordreachat.ordre_achat.numero_commande }}{% else %}—{% endif %}</td>
+                            <td data-stock-col="ref_piece" class="small">{{ m.reference_piece|default:"—" }}</td>
+                            <td data-stock-col="marque" class="small">{{ m.marque|default:"—" }}</td>
+                            <td data-stock-col="conditionnement" class="small text-wrap" style="max-width:9rem">{{ m.conditionnement|default:"—"|truncatechars:40 }}</td>
+                            <td data-stock-col="unite" class="small">{{ m.unite|default:"—" }}</td>
+                            <td data-stock-col="date_mouv" class="small">{{ m.date_creation|date:"d/m/Y H:i" }}</td>
+                            <td data-stock-col="effectue_par" class="small">{% if m.effectue_par %}{{ m.effectue_par.get_full_name|default:m.effectue_par.username }}{% else %}—{% endif %}</td>
+                        </tr>
+                        {% endwith %}
+                        {% empty %}
+                        <tr class="stock-liste-msg-vide"><td colspan="{% if request.user|peut_voir_prix_achat_ht %}23{% else %}22{% endif %}" class="text-center text-muted py-4">Aucune ligne avec quantité active pour ces filtres.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -12,14 +12,39 @@
             <a href="{% url 'achat:modifier-commande' commande.pk %}" class="btn btn-outline-secondary">
                 <i class="ti ti-edit me-1"></i>Modifier
             </a>
+            {% if lignes %}
+            <form method="post" action="{% url 'achat:envoyer-commande' commande.pk %}" class="d-inline"
+                  onsubmit="return confirm('Marquer ce bon comme envoy\u00e9 au fournisseur ? Les lignes ne seront plus modifiables.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-send me-1"></i>Envoyer au fournisseur (finaliser le bon)
+                </button>
+            </form>
+            {% else %}
+            <button type="button" class="btn btn-secondary" disabled
+                    title="Ajoutez au moins une ligne produit avant d’envoyer le bon au fournisseur.">
+                <i class="ti ti-send me-1"></i>Envoyer au fournisseur
+            </button>
+            {% endif %}
             <a href="{% url 'achat:annuler-commande' commande.pk %}" class="btn btn-outline-danger">
                 <i class="ti ti-ban me-1"></i>Annuler
             </a>
             {% endif %}
-            {% if commande.statut in 'ENVOYE RECU_PARTIEL' %}
+            {% if commande.statut == 'ENVOYE' or commande.statut == 'RECU_PARTIEL' %}
+            {% if not admin %}
             <a href="{% url 'achat:creer-reception' commande.pk %}" class="btn btn-success">
-                <i class="ti ti-package-import me-1"></i>Réceptionner
+                <i class="ti ti-package-import me-1"></i>Réceptionner (dépôt ou boutique)
             </a>
+            {% elif entreprise_bc_scope and entreprise_bc_scope.pk == commande.entreprise_id %}
+            <a href="{% url 'achat:creer-reception' commande.pk %}" class="btn btn-success">
+                <i class="ti ti-package-import me-1"></i>Réceptionner (dépôt ou boutique)
+            </a>
+            {% else %}
+            <button type="button" class="btn btn-success disabled" disabled
+                    title="Réception disponible uniquement pour les BC de votre entreprise.">
+                <i class="ti ti-package-import me-1"></i>Réceptionner (réservé à votre périmètre)
+            </button>
+            {% endif %}
             {% endif %}
             <a href="{% url 'achat:export-commande-excel' commande.pk %}" class="btn btn-outline-success btn-sm">
                 <i class="ti ti-file-spreadsheet me-1"></i>Excel (données)
@@ -45,8 +70,24 @@
                             <p class="text-muted small">{{ commande.fournisseur.telephone }}</p>
                         </div>
                         <div class="col-sm-3">
-                            <p class="text-muted small mb-1">Dépôt destination</p>
-                            <p class="fw-medium mb-0">{{ commande.depot_destination.nom|default:"—" }}</p>
+                            <p class="text-muted small mb-1">Réception prévue sur le bon</p>
+                            <div class="fw-medium mb-0 small">
+                                {% if commande.depot_destination_id %}
+                                <span class="badge bg-primary-subtle text-primary border me-1">Dépôt</span>{{ commande.depot_destination.nom }}
+                                {% endif %}
+                                {% if commande.depot_destination_id and commande.pointdevente_destination_id %}
+                                <span class="d-block text-muted my-1">et / ou</span>
+                                {% endif %}
+                                {% if commande.pointdevente_destination_id %}
+                                <span class="badge bg-info-subtle text-info border me-1">Boutique</span>{{ commande.pointdevente_destination.nom }}
+                                {% endif %}
+                                {% if not commande.depot_destination_id and not commande.pointdevente_destination_id %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted small mb-0 mt-1">
+                                À la réception physique, vous enregistrerez soit le dépôt soit la boutique (choix exclusif).
+                            </p>
                         </div>
                         <div class="col-sm-3">
                             <p class="text-muted small mb-1">Date commande</p>
@@ -87,6 +128,14 @@
                     <hr>
                     <p class="text-muted small mb-1">Notes</p>
                     <p class="mb-0">{{ commande.notes }}</p>
+                    {% endif %}
+                    {% if commande.statut == 'BROUILLON' %}
+                    <div class="alert alert-info border-0 small mb-0 mt-3">
+                        <i class="ti ti-info-circle me-1"></i>
+                        <strong>Flux :</strong> complétez les lignes puis cliquez « Envoyer au fournisseur ».
+                        L’application ne transmet pas automatiquement par e-mail&nbsp;: utilisez les boutons PDF ou Excel ci-dessous pour envoyer le bon au fournisseur (mail, courrier, plateforme…).
+                        Une fois le statut « Envoyé », le bouton <strong>Réceptionner</strong> devient disponible.
+                    </div>
                     {% endif %}
                 </div>
             </div>

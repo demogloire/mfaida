@@ -6,9 +6,15 @@
             <h4 class="fw-bold">Bons de réception</h4>
             <h6>Historique des réceptions</h6>
         </div>
-        <div class="page-btn">
+        <div class="page-btn d-flex gap-2 flex-wrap justify-content-end">
+            <a href="{% url 'achat:creer-reception-simple' %}" class="btn btn-success">
+                <i class="ti ti-package-import me-1"></i>Réception simple
+            </a>
+            <a href="{% url 'achat:liste-commandes' %}" class="btn btn-primary" title="Choisir un bon envoyé ou partiellement reçu, puis Réceptionner">
+                <i class="ti ti-file-invoice me-1"></i>Réception depuis un bon de commande
+            </a>
             <a href="{% url 'achat:liste-commandes' %}" class="btn btn-outline-secondary">
-                <i class="ti ti-file-invoice me-1"></i>Voir les commandes
+                <i class="ti ti-list me-1"></i>Voir les commandes
             </a>
         </div>
     </div>

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Stock — {{ entreprise.nom }}</h4>
+            <h6>Choisissez le périmètre : dépôt (stock central / sans PDV) ou point de vente</h6>
+        </div>
+    </div>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card border-primary h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="ti ti-building-warehouse me-1"></i> Stock dépôts</h5>
+                    <p class="text-muted small mb-3">Quantités à l’entrepôt, sans rattachement magasin.</p>
+                    <p class="small text-muted mb-2">{{ depots_ct }} dépôt(s) accessible(s)</p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'stock:liste-stock-depot' %}" class="btn btn-primary">Voir les niveaux dépôt</a>
+                        <a href="{% url 'stock:liste-stock-depot-synthese' %}" class="btn btn-outline-primary btn-sm">Synthèse par produit</a>
+                        <a href="{% url 'stock:mise-a-ecart-depot' %}" class="btn btn-outline-warning btn-sm">Mise à l’écart</a>
+                        <a href="{% url 'stock:liste-mouvements-depot' %}" class="btn btn-outline-primary btn-sm">Mouvements dépôt</a>
+                        <a href="{% url 'stock:liste-bons-ajustement-depot' %}" class="btn btn-outline-dark btn-sm">Bons d’ajustement (dépôt)</a>
+                        <a href="{% url 'stock:correction-interne-depot' %}" class="btn btn-outline-secondary btn-sm">Correction interne (ligne)</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-info h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="ti ti-shopping-bag me-1"></i> Stock points de vente</h5>
+                    <p class="text-muted small mb-3">Quantités attribuées à un PDV (dépôt source implicite).</p>
+                    <p class="small text-muted mb-2">{{ pv_ct }} point(s) de vente accessible(s)</p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'stock:liste-stock-pdv' %}" class="btn btn-info text-dark">Voir les niveaux PDV</a>
+                        <a href="{% url 'stock:liste-stock-pdv-synthese' %}" class="btn btn-outline-primary btn-sm">Synthèse par produit</a>
+                        <a href="{% url 'stock:mise-a-ecart-pdv' %}" class="btn btn-outline-warning btn-sm">Mise à l’écart</a>
+                        <a href="{% url 'stock:liste-mouvements-pdv' %}" class="btn btn-outline-info btn-sm">Mouvements PDV</a>
+                        <a href="{% url 'stock:liste-bons-ajustement-pdv' %}" class="btn btn-outline-dark btn-sm">Bons d’ajustement (PDV)</a>
+                        <a href="{% url 'stock:correction-interne-pdv' %}" class="btn btn-outline-secondary btn-sm">Correction interne (ligne)</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body d-flex flex-wrap gap-3">
+            <a href="{% url 'stock:liste-inventaires' %}" class="btn btn-outline-dark">Liste de toutes les campagnes d’inventaire</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

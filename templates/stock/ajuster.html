@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="page-title">
+            <h4 class="fw-bold">Ajustement de stock</h4>
+            <h6>Entrée ou sortie hors réception (avec motif)</h6>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ field.label }}</label>
+                    {% render_field field class="form-control" %}
+                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                    {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                {% if form.non_field_errors %}
+                <div class="col-12">{% for e in form.non_field_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}</div>
+                {% endif %}
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Enregistrer l'ajustement</button>
+                    <a href="{% url 'stock:hub-stock' %}" class="btn btn-outline-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

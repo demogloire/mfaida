@@ -1,5 +1,4 @@
-from django.db import models
-from django.conf import settings
+from django.db import models, transaction, IntegrityError
 from stock.models import MouvementStock
 from entreprise.models import Produit, PointVente, Devise, Branche
 from tiers.models import Client
@@ -42,13 +41,59 @@ class Facture(models.Model):
     statut = models.CharField(max_length=20, choices=STATUTS_FACTURE, default='BROUILLON')
     date_facture = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        if kwargs.get('update_fields') is None and not self.numero_facture:
+            br = self.point_vente.branche
+            prefix = (br.init_facture or '').strip() or 'FACT-'
+            for _ in range(30):
+                try:
+                    with transaction.atomic():
+                        max_num = 0
+                        plen = len(prefix)
+                        qs = (
+                            Facture.objects.select_for_update()
+                            .filter(numero_facture__startswith=prefix)
+                            .only('numero_facture')
+                        )
+                        for row in qs:
+                            tail = row.numero_facture[plen:]
+                            try:
+                                max_num = max(max_num, int(tail))
+                            except ValueError:
+                                continue
+                        self.numero_facture = f'{prefix}{max_num + 1:06d}'
+                        return super().save(*args, **kwargs)
+                except IntegrityError:
+                    self.numero_facture = ''
+                    continue
+            raise IntegrityError('Impossible de générer un numéro de facture unique.')
+        return super().save(*args, **kwargs)
+
+    def recalcul_totaux(self):
+        from decimal import Decimal as D
+        tot_ht = D('0')
+        tot_tva = D('0')
+        tot_ttc = D('0')
+        for lig in self.lignes.all():
+            ligne_ht = D(str(lig.quantite)) * D(str(lig.prix_unitaire_ht)) - D(str(lig.remise or '0'))
+            tot_ht += ligne_ht
+            tot_tva += D(str(lig.tva_montant or '0'))
+            tot_ttc += ligne_ht + D(str(lig.tva_montant or '0'))
+        self.total_ht = tot_ht
+        self.total_tva = tot_tva
+        self.total_ttc = tot_ttc
+        self.reste_a_payer = tot_ttc - (self.montant_paye or D('0'))
+        return self.total_ttc
+
     def __str__(self):
         return f"FACT {self.numero_facture} - {self.client.nom}"
 
 class LigneFacture(models.Model):
     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='lignes')
-    stock=models.ForeignKey(MouvementStock, on_delete=models.CASCADE, related_name='stocks') 
-    produit=models.ForeignKey(Produit, on_delete=models.CASCADE, related_name='produits') 
+    mouvement_stock = models.ForeignKey(MouvementStock, on_delete=models.PROTECT, related_name='lignes_factures')
+    produit = models.ForeignKey(
+        Produit, on_delete=models.PROTECT, related_name='facture_ligne_produit'
+    ) 
 
     
     quantite = models.DecimalField(max_digits=15, decimal_places=2)

@@ -106,14 +106,16 @@ class LigneOrdreAchatForm(forms.ModelForm):
 
         self._entreprise_catalogue = None
         if commande:
+            bid = None
             if commande.depot_destination_id:
-                self._entreprise_catalogue = commande.depot_destination.branche.entreprise
-                self.fields['location'].queryset = Location.objects.filter(
-                    branche=commande.depot_destination.branche,
-                ).order_by('code')
+                bid = commande.depot_destination.branche_id
+            elif commande.pointdevente_destination_id:
+                bid = commande.pointdevente_destination.branche_id
+            self._entreprise_catalogue = commande.entreprise
+            if bid is not None:
+                self.fields['location'].queryset = Location.objects.filter(branche_id=bid).order_by('code')
             else:
-                self._entreprise_catalogue = commande.entreprise
-                branches = commande.entreprise.branches.all()
+                branches = commande.entreprise.branches.filter(est_actif=True)
                 self.fields['location'].queryset = Location.objects.filter(
                     branche__in=branches,
                 ).order_by('branche__nom', 'code')
@@ -125,7 +127,7 @@ class LigneOrdreAchatForm(forms.ModelForm):
                     est_actif=True,
                 ).select_related('sous_categorie__categorie').order_by('nom')
                 self.fields['produit'].label_from_instance = (
-                    lambda p: p.libelle_ligne_achat()
+                    lambda p: p.libelle_ligne_achat
                 )
                 if commande.depot_destination_id:
                     self.fields['produit'].help_text = (
@@ -165,8 +167,136 @@ class LigneOrdreAchatForm(forms.ModelForm):
                         'location',
                         "Cet emplacement n'appartient pas à la branche du dépôt de destination.",
                     )
+            elif cmd.pointdevente_destination_id:
+                if loc.branche_id != cmd.pointdevente_destination.branche_id:
+                    self.add_error(
+                        'location',
+                        "Cet emplacement n'appartient pas à la branche du point de vente de destination.",
+                    )
             elif loc.branche.entreprise_id != cmd.entreprise_id:
                 self.add_error('location', "Cet emplacement n'appartient pas à l'entreprise de la commande.")
+        return cleaned
+
+
+class BonReceptionForm(forms.ModelForm):
+    class Meta:
+        model = BonReception
+        fields = ['depot_destination', 'point_destination', 'fournisseur']
+
+    def __init__(self, *args, commande=None, entreprise=None, admin=False, **kwargs):
+        self.commande = commande
+        self._entreprise_scope = entreprise
+        self._admin = admin
+        super().__init__(*args, **kwargs)
+
+        from entreprise.models import Depot, PointVente, Branche
+        from tiers.models import Fournisseur
+
+        if admin:
+            branches_actives = Branche.objects.filter(est_actif=True)
+            self.fields['depot_destination'].queryset = (
+                Depot.objects.filter(branche__in=branches_actives, est_actif=True).order_by('branche__nom', 'nom')
+            )
+            self.fields['point_destination'].queryset = (
+                PointVente.objects.filter(branche__in=branches_actives, est_actif=True).order_by('branche__nom', 'nom')
+            )
+            self.fields['fournisseur'].queryset = (
+                Fournisseur.objects.filter(est_actif=True).order_by('entreprise__nom', 'nom_societe')
+            )
+        elif entreprise:
+            branches = entreprise.branches.filter(est_actif=True)
+            self.fields['depot_destination'].queryset = Depot.objects.filter(branche__in=branches, est_actif=True).order_by('nom')
+            self.fields['point_destination'].queryset = PointVente.objects.filter(branche__in=branches, est_actif=True).order_by('nom')
+            self.fields['fournisseur'].queryset = Fournisseur.objects.filter(entreprise=entreprise, est_actif=True).order_by('nom_societe')
+        else:
+            self.fields['depot_destination'].queryset = Depot.objects.none()
+            self.fields['point_destination'].queryset = PointVente.objects.none()
+            self.fields['fournisseur'].queryset = Fournisseur.objects.none()
+
+        self.fields['depot_destination'].required = False
+        self.fields['point_destination'].required = False
+
+        self.fields['depot_destination'].label = 'Dépôt de réception'
+        self.fields['point_destination'].label = 'Ou boutique (point de vente)'
+        self.fields['fournisseur'].label = 'Fournisseur (optionnel)'
+
+        if commande:
+            if 'fournisseur' in self.fields:
+                del self.fields['fournisseur']
+            # Uniquement les dépôts / PDV figurant sur ce bon de commande
+            if commande.depot_destination_id:
+                self.fields['depot_destination'].queryset = Depot.objects.filter(
+                    pk=commande.depot_destination_id,
+                    est_actif=True,
+                ).select_related('branche').order_by('nom')
+            else:
+                self.fields['depot_destination'].queryset = Depot.objects.none()
+            if commande.pointdevente_destination_id:
+                self.fields['point_destination'].queryset = PointVente.objects.filter(
+                    pk=commande.pointdevente_destination_id,
+                    est_actif=True,
+                ).select_related('branche').order_by('nom')
+            else:
+                self.fields['point_destination'].queryset = PointVente.objects.none()
+            # Pré-remplissage depuis le BC : si dépôt + PDV sont tous deux sur la commande, on propose le dépôt par défaut
+            # (l’utilisateur peut basculer sur la boutique avant enregistrement).
+            if commande.depot_destination_id:
+                self.initial.setdefault('depot_destination', commande.depot_destination_id)
+                if commande.pointdevente_destination_id:
+                    hint = (
+                        'Le bon de commande prévoit aussi un point de vente : vous pouvez réceptionner '
+                        ' soit dans le dépôt indiqué, soit dans cette boutique (choix exclusif ci-dessous).'
+                    )
+                    self.fields['point_destination'].help_text = hint
+                    self.fields['depot_destination'].help_text = hint
+            elif commande.pointdevente_destination_id:
+                self.initial.setdefault('point_destination', commande.pointdevente_destination_id)
+        elif 'fournisseur' in self.fields:
+            self.fields['fournisseur'].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        dep = cleaned.get('depot_destination')
+        pv = cleaned.get('point_destination')
+        xor_ok = bool(dep) ^ bool(pv)
+        if not xor_ok:
+            raise ValidationError(
+                'Indiquez soit un dépôt, soit une boutique — une seule destination à la fois.'
+            )
+
+        ent = self._entreprise_scope
+        admin = self._admin
+
+        if not admin and ent:
+            if dep and dep.branche.entreprise_id != ent.pk:
+                raise ValidationError({'depot_destination': "Ce dépôt n'est pas dans votre entreprise."})
+            if pv and pv.branche.entreprise_id != ent.pk:
+                raise ValidationError({'point_destination': "Ce point de vente n'est pas dans votre entreprise."})
+            four = cleaned.get('fournisseur')
+            if four and four.entreprise_id != ent.pk:
+                raise ValidationError({'fournisseur': 'Ce fournisseur ne correspond pas à votre entreprise.'})
+        elif not admin and not ent and self.commande is None:
+            raise ValidationError("Aucune entreprise pour valider cette réception.")
+
+        cmd = self.commande
+        if cmd:
+            branches_prevues = set()
+            if cmd.depot_destination_id:
+                branches_prevues.add(cmd.depot_destination.branche_id)
+            if cmd.pointdevente_destination_id:
+                branches_prevues.add(cmd.pointdevente_destination.branche_id)
+            if branches_prevues:
+                br_choix = None
+                if dep:
+                    br_choix = dep.branche_id
+                elif pv:
+                    br_choix = pv.branche_id
+                if br_choix is not None and br_choix not in branches_prevues:
+                    raise ValidationError(
+                        'Réceptionnez dans un dépôt ou une boutique dont la branche fait partie des '
+                        'destinations prévues sur ce bon de commande (voir dépôt / point de vente du BC).'
+                    )
+
         return cleaned
 
 
@@ -184,23 +314,6 @@ class ImportLignesBcForm(forms.Form):
         if fichier.size > 5 * 1024 * 1024:
             raise forms.ValidationError('Le fichier ne doit pas dépasser 5 Mo.')
         return fichier
-
-
-class BonReceptionForm(forms.ModelForm):
-    class Meta:
-        model = BonReception
-        fields = ['depot_destination', 'notes']
-        widgets = {
-            'notes': forms.Textarea(attrs={'rows': 2}),
-        }
-
-    def __init__(self, *args, commande=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if commande and commande.depot_destination:
-            from entreprise.models import Depot
-            self.fields['depot_destination'].initial = commande.depot_destination
-        self.fields['depot_destination'].label = "Dépôt de réception"
-        self.fields['notes'].label = "Notes"
 
 
 # Formset inline pour les lignes de bon de réception (utilisé côté template manuellement)

@@ -1,0 +1,54 @@
+<script>
+(function () {
+  var depotSel = document.getElementById('id_depot_destination');
+  var pvSel = document.getElementById('id_point_destination');
+  if (!depotSel || !pvSel) return;
+
+  function selectedBrancheId() {
+    if (depotSel.value) {
+      var od = depotSel.options[depotSel.selectedIndex];
+      var bd = od && od.getAttribute('data-branche-id');
+      if (bd !== null && bd !== '') return parseInt(bd, 10);
+    }
+    if (pvSel.value) {
+      var op = pvSel.options[pvSel.selectedIndex];
+      var bp = op && op.getAttribute('data-branche-id');
+      if (bp !== null && bp !== '') return parseInt(bp, 10);
+    }
+    return null;
+  }
+
+  function apply() {
+    var br = selectedBrancheId();
+    document.querySelectorAll('select.reception-loc-par-branche').forEach(function (sel) {
+      sel.querySelectorAll('option').forEach(function (opt) {
+        if (!opt.value) {
+          opt.disabled = false;
+          opt.hidden = false;
+          return;
+        }
+        var ob = parseInt(opt.getAttribute('data-branche-id'), 10);
+        var ok = br !== null && !isNaN(ob) && ob === br;
+        opt.hidden = !ok;
+        opt.disabled = !ok;
+      });
+      var so = sel.options[sel.selectedIndex];
+      if (sel.value && (!so || so.disabled || so.hidden))
+        sel.value = '';
+    });
+  }
+
+  depotSel.addEventListener('change', function () {
+    if (depotSel.value) pvSel.value = '';
+    apply();
+  });
+  pvSel.addEventListener('change', function () {
+    if (pvSel.value) depotSel.value = '';
+    apply();
+  });
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', apply);
+  else
+    apply();
+})();
+</script>

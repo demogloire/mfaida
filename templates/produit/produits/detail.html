@@ -85,6 +85,7 @@
 
                                     {# Ligne 1 : prix principaux #}
                                     <div class="row g-3 mb-3">
+                                        {% if voir_prix_achat_ht %}
                                         <div class="col-sm-6 col-xl-3">
                                             <div class="p-3 rounded-3 border bg-light text-center h-100">
                                                 <div class="text-muted small mb-1">
@@ -94,6 +95,9 @@
                                             </div>
                                         </div>
                                         <div class="col-sm-6 col-xl-3">
+                                        {% else %}
+                                        <div class="col-sm-6 col-xl-4">
+                                        {% endif %}
                                             <div class="p-3 rounded-3 border bg-light text-center h-100">
                                                 <div class="text-muted small mb-1">
                                                     <i class="ti ti-tag me-1"></i>Prix vente HT
@@ -101,7 +105,7 @@
                                                 <div class="fw-bold fs-4 text-primary">{{ produit.prix_vente_ht|floatformat:2 }}</div>
                                             </div>
                                         </div>
-                                        <div class="col-sm-6 col-xl-3">
+                                        <div class="col-sm-6 {% if voir_prix_achat_ht %}col-xl-3{% else %}col-xl-4{% endif %}">
                                             <div class="p-3 rounded-3 border bg-info bg-opacity-10 border-info border-opacity-25 text-center h-100">
                                                 <div class="text-muted small mb-1">
                                                     <i class="ti ti-percentage me-1"></i>TVA ({{ produit.tva_taux|floatformat:0 }}%)
@@ -109,7 +113,7 @@
                                                 <div class="fw-bold fs-4 text-info">+ {{ montant_tva|floatformat:2 }}</div>
                                             </div>
                                         </div>
-                                        <div class="col-sm-6 col-xl-3">
+                                        <div class="col-sm-6 {% if voir_prix_achat_ht %}col-xl-3{% else %}col-xl-4{% endif %}">
                                             <div class="p-3 rounded-3 border border-success border-opacity-50 bg-success bg-opacity-10 text-center h-100">
                                                 <div class="text-muted small mb-1">
                                                     <i class="ti ti-cash me-1"></i>Prix vente TTC
@@ -119,6 +123,7 @@
                                         </div>
                                     </div>
 
+                                    {% if voir_prix_achat_ht %}
                                     {# Ligne 2 : marge #}
                                     <div class="p-3 rounded-3 border {% if marge_brute >= 0 %}border-success bg-success bg-opacity-10{% else %}border-danger bg-danger bg-opacity-10{% endif %}">
                                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -141,6 +146,7 @@
                                             {% endif %}
                                         </div>
                                     </div>
+                                    {% endif %}
 
                                 </div>
                             </div>
