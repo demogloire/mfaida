@@ -140,7 +140,7 @@ m-faida/
 ├── utilisateur/        # Utilisateurs, rôles, permissions
 ├── produit/            # Vues / templates catalogue (réexport entreprise.Produit)
 ├── stock/              # Stock dépôt/PDV, inventaires, réception, exports, correction interne, services (`services.py`)
-├── finance/           # Écritures / postings (ex. variations d’inventaire OHADA)
+├── finance/           # Écritures / postings (variations inventaire OHADA, etc.)
 ├── facturation/        # Factures, proformas
 ├── finance/            # Comptabilité
 ├── rh/                 # Ressources humaines
