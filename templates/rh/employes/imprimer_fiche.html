@@ -1,0 +1,349 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fiche employé — {{ employe.nom }} {{ employe.prenom }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #e8ecf1;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1a1f2e;
+    }
+
+    /* ── Barre d'outils ── */
+    .toolbar {
+      padding: .75rem 1rem;
+      background: #1e293b;
+      color: #fff;
+      display: flex; gap: .75rem; flex-wrap: wrap;
+      justify-content: center; align-items: center;
+    }
+    .toolbar span { font-size: .82rem; color: #94a3b8; }
+    .toolbar button {
+      font: inherit; cursor: pointer;
+      padding: .45rem 1.25rem;
+      border-radius: 999px; border: 0;
+      font-size: .85rem; font-weight: 600;
+    }
+    .btn-print  { background: #4f52b2; color: #fff; }
+    .btn-fermer { background: #334155; color: #fff; }
+
+    /* ── Feuille A4 ── */
+    .sheet-wrap { padding: 1rem 1rem 2.5rem; }
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #fff;
+      padding: 16mm 18mm 18mm;
+      box-shadow: 0 12px 40px rgba(0,0,0,.1);
+    }
+
+    /* ── En-tête entreprise ── */
+    .header {
+      display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 1.5rem;
+      border-bottom: 3px solid #4f52b2;
+      padding-bottom: 10px; margin-bottom: 14px;
+    }
+    .brand { display: flex; gap: 12px; align-items: flex-start; }
+    .brand-logo { max-height: 64px; max-width: 140px; object-fit: contain; }
+    .brand-name { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin: 0 0 2px; }
+    .brand-sub  { font-size: .72rem; color: #64748b; line-height: 1.5; }
+    .doc-title { text-align: right; }
+    .doc-title h2 { margin: 0; font-size: 1.3rem; font-weight: 800; color: #4f52b2; letter-spacing: -.01em; }
+    .doc-title .doc-meta { font-size: .72rem; color: #64748b; margin-top: 3px; }
+
+    /* ── Identité employé ── */
+    .emp-header {
+      display: flex; gap: 16px; align-items: center;
+      background: linear-gradient(135deg, #eef0ff 0%, #f5f6ff 100%);
+      border-radius: 10px; padding: 14px 16px;
+      margin-bottom: 14px;
+      border-left: 4px solid #4f52b2;
+    }
+    .emp-avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, #4f52b2 0%, #7c7fe8 100%);
+      color: #fff; font-size: 1.3rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; border: 3px solid #fff;
+      box-shadow: 0 2px 8px rgba(79,82,178,.3);
+      overflow: hidden;
+    }
+    .emp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .emp-name { font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0 0 2px; }
+    .emp-meta { font-size: .78rem; color: #4f52b2; font-weight: 600; margin: 0 0 2px; }
+    .emp-sub  { font-size: .72rem; color: #64748b; margin: 0; }
+    .badge-statut {
+      margin-left: auto; flex-shrink: 0;
+      padding: 3px 12px; border-radius: 999px;
+      font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    }
+    .badge-actif   { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-inactif { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+    /* ── Sections ── */
+    .section { margin-bottom: 14px; }
+    .section-title {
+      font-size: .65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: #4f52b2;
+      border-bottom: 1.5px solid #e0e3ff; padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 12px; }
+    .field { font-size: .78rem; }
+    .field-label { color: #64748b; font-size: .68rem; display: block; margin-bottom: 1px; }
+    .field-value { font-weight: 600; color: #0f172a; }
+    .field-value.empty { color: #cbd5e1; font-weight: 400; font-style: italic; }
+
+    /* ── Table contrats ── */
+    table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+    thead tr { background: #f8f9ff; }
+    th { padding: 5px 8px; text-align: left; color: #64748b; font-weight: 600; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e5e7eb; }
+    td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; color: #374151; vertical-align: top; }
+    tr.actuel td { background: #f0fdf4; }
+    .badge-contrat {
+      display: inline-block; padding: 1px 7px; border-radius: 999px;
+      font-size: .65rem; font-weight: 600;
+    }
+    .badge-cdi   { background: #dcfce7; color: #166534; }
+    .badge-cdd   { background: #dbeafe; color: #1e40af; }
+    .badge-stage { background: #fef9c3; color: #854d0e; }
+    .badge-curr  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+    /* ── Signature ── */
+    .signature-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+      margin-top: 20px;
+    }
+    .sig-box {
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 6px;
+      font-size: .7rem; color: #64748b; text-align: center;
+    }
+
+    /* ── Pied de page ── */
+    .footer {
+      margin-top: 16px; border-top: 1px solid #f1f5f9;
+      padding-top: 6px; font-size: .64rem;
+      color: #94a3b8; display: flex;
+      justify-content: space-between; align-items: center;
+    }
+
+    /* ── Impression ── */
+    @media print {
+      .no-print { display: none !important; }
+      html, body { background: #fff !important; }
+      .sheet-wrap { padding: 0; }
+      .sheet { box-shadow: none !important; width: auto; min-height: auto; margin: 0; padding: 0; }
+    }
+    @page { size: A4 portrait; margin: 12mm; }
+  </style>
+</head>
+<body>
+
+<!-- Barre outils -->
+<div class="toolbar no-print">
+  <span>Fiche employé · {{ employe.nom }} {{ employe.prenom }}</span>
+  <button class="btn-print" onclick="window.print()">🖨 Imprimer</button>
+  <button class="btn-fermer" onclick="window.close()">✕ Fermer</button>
+</div>
+
+<div class="sheet-wrap">
+<div class="sheet">
+
+  <!-- En-tête entreprise -->
+  <div class="header">
+    <div class="brand">
+      {% if entreprise and entreprise.logo %}
+      <img class="brand-logo" src="{{ entreprise.logo.url }}" alt="{{ entreprise.nom }}">
+      {% endif %}
+      <div>
+        <p class="brand-name">{{ employe.branche.entreprise.nom }}</p>
+        <div class="brand-sub">
+          {{ employe.branche.nom }}<br>
+          {% if employe.branche.entreprise.telephone %}{{ employe.branche.entreprise.telephone }}<br>{% endif %}
+          {% if employe.branche.entreprise.email %}{{ employe.branche.entreprise.email }}{% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="doc-title">
+      <h2>Fiche de l'Agent</h2>
+      <div class="doc-meta">
+        Émise le {{ today|date:"d/m/Y" }}<br>
+        Réf. : {{ employe.matricule }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Identité -->
+  <div class="emp-header">
+    <div class="emp-avatar">
+      {% if employe.photo %}
+      <img src="{{ employe.photo.url }}" alt="">
+      {% else %}
+      {{ employe.prenom|first|upper }}{{ employe.nom|first|upper }}
+      {% endif %}
+    </div>
+    <div>
+      <p class="emp-name">{{ employe.nom }} {{ employe.postnom }} {{ employe.prenom }}</p>
+      <p class="emp-meta">
+        {% if contrat_actuel %}{{ contrat_actuel.titre_poste }} · {{ contrat_actuel.departement.nom }}{% else %}Aucun poste actif{% endif %}
+      </p>
+      <p class="emp-sub">Matricule : {{ employe.matricule }} · Branche : {{ employe.branche.nom }}</p>
+    </div>
+    <span class="badge-statut {% if employe.est_actif %}badge-actif{% else %}badge-inactif{% endif %}">
+      {% if employe.est_actif %}Actif{% else %}Inactif{% endif %}
+    </span>
+  </div>
+
+  <!-- Infos personnelles -->
+  <div class="section">
+    <div class="section-title">Informations personnelles</div>
+    <div class="grid-3">
+      <div class="field">
+        <span class="field-label">Nom de famille</span>
+        <span class="field-value">{{ employe.nom }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Post-nom</span>
+        <span class="field-value {% if not employe.postnom %}empty{% endif %}">{{ employe.postnom|default:"—" }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Prénom</span>
+        <span class="field-value">{{ employe.prenom }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Sexe</span>
+        <span class="field-value">{{ employe.get_sexe_display }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">État civil</span>
+        <span class="field-value">{{ employe.get_etat_civil_display }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Nombre d'enfants</span>
+        <span class="field-value">{{ employe.nombre_enfants }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Date de naissance</span>
+        <span class="field-value">{{ employe.date_naissance|date:"d/m/Y" }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Téléphone</span>
+        <span class="field-value">{{ employe.telephone }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Adresse</span>
+        <span class="field-value {% if not employe.adresse %}empty{% endif %}">{{ employe.adresse|default:"—" }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contrat actuel -->
+  {% if contrat_actuel %}
+  <div class="section">
+    <div class="section-title">Contrat en cours</div>
+    <div class="grid-2">
+      <div class="field">
+        <span class="field-label">Type de contrat</span>
+        <span class="field-value">{{ contrat_actuel.get_type_contrat_display }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Titre du poste</span>
+        <span class="field-value">{{ contrat_actuel.titre_poste }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Département</span>
+        <span class="field-value">{{ contrat_actuel.departement.nom }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Salaire de base</span>
+        <span class="field-value">{{ contrat_actuel.salaire_base|floatformat:2 }} {{ contrat_actuel.devise.code }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Date de début</span>
+        <span class="field-value">{{ contrat_actuel.date_debut|date:"d/m/Y" }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Date de fin</span>
+        <span class="field-value {% if not contrat_actuel.date_fin %}empty{% endif %}">{{ contrat_actuel.date_fin|date:"d/m/Y"|default:"Indéterminée" }}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Historique contrats -->
+  {% if contrats|length > 1 %}
+  <div class="section">
+    <div class="section-title">Historique des contrats</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Poste</th>
+          <th>Département</th>
+          <th>Début</th>
+          <th>Fin</th>
+          <th style="text-align:right;">Salaire</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in contrats %}
+        <tr {% if c.est_actuel %}class="actuel"{% endif %}>
+          <td>
+            <span class="badge-contrat {% if c.type_contrat == 'CDI' %}badge-cdi{% elif c.type_contrat == 'CDD' %}badge-cdd{% else %}badge-stage{% endif %}">
+              {{ c.get_type_contrat_display }}
+            </span>
+          </td>
+          <td style="font-weight:600;">{{ c.titre_poste }}</td>
+          <td>{{ c.departement.nom }}</td>
+          <td style="white-space:nowrap;">{{ c.date_debut|date:"d/m/Y" }}</td>
+          <td style="white-space:nowrap;">{{ c.date_fin|date:"d/m/Y"|default:"—" }}</td>
+          <td style="text-align:right;white-space:nowrap;">{{ c.salaire_base|floatformat:2 }} {{ c.devise.code }}</td>
+          <td>{% if c.est_actuel %}<span class="badge-curr">Actuel</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Signature -->
+  <div class="signature-row">
+    <div class="sig-box">
+      <div>L'employé(e)</div>
+      <div style="margin-top:28px;"></div>
+      <div style="font-weight:600;font-size:.72rem;">{{ employe.nom }} {{ employe.prenom }}</div>
+    </div>
+    <div class="sig-box">
+      <div>Le responsable RH</div>
+      <div style="margin-top:28px;"></div>
+      <div>........................................</div>
+    </div>
+    <div class="sig-box">
+      <div>La Direction</div>
+      <div style="margin-top:28px;"></div>
+      <div>........................................</div>
+    </div>
+  </div>
+
+  <!-- Pied de page -->
+  <div class="footer">
+    <span>{{ employe.branche.entreprise.nom }} · {{ employe.branche.nom }}</span>
+    <span>Fiche éditée le {{ today|date:"d/m/Y à H:i" }}</span>
+  </div>
+
+</div>
+</div>
+
+<script>window.onload = function() { /* auto-print optionnel : window.print(); */ }</script>
+</body>
+</html>

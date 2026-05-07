@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item active">Ressources humaines</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center"
+          style="width:3rem;height:3rem;background:#eef0ff;color:#4f52b2;">
+      <i class="ti ti-users fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-0">Ressources humaines</h1>
+      <p class="text-muted small mb-0">Gestion du personnel, contrats et avances sur salaire.</p>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Employés -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #4f52b2 !important;">
+        <div class="card-body d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <span class="rounded-2 d-flex align-items-center justify-content-center"
+                  style="width:2.5rem;height:2.5rem;background:#eef0ff;color:#4f52b2;">
+              <i class="ti ti-id-badge fs-4"></i>
+            </span>
+            <div>
+              <h6 class="fw-bold mb-0">Employés</h6>
+              <p class="text-muted small mb-0">Fiches, contrats, départements</p>
+            </div>
+          </div>
+          {% if nb_employes_actifs %}
+          <div class="small text-muted">
+            <strong class="text-dark">{{ nb_employes_actifs }}</strong> employé{{ nb_employes_actifs|pluralize }} actif{{ nb_employes_actifs|pluralize }}
+          </div>
+          {% endif %}
+          <div class="mt-auto d-flex gap-2">
+            <a href="{% url 'rh:liste-employes' %}" class="btn btn-sm btn-outline-secondary flex-fill">
+              <i class="ti ti-list me-1"></i>Voir tous
+            </a>
+            <a href="{% url 'rh:creer-employe' %}" class="btn btn-sm flex-fill" style="background:#4f52b2;color:#fff;">
+              <i class="ti ti-plus me-1"></i>Nouveau
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avances sur salaire -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #ffc107 !important;">
+        <div class="card-body d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <span class="bg-warning bg-opacity-10 text-warning rounded-2 d-flex align-items-center justify-content-center" style="width:2.5rem;height:2.5rem;">
+              <i class="ti ti-coin fs-4"></i>
+            </span>
+            <div>
+              <h6 class="fw-bold mb-0">Avances sur salaire</h6>
+              <p class="text-muted small mb-0">Demandes, approbations, décaissements</p>
+            </div>
+          </div>
+          {% if nb_avances_en_attente > 0 %}
+          <div class="alert alert-warning py-1 px-2 small mb-0 rounded-2">
+            <i class="ti ti-clock-hour-4 me-1"></i>
+            <strong>{{ nb_avances_en_attente }}</strong> demande{{ nb_avances_en_attente|pluralize }} en attente
+          </div>
+          {% endif %}
+          <div class="mt-auto d-flex gap-2">
+            <a href="{% url 'rh:liste-avances' %}" class="btn btn-sm btn-outline-warning flex-fill">
+              <i class="ti ti-list me-1"></i>Voir toutes
+            </a>
+            <a href="{% url 'rh:nouvelle-avance' %}" class="btn btn-sm btn-warning flex-fill">
+              <i class="ti ti-plus me-1"></i>Nouvelle
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Congés & Présences -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #0dcaf0 !important;">
+        <div class="card-body d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <span class="bg-info bg-opacity-10 text-info rounded-2 d-flex align-items-center justify-content-center" style="width:2.5rem;height:2.5rem;">
+              <i class="ti ti-calendar-stats fs-4"></i>
+            </span>
+            <div>
+              <h6 class="fw-bold mb-0">Congés & Présences</h6>
+              <p class="text-muted small mb-0">Demandes, pointage, tableau mensuel</p>
+            </div>
+          </div>
+          {% if nb_conges_en_attente > 0 %}
+          <div class="alert alert-info py-1 px-2 small mb-0 rounded-2">
+            <i class="ti ti-clock-hour-4 me-1"></i>
+            <strong>{{ nb_conges_en_attente }}</strong> demande{{ nb_conges_en_attente|pluralize }} de congé en attente
+          </div>
+          {% endif %}
+          <div class="mt-auto d-flex gap-2">
+            <a href="{% url 'rh:tableau-presences' %}" class="btn btn-sm btn-outline-info flex-fill">
+              <i class="ti ti-grid me-1"></i>Présences
+            </a>
+            <a href="{% url 'rh:liste-conges' %}" class="btn btn-sm btn-info flex-fill text-dark">
+              <i class="ti ti-calendar-week me-1"></i>Congés
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulletins de paie -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #198754 !important;">
+        <div class="card-body d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <span class="bg-success bg-opacity-10 text-success rounded-2 d-flex align-items-center justify-content-center" style="width:2.5rem;height:2.5rem;">
+              <i class="ti ti-file-invoice fs-4"></i>
+            </span>
+            <div>
+              <h6 class="fw-bold mb-0">Bulletins de paie</h6>
+              <p class="text-muted small mb-0">Salaires, primes, retenues, avances</p>
+            </div>
+          </div>
+          {% if nb_bulletins_a_valider > 0 %}
+          <div class="alert alert-success py-1 px-2 small mb-0 rounded-2">
+            <i class="ti ti-clock-hour-4 me-1"></i>
+            <strong>{{ nb_bulletins_a_valider }}</strong> bulletin{{ nb_bulletins_a_valider|pluralize }} en attente de validation
+          </div>
+          {% endif %}
+          <div class="mt-auto d-flex gap-2">
+            <a href="{% url 'rh:liste-bulletins' %}" class="btn btn-sm btn-outline-success flex-fill">
+              <i class="ti ti-list me-1"></i>Voir tous
+            </a>
+            <a href="{% url 'rh:nouveau-bulletin' %}" class="btn btn-sm btn-success flex-fill text-white">
+              <i class="ti ti-plus me-1"></i>Générer
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

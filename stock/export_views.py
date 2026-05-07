@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 from datetime import date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import Count
 
@@ -241,7 +242,15 @@ def export_liste_stock_pdv_pdf(request):
 # ——— Synthèse ———
 
 
-def _rows_synthese(data):
+def _fmt_decimal_pdf_2(val):
+    """Affichage PDF : 2 décimales après la virgule (arrondi traditionnel)."""
+    if val is None or val == '':
+        return ''
+    d = val if isinstance(val, Decimal) else Decimal(str(val))
+    return str(d.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+
+
+def _rows_synthese(data, *, for_pdf: bool = False):
     hdr = [
         'Produit',
         'PU réf. HT',
@@ -252,16 +261,18 @@ def _rows_synthese(data):
         'Valeur disponible HT',
     ]
     rows = []
+    fmt = _fmt_decimal_pdf_2 if for_pdf else lambda x: x
+
     for r in data['lignes_synthese']:
         rows.append(
             [
                 r['produit'].libelle_ligne_achat,
-                r['prix_unitaire_ref'],
-                r['physique'],
-                r['a_ecart'],
-                r['disponible'],
-                r['valeur_ecart'],
-                r['valeur_disponible'],
+                fmt(r['prix_unitaire_ref']),
+                fmt(r['physique']),
+                fmt(r['a_ecart']),
+                fmt(r['disponible']),
+                fmt(r['valeur_ecart']),
+                fmt(r['valeur_disponible']),
             ]
         )
     rows.append(
@@ -271,8 +282,8 @@ def _rows_synthese(data):
             '',
             '',
             '',
-            data['total_valeur_ecart'],
-            data['total_valeur_disponible'],
+            fmt(data['total_valeur_ecart']),
+            fmt(data['total_valeur_disponible']),
         ]
     )
     return hdr, rows
@@ -298,7 +309,7 @@ def export_synthese_depot_pdf(request):
     if redir:
         return redir
     _ent, data = ctx
-    hdr, rows = _rows_synthese(data)
+    hdr, rows = _rows_synthese(data, for_pdf=True)
     blob = pdf_table_bytes(
         f'Synthèse stock dépôt — {_ent.nom}',
         _subtitle_stock_liste(data),
@@ -332,7 +343,7 @@ def export_synthese_pdv_pdf(request):
     if redir:
         return redir
     _ent, data = ctx
-    hdr, rows = _rows_synthese(data)
+    hdr, rows = _rows_synthese(data, for_pdf=True)
     blob = pdf_table_bytes(
         f'Synthèse stock PDV — {_ent.nom}',
         _subtitle_stock_liste(data),

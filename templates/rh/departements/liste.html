@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-employes' %}" class="text-decoration-none">Employés</a></li>
+      <li class="breadcrumb-item active">Départements</li>
+    </ol>
+  </nav>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-3 d-flex align-items-center justify-content-center"
+            style="width:3rem;height:3rem;background:#eef0ff;color:#4f52b2;">
+        <i class="ti ti-building fs-3"></i>
+      </span>
+      <div>
+        <h1 class="fs-4 fw-bold mb-1">Départements</h1>
+        <p class="text-muted small mb-0">Unités organisationnelles de l'entreprise.</p>
+      </div>
+    </div>
+    <a href="{% url 'rh:creer-departement' %}" class="btn btn-sm btn-primary flex-shrink-0">
+      <i class="ti ti-plus me-1"></i>Nouveau département
+    </a>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    {% if departements %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Nom</th>
+            <th>Responsable</th>
+            <th>Branche</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dept in departements %}
+          <tr>
+            <td class="fw-semibold">{{ dept.nom }}</td>
+            <td>
+              {% if dept.responsable %}
+              <a href="{% url 'rh:detail-employe' dept.responsable.pk %}" class="text-decoration-none">
+                {{ dept.responsable.nom }} {{ dept.responsable.prenom }}
+              </a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ dept.branche.nom|default:"—" }}</td>
+            <td class="text-end">
+              <a href="{% url 'rh:modifier-departement' dept.pk %}" class="btn btn-xs btn-outline-secondary">
+                <i class="ti ti-edit me-1"></i>Modifier
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body text-center py-5 text-muted">
+      <i class="ti ti-building-off fs-1 d-block mb-2 opacity-25"></i>
+      Aucun département enregistré.
+      <div class="mt-3">
+        <a href="{% url 'rh:creer-departement' %}" class="btn btn-sm btn-primary">
+          <i class="ti ti-plus me-1"></i>Créer un département
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

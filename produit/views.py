@@ -4,7 +4,6 @@ from openpyxl.styles import Font, PatternFill, Alignment
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -13,6 +12,7 @@ from django.db.models import Q, Count
 
 from entreprise.models import Categorie, SousCategorie, Produit, Entreprise
 from utilisateur.permissions import peut_voir_prix_achat_ht
+from utilisateur.decorators import login_requis
 from utilities.utility import error_message_list
 from .forms import CategorieForm, SousCategorieForm, ProduitForm, ImportExcelForm
 
@@ -23,7 +23,7 @@ def _get_entreprises(user):
 
 # ── CATÉGORIES ────────────────────────────────────────────────────────────────
 
-@login_required
+@login_requis
 def liste_categories(request):
     categories = (
         Categorie.objects.filter(entreprise__user=request.user)
@@ -46,7 +46,7 @@ def liste_categories(request):
     return render(request, 'produit/categories/liste.html', context)
 
 
-@login_required
+@login_requis
 def creer_categorie(request):
     if request.method == 'POST':
         form = CategorieForm(request.POST, user=request.user)
@@ -69,7 +69,7 @@ def creer_categorie(request):
     return redirect('produit:categories')
 
 
-@login_required
+@login_requis
 def modifier_categorie(request, pk):
     categorie = get_object_or_404(Categorie, pk=pk, entreprise__user=request.user)
     form = CategorieForm(instance=categorie, user=request.user)
@@ -92,7 +92,7 @@ def modifier_categorie(request, pk):
 
 
 @require_POST
-@login_required
+@login_requis
 def supprimer_categorie(request, pk):
     categorie = get_object_or_404(Categorie, pk=pk, entreprise__user=request.user)
     nom = categorie.nom
@@ -108,7 +108,7 @@ def supprimer_categorie(request, pk):
 
 # ── SOUS-CATÉGORIES ───────────────────────────────────────────────────────────
 
-@login_required
+@login_requis
 def liste_sous_categories(request):
     q = request.GET.get('q', '').strip()
     cat_filter = request.GET.get('cat', '')
@@ -140,7 +140,7 @@ def liste_sous_categories(request):
     return render(request, 'produit/sous-categories/liste.html', context)
 
 
-@login_required
+@login_requis
 def creer_sous_categorie(request):
     if request.method == 'POST':
         form = SousCategorieForm(request.POST, user=request.user)
@@ -164,7 +164,7 @@ def creer_sous_categorie(request):
     return redirect('produit:sous-categories')
 
 
-@login_required
+@login_requis
 def modifier_sous_categorie(request, pk):
     sc = get_object_or_404(SousCategorie, pk=pk, categorie__entreprise__user=request.user)
     form = SousCategorieForm(instance=sc, user=request.user)
@@ -187,7 +187,7 @@ def modifier_sous_categorie(request, pk):
 
 
 @require_POST
-@login_required
+@login_requis
 def supprimer_sous_categorie(request, pk):
     sc = get_object_or_404(SousCategorie, pk=pk, categorie__entreprise__user=request.user)
     nom = sc.nom
@@ -203,7 +203,7 @@ def supprimer_sous_categorie(request, pk):
 
 # ── PRODUITS ──────────────────────────────────────────────────────────────────
 
-@login_required
+@login_requis
 def liste_produits(request):
     q = request.GET.get('q', '').strip()
     cat_id = request.GET.get('cat', '')
@@ -257,7 +257,7 @@ def liste_produits(request):
     return render(request, 'produit/produits/liste.html', context)
 
 
-@login_required
+@login_requis
 def detail_produit(request, pk):
     produit = get_object_or_404(
         Produit, pk=pk, sous_categorie__categorie__entreprise__user=request.user
@@ -290,7 +290,7 @@ def detail_produit(request, pk):
     })
 
 
-@login_required
+@login_requis
 def creer_produit(request):
     form = ProduitForm(user=request.user)
     context = {'form': form, 'produit_liste_actif': True, 'produit_actif': True}
@@ -306,7 +306,7 @@ def creer_produit(request):
     return render(request, 'produit/produits/form.html', context)
 
 
-@login_required
+@login_requis
 def modifier_produit(request, pk):
     produit = get_object_or_404(
         Produit, pk=pk, sous_categorie__categorie__entreprise__user=request.user
@@ -326,7 +326,7 @@ def modifier_produit(request, pk):
 
 
 @require_POST
-@login_required
+@login_requis
 def toggle_produit(request, pk):
     produit = get_object_or_404(
         Produit, pk=pk, sous_categorie__categorie__entreprise__user=request.user
@@ -341,7 +341,7 @@ def toggle_produit(request, pk):
 
 
 @require_POST
-@login_required
+@login_requis
 def supprimer_produit(request, pk):
     produit = get_object_or_404(
         Produit, pk=pk, sous_categorie__categorie__entreprise__user=request.user
@@ -359,7 +359,7 @@ def supprimer_produit(request, pk):
 
 # ── IMPORT EXCEL ──────────────────────────────────────────────────────────────
 
-@login_required
+@login_requis
 def import_produits(request):
     form = ImportExcelForm()
     results = None
@@ -478,7 +478,7 @@ def import_produits(request):
     return render(request, 'produit/import/import.html', context)
 
 
-@login_required
+@login_requis
 def telecharger_modele_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active

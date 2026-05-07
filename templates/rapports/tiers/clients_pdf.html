@@ -1,0 +1,24 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Top Clients{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Top Clients</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Clients actifs</div><div class="kpi-val">{{ synthese.nb_clients }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">CA total</div><div class="kpi-val">{{ synthese.ca_total|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Encaissé</div><div class="kpi-val text-success">{{ synthese.paye_total|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Solde dû</div><div class="kpi-val text-danger">{{ synthese.du_total|floatformat:2 }}</div></div>
+</div>
+<table>
+  <tr><th>#</th><th>Client</th><th>Tél.</th><th class="text-right">CA</th><th class="text-right">Encaissé</th><th class="text-right">Solde dû</th><th class="text-right">Factures</th></tr>
+  {% for c in par_client %}
+  <tr>
+    <td>{{ forloop.counter }}</td><td>{{ c.client__nom }}</td><td>{{ c.client__telephone|default:"—" }}</td>
+    <td class="text-right">{{ c.ca|floatformat:2 }}</td>
+    <td class="text-right text-success">{{ c.paye|floatformat:2 }}</td>
+    <td class="text-right {% if c.du > 0 %}text-danger{% endif %}">{{ c.du|floatformat:2 }}</td>
+    <td class="text-right">{{ c.nb_fact }}</td>
+  </tr>
+  {% empty %}<tr><td colspan="7">Aucun client</td></tr>{% endfor %}
+</table>
+{% endblock %}

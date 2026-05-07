@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Top clients</li>
+    </ol>
+  </nav>
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <h1 class="fs-4 fw-bold mb-0"><i class="ti ti-users text-primary me-2"></i>Top Clients</h1>
+    <a href="{% url 'rapports:vieillissement' %}" class="btn btn-warning btn-sm">
+      <i class="bi bi-exclamation-triangle me-1"></i>Vieillissement des créances
+    </a>
+  </div>
+  {% include 'rapports/_barre_outils.html' %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Clients actifs</div>
+        <div class="fw-bold fs-3">{{ synthese.nb_clients }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">CA total</div>
+        <div class="fw-bold fs-4 text-primary">{{ synthese.ca_total|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Encaissé</div>
+        <div class="fw-bold fs-4 text-success">{{ synthese.paye_total|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Solde dû</div>
+        <div class="fw-bold fs-4 text-danger">{{ synthese.du_total|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>#</th><th>Client</th><th>Tél.</th><th class="text-end">CA</th><th class="text-end">Encaissé</th><th class="text-end">Solde dû</th><th class="text-end">Factures</th><th>Taux pmt</th></tr>
+          </thead>
+          <tbody>
+            {% for c in par_client %}
+            {% with taux=c.paye|floatformat:0 %}
+            <tr>
+              <td class="text-muted small">{{ forloop.counter }}</td>
+              <td class="fw-semibold">{{ c.client__nom }}</td>
+              <td class="small text-muted">{{ c.client__telephone|default:"—" }}</td>
+              <td class="text-end fw-semibold text-primary">{{ c.ca|floatformat:2 }}</td>
+              <td class="text-end text-success">{{ c.paye|floatformat:2 }}</td>
+              <td class="text-end {% if c.du > 0 %}text-danger fw-semibold{% else %}text-muted{% endif %}">{{ c.du|floatformat:2 }}</td>
+              <td class="text-end">{{ c.nb_fact }}</td>
+              <td>
+                {% if c.ca > 0 %}
+                {% widthratio c.paye c.ca 100 as taux_pmt %}
+                <div class="d-flex align-items-center gap-1">
+                  <div class="progress flex-fill" style="height:5px;min-width:40px">
+                    <div class="progress-bar {% if taux_pmt >= 80 %}bg-success{% elif taux_pmt >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                         style="width:{{ taux_pmt }}%"></div>
+                  </div>
+                  <span class="small" style="min-width:30px">{{ taux_pmt }}%</span>
+                </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-5">Aucun client sur cette période</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

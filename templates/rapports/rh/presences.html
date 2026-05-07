@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Présences RH</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-calendar-check text-purple me-2"></i>Rapport de présences</h1>
+
+  <form method="get" class="d-flex gap-2 align-items-end mb-4 flex-wrap">
+    <div>
+      <label class="form-label small fw-semibold mb-1">Mois</label>
+      <select name="mois" class="form-select form-select-sm">
+        {% for m in mois_liste %}
+        <option value="{{ m.num }}" {% if m.num == mois %}selected{% endif %}>{{ m.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label small fw-semibold mb-1">Année</label>
+      <select name="annee" class="form-select form-select-sm">
+        {% for a in annees %}
+        <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Filtrer</button>
+  </form>
+
+  <!-- Synthèse globale -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Présents</div>
+        <div class="fw-bold fs-3 text-success">{{ synthese.nb_present }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Retards</div>
+        <div class="fw-bold fs-3 text-warning">{{ synthese.nb_retard }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Absences</div>
+        <div class="fw-bold fs-3 text-danger">{{ synthese.nb_absent }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Congés</div>
+        <div class="fw-bold fs-3 text-info">{{ synthese.nb_conge }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Employé</th>
+              <th class="text-center text-success">Présents</th>
+              <th class="text-center text-warning">Retards</th>
+              <th class="text-center text-danger">Absences</th>
+              <th class="text-center text-info">Congés</th>
+              <th class="text-center">Total</th>
+              <th>Taux présence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in stats %}
+            {% with pct=s.present|add:s.retard %}
+            <tr>
+              <td class="fw-semibold">{{ s.employe.prenom }} {{ s.employe.nom }}</td>
+              <td class="text-center fw-bold text-success">{{ s.present }}</td>
+              <td class="text-center fw-bold text-warning">{{ s.retard }}</td>
+              <td class="text-center fw-bold text-danger">{{ s.absent }}</td>
+              <td class="text-center fw-bold text-info">{{ s.conge }}</td>
+              <td class="text-center">{{ s.total }}</td>
+              <td>
+                {% if s.total > 0 %}
+                {% widthratio pct s.total 100 as taux %}
+                <div class="d-flex align-items-center gap-2">
+                  <div class="progress flex-fill" style="height:6px">
+                    <div class="progress-bar bg-success" style="width:{{ taux }}%"></div>
+                  </div>
+                  <span class="small fw-semibold" style="min-width:35px">{{ taux }}%</span>
+                </div>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-5">Aucun employé</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

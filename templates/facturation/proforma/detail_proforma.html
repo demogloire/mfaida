@@ -1,0 +1,493 @@
+{% extends 'base.html' %}
+{% load widget_tweaks acces_tags %}
+{% block content %}
+<style>
+    .page-detail-proforma .select2-container { width: 100% !important; margin-bottom: 0.125rem; }
+    .page-detail-proforma .select2-container .select2-selection--single { min-height: 2.875rem; border-radius: 0.375rem; padding-top: 0.2rem; }
+    .page-detail-proforma .ls-03 { letter-spacing: 0.04em; }
+    .page-detail-proforma .ls-05 { letter-spacing: 0.05em; }
+</style>
+<div class="content page-detail-proforma pb-5">
+    <nav class="mb-3" aria-label="Fil de navigation">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'facturation:liste-factures' %}" class="text-decoration-none">Vente</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'facturation:liste-proformas' %}" class="text-decoration-none">Proformas</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ proforma.numero_proforma }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-column flex-xl-row gap-3 justify-content-xl-between align-items-xl-start mb-4">
+        <div class="d-flex gap-3 align-items-start flex-grow-1">
+            <div class="flex-shrink-0">
+                <span class="avatar avatar-lg bg-warning bg-opacity-15 text-warning rounded-3 d-flex align-items-center justify-content-center" style="width: 3rem; height: 3rem;">
+                    <i class="ti ti-file-description fs-3"></i>
+                </span>
+            </div>
+            <div class="flex-grow-1 min-w-0">
+                <h1 class="fs-4 fw-bold mb-1 lh-sm">{{ proforma.numero_proforma }}</h1>
+                <p class="text-muted small mb-1">{{ proforma.branche.nom }}</p>
+                <p class="text-muted mb-2 small lh-base">
+                    Client : <strong class="text-body">{{ proforma.client.nom }}</strong>
+                    <span class="text-muted">&nbsp;{{ proforma.client.code_client }}</span>
+                </p>
+                {% if proforma.statut == 'BROUILLON' %}
+                    <span class="badge rounded-pill bg-secondary">Brouillon</span>
+                    <span class="text-muted small ms-2">Ajoutez les lignes puis cliquez <strong>Terminer</strong> pour soumettre au manager.</span>
+                {% elif proforma.statut == 'EN_ATTENTE' %}
+                    <span class="badge rounded-pill bg-warning text-dark">En attente d'approbation</span>
+                    <span class="text-muted small ms-2">Soumise au manager pour révision.</span>
+                {% elif proforma.statut == 'ACCEPTEE' %}
+                    <span class="badge rounded-pill bg-success">Approuvée</span>
+                    {% if proforma.facture_definitive_id %}
+                        <span class="text-muted small ms-2">Convertie en
+                            <a href="{% url 'facturation:detail-facture' proforma.facture_definitive_id %}" class="fw-semibold">
+                                facture brouillon
+                            </a>.
+                        </span>
+                    {% else %}
+                        <span class="text-muted small ms-2">Prête à convertir en facture brouillon.</span>
+                    {% endif %}
+                {% elif proforma.statut == 'ANNULEE' %}
+                    <span class="badge rounded-pill bg-danger">Rejetée</span>
+                {% elif proforma.statut == 'EXPIREE' %}
+                    <span class="badge rounded-pill bg-secondary">Expirée</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-start ms-xl-auto">
+            {% if peut_approuver %}
+            <a href="{% url 'facturation:imprimer-proforma' proforma.pk %}"
+               target="_blank" rel="noopener"
+               class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+               <i class="ti ti-printer me-1"></i>Imprimer
+            </a>
+            {% endif %}
+            {% if proforma.statut == 'BROUILLON' %}
+            <form method="post" action="{% url 'facturation:supprimer-proforma' proforma.pk %}" class="mb-0" onsubmit="return confirm('Supprimer definitivement cette proforma ?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                    <i class="ti ti-trash me-1"></i>Supprimer
+                </button>
+            </form>
+            {% endif %}
+            <a href="{% url 'facturation:liste-proformas' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="ti ti-list me-1"></i>Liste
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-8">
+
+            {# ── Entête ── #}
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <span class="fw-bold text-muted small text-uppercase ls-05">Détail de la proforma</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 gy-4">
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Numéro</div>
+                            <div class="fw-semibold">{{ proforma.numero_proforma }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Date d'émission</div>
+                            <div class="fw-semibold">{{ proforma.date_emission|date:"d/m/Y H:i" }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Validité</div>
+                            <div class="fw-semibold">{{ proforma.date_validite|date:"d/m/Y" }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Vendeur</div>
+                            <div>{% firstof proforma.vendeur.get_full_name proforma.vendeur.username %}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Devise</div>
+                            <div><span class="fw-medium">{{ proforma.devise.code }}</span> {{ proforma.devise.symbole }}</div>
+                        </div>
+                        {% if proforma.approuve_par %}
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">{% if proforma.statut == 'ACCEPTEE' %}Approuvé par{% else %}Décision de{% endif %}</div>
+                            <div class="fw-medium">{% firstof proforma.approuve_par.get_full_name proforma.approuve_par.username %}</div>
+                            <div class="small text-muted">{{ proforma.date_approbation|date:"d/m/Y H:i" }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if proforma.commentaire_manager %}
+                    <div class="mt-4 rounded-3 border bg-light px-3 py-3">
+                        <div class="text-muted small text-uppercase fw-semibold mb-1 ls-03">Commentaire du manager</div>
+                        <p class="mb-0 small" style="white-space: pre-line;">{{ proforma.commentaire_manager }}</p>
+                    </div>
+                    {% endif %}
+
+                    <hr class="border opacity-50 my-4">
+
+                    <h6 class="text-muted small text-uppercase fw-bold mb-3 ls-03">Coordonnées client</h6>
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <div class="text-muted small text-uppercase ls-03">Nom</div>
+                            <div class="fw-semibold">{{ proforma.client.nom }}</div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="text-muted small text-uppercase ls-03">Code</div>
+                            <div>{{ proforma.client.code_client }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small text-uppercase ls-03">Téléphone</div>
+                            <div>{{ proforma.client.telephone|default:"—" }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small text-uppercase ls-03">E-mail</div>
+                            <div>{{ proforma.client.email|default:"—" }}</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="text-muted small text-uppercase ls-03">Adresse</div>
+                            <div style="white-space:pre-line;">{{ proforma.client.adresse|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Totaux ── #}
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center text-center text-md-start">
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">Total HT</div>
+                            <div class="fs-5 fw-bold">{{ proforma.total_ht }} <span class="fs-6 fw-normal text-muted">{{ proforma.devise.symbole }}</span></div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">Total TVA</div>
+                            <div class="fs-5 fw-bold">{{ proforma.total_tva }} <span class="fs-6 fw-normal text-muted">{{ proforma.devise.symbole }}</span></div>
+                        </div>
+                        <div class="col-12 col-md-4 mt-3 mt-md-0">
+                            <div class="rounded-3 bg-warning bg-opacity-10 px-4 py-3 text-center">
+                                <div class="small text-warning fw-semibold text-uppercase">Total TTC</div>
+                                <div class="fs-4 fw-bold text-warning">{{ proforma.total_ttc }} <span class="fs-6 opacity-75">{{ proforma.devise.symbole }}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Ajout de ligne (si éditable) ── #}
+            {% if peut_editer and ligne_form %}
+            <div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden" style="border-left: 3px solid #ffc107 !important;">
+                <div class="card-header bg-warning bg-opacity-10 border-bottom py-3 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="ti ti-stack-2 text-warning fs-5"></i>
+                        <div>
+                            <h6 class="mb-0 fw-bold">Ajouter une ligne</h6>
+                            <p class="small text-muted mb-0">Prix vide = prix catalogue appliqué. TVA calculée automatiquement.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body px-4 py-4">
+                    <form method="post" action="{% url 'facturation:ajouter-ligne-proforma' proforma.pk %}" id="form-ajout-ligne-proforma">
+                        {% csrf_token %}
+
+                        {# Produit — pleine largeur #}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold mb-1" for="{{ ligne_form.produit_selection.id_for_label }}">
+                                Produit
+                            </label>
+                            {% render_field ligne_form.produit_selection %}
+                            {% for e in ligne_form.produit_selection.errors %}
+                                <div class="text-danger small mt-1">{{ e }}</div>
+                            {% endfor %}
+                        </div>
+
+                        {# Prix catalogue affiché dynamiquement #}
+                        <div id="proforma-prix-catalogue-hint" class="alert alert-light border py-2 px-3 small mb-3 d-none">
+                            <i class="ti ti-tag me-1 text-muted"></i>
+                            Prix catalogue HT : <strong id="proforma-prix-catalogue-val">—</strong>
+                        </div>
+
+                        {# Quantité · Prix HT · Remise sur une rangée #}
+                        <div class="row g-3 mb-3">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label fw-semibold mb-1" for="{{ ligne_form.quantite.id_for_label }}">
+                                    Quantité
+                                </label>
+                                {% render_field ligne_form.quantite class="form-control" placeholder="0" %}
+                                {% for e in ligne_form.quantite.errors %}
+                                    <div class="text-danger small mt-1">{{ e }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label fw-semibold mb-1" for="{{ ligne_form.prix_unitaire_ht.id_for_label }}">
+                                    Prix HT unitaire
+                                </label>
+                                {% render_field ligne_form.prix_unitaire_ht class="form-control" placeholder="Prix catalogue" %}
+                                {% for e in ligne_form.prix_unitaire_ht.errors %}
+                                    <div class="text-danger small mt-1">{{ e }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label fw-semibold mb-1" for="{{ ligne_form.remise.id_for_label }}">
+                                    Remise (HT)
+                                </label>
+                                {% render_field ligne_form.remise class="form-control" placeholder="0" %}
+                                {% for e in ligne_form.remise.errors %}
+                                    <div class="text-danger small mt-1">{{ e }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        {# Bouton — pleine largeur après les champs #}
+                        <div class="d-grid">
+                            <button class="btn btn-warning rounded-3 text-dark fw-semibold py-2" type="submit">
+                                <i class="ti ti-plus me-1"></i>Ajouter la ligne
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            {# ── Lignes de la proforma ── #}
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-muted small text-uppercase ls-05">Produits</span>
+                    {% if peut_approuver %}
+                    <a href="{% url 'facturation:imprimer-proforma' proforma.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                        <i class="ti ti-printer me-1"></i>Imprimer
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produit</th>
+                                <th class="text-end">Qté</th>
+                                <th class="text-end">PU HT</th>
+                                <th class="text-end">Remise</th>
+                                <th class="text-end">Sous-total HT</th>
+                                <th class="text-end">TVA</th>
+                                <th class="text-end">Sous-total TTC</th>
+                                {% if peut_editer %}<th class="w-1"></th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for l in lignes %}
+                            <tr>
+                                <td class="fw-medium">{{ l.produit.libelle_ligne_achat }}</td>
+                                <td class="text-end">{{ l.quantite }}</td>
+                                <td class="text-end">{{ l.prix_unitaire_ht }}</td>
+                                <td class="text-end">{% if l.remise %}{{ l.remise }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                                <td class="text-end fw-medium">{{ l.sous_total_ht }}</td>
+                                <td class="text-end">{% if l.tva_montant %}{{ l.tva_montant }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                                <td class="text-end fw-semibold">{{ l.sous_total_ttc }}</td>
+                                {% if peut_editer %}
+                                <td>
+                                    <form method="post" action="{% url 'facturation:supprimer-ligne-proforma' proforma.pk l.pk %}" class="mb-0" onsubmit="return confirm('Supprimer cette ligne ?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2" aria-label="Supprimer ligne">×</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{% if peut_editer %}8{% else %}7{% endif %}" class="text-center py-5 text-muted">Aucune ligne.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {# ── Actions selon statut ── #}
+                {# ── Bouton Terminer (vendeur, statut BROUILLON) ── #}
+                {% if proforma.statut == 'BROUILLON' and peut_editer %}
+                <div class="card-footer border-0 py-4 px-4 {% if lignes %}bg-light{% else %}bg-warning bg-opacity-10{% endif %}">
+                    <div class="d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
+                        {% if lignes %}
+                        <p class="small text-muted mb-0">
+                            <i class="ti ti-send me-1"></i>
+                            Proforma prête — cliquez <strong>Terminer</strong> pour la soumettre au manager.
+                            Vous ne pourrez plus modifier les lignes après soumission.
+                        </p>
+                        <form method="post" action="{% url 'facturation:soumettre-proforma' proforma.pk %}" class="mb-0 flex-shrink-0" onsubmit="return confirm('Soumettre cette proforma au manager ? Les lignes seront figees.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning rounded-pill px-5 text-dark fw-semibold">
+                                <i class="ti ti-send me-1"></i>Terminer
+                            </button>
+                        </form>
+                        {% else %}
+                        <p class="small text-muted mb-0">
+                            <i class="ti ti-alert-triangle me-1 text-warning"></i>
+                            Ajoutez au moins une ligne pour pouvoir soumettre cette proforma au manager.
+                        </p>
+                        <button type="button" class="btn btn-warning rounded-pill px-5 text-dark fw-semibold flex-shrink-0" disabled>
+                            <i class="ti ti-send me-1"></i>Terminer
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {# ── Actions manager (approbation / rejet) ── #}
+                {% if proforma.statut == 'EN_ATTENTE' and peut_approuver and lignes %}
+                <div class="card-footer bg-warning bg-opacity-10 border-0 py-4 px-4">
+                    <p class="small text-muted mb-3 fw-semibold">
+                        <i class="ti ti-eye-check me-1"></i>Action manager — approbation ou rejet
+                    </p>
+                    <div class="d-flex flex-column flex-md-row gap-3">
+                        {# Formulaire approbation #}
+                        <div class="flex-grow-1">
+                            <form method="post" action="{% url 'facturation:approuver-proforma' proforma.pk %}" onsubmit="return confirm('Approuver cette proforma ?');">
+                                {% csrf_token %}
+                                {% if decision_form %}
+                                <div class="mb-3">
+                                    {% render_field decision_form.commentaire_manager placeholder="Commentaire approbation (optionnel)..." %}
+                                </div>
+                                {% endif %}
+                                <button type="submit" class="btn btn-success rounded-pill px-4">
+                                    <i class="ti ti-check me-1"></i>Approuver
+                                </button>
+                            </form>
+                        </div>
+                        {# Formulaire rejet #}
+                        <div class="flex-grow-1">
+                            <form method="post" action="{% url 'facturation:rejeter-proforma' proforma.pk %}" onsubmit="return confirm('Rejeter cette proforma ?');">
+                                {% csrf_token %}
+                                {% if decision_form %}
+                                <div class="mb-3">
+                                    {% render_field decision_form.commentaire_manager placeholder="Motif de rejet (recommande)..." %}
+                                </div>
+                                {% endif %}
+                                <button type="submit" class="btn btn-danger rounded-pill px-4">
+                                    <i class="ti ti-x me-1"></i>Rejeter
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if proforma.statut == 'ACCEPTEE' and not proforma.facture_definitive_id %}
+                <div class="card-footer bg-success bg-opacity-10 border-0 py-4 px-4">
+                    <div class="d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
+                        <p class="small text-muted mb-0">
+                            <i class="ti ti-transfer me-1 text-success"></i>
+                            Proforma approuvée — vous pouvez la convertir en <strong>facture brouillon</strong>.
+                            Le stock sera vérifié et la vente pourra être finalisée normalement.
+                        </p>
+                        <form method="post" action="{% url 'facturation:convertir-proforma' proforma.pk %}" class="mb-0 flex-shrink-0" onsubmit="return confirm('Convertir en facture brouillon ? Les lignes seront copiées sur la facture.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success rounded-pill px-4">
+                                <i class="ti ti-file-invoice me-1"></i>Convertir en brouillon
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if proforma.statut == 'ACCEPTEE' and proforma.facture_definitive_id %}
+                <div class="card-footer bg-light border-0 py-3 px-4">
+                    <p class="small mb-0 text-muted">
+                        <i class="ti ti-circle-check me-1 text-success"></i>
+                        Proforma convertie.
+                        <a href="{% url 'facturation:detail-facture' proforma.facture_definitive_id %}" class="fw-semibold text-success">
+                            Ouvrir la facture brouillon →
+                        </a>
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>{# /col-xl-8 #}
+
+        <aside class="col-xl-4">
+            <div class="card border-0 bg-light rounded-3 sticky-xl-top mb-4" style="top: 5.5rem;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="rounded-circle bg-warning bg-opacity-15 text-warning p-2"><i class="ti ti-info-circle fs-5"></i></span>
+                        <span class="fw-bold small text-uppercase text-muted ls-03">Statut &amp; Workflow</span>
+                    </div>
+                    <ul class="list-unstyled mb-0 d-flex flex-column gap-2 small">
+                        <li class="d-flex gap-2 align-items-start {% if proforma.statut == 'BROUILLON' %}fw-semibold{% else %}text-muted{% endif %}">
+                            <span class="badge rounded-pill {% if proforma.statut == 'BROUILLON' %}bg-secondary{% else %}bg-light text-muted border{% endif %} mt-1 flex-shrink-0">1</span>
+                            <span>Vendeur <strong>crée</strong> la proforma et ajoute les lignes.</span>
+                        </li>
+                        <li class="d-flex gap-2 align-items-start {% if proforma.statut == 'EN_ATTENTE' %}fw-semibold{% else %}text-muted{% endif %}">
+                            <span class="badge rounded-pill {% if proforma.statut == 'EN_ATTENTE' %}bg-warning text-dark{% else %}bg-light text-muted border{% endif %} mt-1 flex-shrink-0">2</span>
+                            <span>Vendeur clique <strong>Terminer</strong> → soumis au manager.</span>
+                        </li>
+                        <li class="d-flex gap-2 align-items-start {% if proforma.statut == 'ACCEPTEE' or proforma.statut == 'ANNULEE' %}fw-semibold{% else %}text-muted{% endif %}">
+                            <span class="badge rounded-pill {% if proforma.statut == 'ACCEPTEE' %}bg-success{% elif proforma.statut == 'ANNULEE' %}bg-danger{% else %}bg-light text-muted border{% endif %} mt-1 flex-shrink-0">3</span>
+                            <span>Manager <strong>approuve</strong> ou <strong>rejette</strong>.</span>
+                        </li>
+                        <li class="d-flex gap-2 align-items-start {% if proforma.facture_definitive_id %}fw-semibold{% else %}text-muted{% endif %}">
+                            <span class="badge rounded-pill {% if proforma.facture_definitive_id %}bg-success{% else %}bg-light text-muted border{% endif %} mt-1 flex-shrink-0">4</span>
+                            <span>Si approuvée → <strong>conversion en facture brouillon</strong>.</span>
+                        </li>
+                    </ul>
+                    {% if peut_approuver %}
+                    <hr class="my-3">
+                    <a href="{% url 'facturation:imprimer-proforma' proforma.pk %}" target="_blank" rel="noopener" class="btn btn-outline-secondary rounded-3 w-100 px-4">
+                        <i class="ti ti-printer me-1"></i>Imprimer la proforma
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+{% if peut_editer %}
+<script>
+(function () {
+    var urlProduits = '{% url "facturation:produits-autocomplete-proforma" proforma.pk %}';
+    var sel = document.getElementById('id_produit_selection_proforma');
+    var hintBox = document.getElementById('proforma-prix-catalogue-hint');
+    var hintVal = document.getElementById('proforma-prix-catalogue-val');
+    var prixInput = document.getElementById('{{ ligne_form.prix_unitaire_ht.id_for_label }}');
+
+    if (!sel || typeof jQuery === 'undefined') return;
+
+    jQuery(sel).select2({
+        width: '100%',
+        placeholder: 'Rechercher par nom, SKU ou code-barres…',
+        allowClear: true,
+        minimumInputLength: 2,
+        ajax: {
+            url: urlProduits,
+            delay: 280,
+            data: function (params) { return { q: params.term || '' }; },
+            processResults: function (data) { return { results: data.results || [] }; }
+        },
+        language: { inputTooShort: function () { return 'Saisissez au moins 2 caracteres…'; } }
+    });
+
+    jQuery(sel).on('select2:select', function (e) {
+        var data = e.params.data;
+        if (data && data.prix_ht !== undefined) {
+            afficherPrix(data.prix_ht);
+        }
+    });
+
+    jQuery(sel).on('select2:clear select2:unselect', function () {
+        if (hintBox) hintBox.classList.add('d-none');
+        if (hintVal) hintVal.textContent = '—';
+    });
+
+    function afficherPrix(prix) {
+        if (hintBox && hintVal) {
+            hintVal.textContent = prix;
+            hintBox.classList.remove('d-none');
+            // Pré-remplir le champ prix uniquement s'il est vide
+            if (prixInput && !prixInput.value) {
+                prixInput.value = prix;
+            }
+        }
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

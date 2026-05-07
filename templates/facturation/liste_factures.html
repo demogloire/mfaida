@@ -1,33 +1,311 @@
 {% extends 'base.html' %}
-{% load widget_tweaks %}
 {% block content %}
-<div class="content">
-    <div class="page-header"><h4 class="fw-bold">Factures</h4></div>
-    <div class="card">
-        <div class="card-header d-flex justify-content-between">
-            <span>Liste (500 dernières)</span>
-            <a href="{% url 'facturation:nouvelle-facture' %}" class="btn btn-sm btn-primary">Nouvelle facture</a>
+<style>
+    .page-liste-factures .ls-03 { letter-spacing: 0.04em; }
+    .page-liste-factures .mono-piece { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+</style>
+<div class="content page-liste-factures pb-5">
+    <nav class="mb-3" aria-label="Fil de navigation">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'facturation:liste-factures' %}" class="text-decoration-none">Vente — Factures</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Liste</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+        <div class="d-flex gap-3 align-items-start flex-grow-1 min-w-0">
+            <div class="flex-shrink-0">
+                <span class="avatar avatar-lg bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 3rem; height: 3rem;">
+                    <i class="ti ti-receipt-2 fs-3"></i>
+                </span>
+            </div>
+            <div class="min-w-0">
+                <h1 class="fs-4 fw-bold mb-1 lh-sm">Factures</h1>
+                <p class="text-muted small mb-0 lh-base" style="max-width: 36rem;">
+                    Dernières pièces accessibles sur vos points de vente (jusqu’à <strong>500</strong> entrées). Cliquez sur une ligne pour ouvrir le détail, les lignes et l’impression.
+                </p>
+            </div>
         </div>
-        <div class="card-body p-0 table-responsive">
-            <table class="table mb-0">
-                <thead class="table-light"><tr><th>N°</th><th>Date</th><th>PV</th><th>Client</th><th>Statut</th><th class="text-end">TTC</th><th></th></tr></thead>
-                <tbody>
-                    {% for f in factures %}
-                    <tr>
-                        <td>{{ f.numero_facture }}</td>
-                        <td>{{ f.date_facture|date:"d/m/Y" }}</td>
-                        <td>{{ f.point_vente.nom }}</td>
-                        <td>{{ f.client.nom }}</td>
-                        <td>{{ f.statut }}</td>
-                        <td class="text-end">{{ f.total_ttc }}</td>
-                        <td><a href="{% url 'facturation:detail-facture' f.pk %}">Ouvrir</a></td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="7" class="text-center py-4 text-muted">Aucune facture.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="d-flex flex-shrink-0">
+            <a href="{% url 'facturation:nouvelle-facture' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                <i class="ti ti-file-plus me-1"></i>Nouvelle facture
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <div class="card-header bg-white border-bottom py-3 px-4">
+            <div class="d-flex flex-column flex-xl-row gap-3 justify-content-between align-items-stretch align-items-xl-center mb-3">
+                <div>
+                    <span class="fw-bold text-muted small text-uppercase ls-03">Registre</span>
+                    <div class="small text-muted mt-1">Tri&nbsp;: date décroissante (les plus récentes en premier).</div>
+                </div>
+            </div>
+            <form method="get" class="row g-2 align-items-end" action="{% url 'facturation:liste-factures' %}">
+                <div class="col-md-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-fac-q">Recherche</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-2" aria-hidden="true"><i class="ti ti-search text-muted"></i></span>
+                        <input type="search" id="id-liste-fac-q" name="q" value="{{ filt_q }}" class="form-control border-start-0" placeholder="N° pièce, client, code client…" autocomplete="off">
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-fac-pv">Point de vente</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-2" aria-hidden="true"><i class="ti ti-building-store text-muted"></i></span>
+                        <select id="id-liste-fac-pv" name="point_vente" class="form-select border-start-0 ps-0">
+                            <option value="">Tous</option>
+                            {% for pv in points_vente %}
+                            <option value="{{ pv.pk }}" {% if filt_pv == pv.pk|stringformat:"s" %}selected{% endif %}>{{ pv.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-fac-statut">Statut</label>
+                    <select id="id-liste-fac-statut" name="statut" class="form-select">
+                        <option value="">Tous</option>
+                        {% for val, label in statuts_choix %}
+                        <option value="{{ val }}" {% if filt_statut == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-fac-mode">Mode de paiement</label>
+                    <select id="id-liste-fac-mode" name="mode_paiement" class="form-select">
+                        <option value="">Tous</option>
+                        {% for val, label in modes_paiement_choix %}
+                        <option value="{{ val }}" {% if filt_mode == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-fac-dde">Date du</label>
+                    <input type="date" id="id-liste-fac-dde" name="date_de" value="{{ filt_date_de }}" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-md-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-fac-da">Date au</label>
+                    <input type="date" id="id-liste-fac-da" name="date_a" value="{{ filt_date_a }}" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Filtrer</button>
+                    <a href="{% url 'facturation:liste-factures' %}" class="btn btn-outline-secondary">Réinitialiser</a>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr class="small text-muted text-uppercase ls-03" style="font-size: .68rem;">
+                            <th class="ps-4">N° pièce</th>
+                            <th>Date</th>
+                            <th>Point de vente</th>
+                            <th>Client</th>
+                            <th class="d-none d-lg-table-cell">Code client</th>
+                            <th>Statut</th>
+                            <th class="d-none d-md-table-cell">Paiement</th>
+                            <th class="text-end pe-2">TTC</th>
+                            <th class="pe-4 w-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in factures %}
+                        <tr>
+                            <td class="ps-4">
+                                <span class="fw-semibold mono-piece text-body">{{ f.numero_facture }}</span>
+                            </td>
+                            <td class="text-nowrap small">
+                                <span class="fw-medium">{{ f.date_facture|date:"d/m/Y" }}</span>
+                                <span class="text-muted d-none d-md-inline">{{ f.date_facture|date:"H:i" }}</span>
+                            </td>
+                            <td>
+                                <span class="small fw-medium">{{ f.point_vente.nom }}</span>
+                            </td>
+                            <td>
+                                <div class="fw-medium">{{ f.client.nom }}</div>
+                                <div class="d-lg-none small text-muted">{{ f.client.code_client }}</div>
+                            </td>
+                            <td class="d-none d-lg-table-cell small text-muted">{{ f.client.code_client }}</td>
+                            <td>
+                                {% if f.statut == 'BROUILLON' %}
+                                <span class="badge rounded-pill bg-warning text-dark">{{ f.get_statut_display }}</span>
+                                {% elif f.statut == 'EN_CAISSE' %}
+                                <span class="badge rounded-pill bg-info text-dark">{{ f.get_statut_display }}</span>
+                                {% elif f.statut == 'VALIDEE' %}
+                                <span class="badge rounded-pill bg-success">{{ f.get_statut_display }}</span>
+                                {% elif f.statut == 'ANNULEE' %}
+                                <span class="badge rounded-pill bg-danger">{{ f.get_statut_display }}</span>
+                                {% else %}
+                                <span class="badge rounded-pill bg-secondary">{{ f.get_statut_display }}</span>
+                                {% endif %}
+                                <div class="small text-muted mt-1 d-md-none">{{ f.get_mode_paiement_display }}</div>
+                            </td>
+                            <td class="d-none d-md-table-cell small">{{ f.get_mode_paiement_display }}</td>
+                            <td class="text-end pe-2">
+                                <span class="fw-semibold">{{ f.total_ttc }}</span>
+                                <span class="text-muted small ms-1">{{ f.devise.symbole }}</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="{% url 'facturation:detail-facture' f.pk %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                        Ouvrir
+                                    </a>
+                                    {% if f.statut == 'VALIDEE' and f.reste_a_payer > 0 %}
+                                    <button type="button"
+                                            class="btn btn-sm btn-warning rounded-pill px-2"
+                                            title="Enregistrer un paiement"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalPaiement{{ f.pk }}">
+                                        <i class="ti ti-cash"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if f.statut == 'BROUILLON' %}
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger rounded-pill px-2"
+                                            title="Supprimer ce brouillon"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalSupprimerFacture{{ f.pk }}">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5 px-4">
+                                <div class="d-inline-flex flex-column align-items-center gap-2 py-3">
+                                    <span class="rounded-circle bg-light p-4 text-muted"><i class="ti ti-inbox fs-1"></i></span>
+                                    <p class="mb-1 fw-semibold text-body">Aucune facture pour l’instant</p>
+                                    <p class="small text-muted mb-3 mb-md-4" style="max-width: 22rem;">
+                                        Créez un brouillon depuis votre point de vente pour démarrer une vente.
+                                    </p>
+                                    <a href="{% url 'facturation:nouvelle-facture' %}" class="btn btn-primary rounded-pill px-4">
+                                        <i class="ti ti-file-plus me-1"></i>Nouvelle facture
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+{% for f in factures %}{% if f.statut == 'VALIDEE' and f.reste_a_payer > 0 %}
+<div class="modal fade" id="modalPaiement{{ f.pk }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold"><i class="ti ti-cash me-2 text-warning"></i>Enregistrer un paiement</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'facturation:paiement-facture' f.pk %}">
+        {% csrf_token %}
+        <div class="modal-body pt-2">
+          <div class="rounded-3 bg-light px-3 py-2 mb-3 small d-flex justify-content-between">
+            <span class="text-muted">{{ f.numero_facture }} · {{ f.client.nom }}</span>
+            <span class="fw-bold text-warning">Reste : {{ f.reste_a_payer }} {{ f.devise.symbole }}</span>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Mode de paiement</label>
+            <select name="mode_paiement" class="form-select form-select-sm">
+              <option value="CASH">Espèces</option>
+              <option value="MOBILE_MONEY">Mobile Money</option>
+              <option value="CARTE">Carte bancaire</option>
+              <option value="CHEQUE">Chèque</option>
+              <option value="VIREMENT">Virement bancaire</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Montant reçu <span class="text-danger">*</span></label>
+            <div class="input-group input-group-sm">
+              <input type="number" name="montant" id="pay-montant-{{ f.pk }}" class="form-control" step="0.01" min="0.01"
+                     max="{{ f.reste_a_payer }}" value="{{ f.reste_a_payer }}" required
+                     data-max="{{ f.reste_a_payer }}" data-sym="{{ f.devise.symbole }}">
+              <span class="input-group-text">{{ f.devise.symbole }}</span>
+            </div>
+            <div id="pay-alert-{{ f.pk }}" class="alert alert-danger d-flex gap-2 align-items-center py-2 mt-1 d-none small">
+              <i class="ti ti-alert-triangle flex-shrink-0"></i>
+              <span id="pay-alert-msg-{{ f.pk }}"></span>
+            </div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold small">Notes</label>
+            <input type="text" name="notes" class="form-control form-control-sm" placeholder="Optionnel…">
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm btn-warning rounded-pill px-3">
+            <i class="ti ti-check me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}{% if f.statut == 'BROUILLON' %}
+<div class="modal fade" id="modalSupprimerFacture{{ f.pk }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold text-danger"><i class="ti ti-trash me-2"></i>Supprimer le brouillon</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-2 small text-muted">
+        Supprimer définitivement le brouillon <strong class="text-body">{{ f.numero_facture }}</strong>&nbsp;?
+        Cette action est irréversible.
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Annuler</button>
+        <form method="post" action="{% url 'facturation:supprimer-facture' f.pk %}" class="mb-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger rounded-pill px-3">
+            <i class="ti ti-trash me-1"></i>Supprimer
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}{% endfor %}
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+(function () {
+    // Validation temps réel pour tous les inputs de paiement de la liste
+    document.querySelectorAll('input[id^="pay-montant-"]').forEach(function (input) {
+        var pk      = input.id.replace('pay-montant-', '');
+        var maxPay  = parseFloat(input.dataset.max) || 0;
+        var sym     = input.dataset.sym || '';
+        var alertEl = document.getElementById('pay-alert-' + pk);
+        var msgEl   = document.getElementById('pay-alert-msg-' + pk);
+        var form    = input.closest('form');
+        var btn     = form ? form.querySelector('button[type="submit"]') : null;
+
+        function validate() {
+            var val = parseFloat(String(input.value).replace(',', '.'));
+            if (!isNaN(val) && val > maxPay) {
+                if (alertEl) alertEl.classList.remove('d-none');
+                if (msgEl) msgEl.textContent =
+                    'Le montant saisi (' + val.toFixed(2) + '\u00a0' + sym +
+                    ') dépasse le reste dû (' + maxPay.toFixed(2) + '\u00a0' + sym + ').';
+                input.classList.add('is-invalid');
+                if (btn) btn.disabled = true;
+            } else {
+                if (alertEl) alertEl.classList.add('d-none');
+                input.classList.remove('is-invalid');
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        input.addEventListener('input', validate);
+        input.addEventListener('change', validate);
+    });
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="Fil de navigation">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'depenses:liste-depenses' %}" class="text-decoration-none">Dépenses</a></li>
+      <li class="breadcrumb-item active">Nouvelle dépense</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger flex-shrink-0"
+          style="width:3rem;height:3rem;">
+      <i class="ti ti-cash-off fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-0 lh-sm">Nouvelle dépense</h1>
+      <p class="text-muted small mb-0">Sortie de fonds — soumise à validation avant d'être définitive.</p>
+    </div>
+  </div>
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <form method="post" class="row g-4 align-items-start">
+    {% csrf_token %}
+
+    <!-- ── Colonne principale ── -->
+    <div class="col-12 col-xl-8">
+
+      <!-- Localisation + Montant -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 px-4">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-building-store me-1"></i>Localisation & Montant
+          </span>
+        </div>
+        <div class="card-body p-4">
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold small" for="id_point_vente">
+              Point de vente <span class="text-danger">*</span>
+            </label>
+            <select id="id_point_vente" name="point_vente" class="form-select" required>
+              <option value="">— Sélectionnez un point de vente —</option>
+              {% for pv in points_vente %}
+              <option value="{{ pv.pk }}"
+                      data-session="{% if pv.pk in pvs_avec_session %}1{% else %}0{% endif %}">
+                {{ pv.nom }}{% if pv.pk not in pvs_avec_session %} — ⚠ Pas de session ouverte{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+            <!-- Alerte dynamique session -->
+            <div id="alerte-session" class="alert alert-danger d-flex gap-2 align-items-start py-2 mt-2 d-none small">
+              <i class="ti ti-lock flex-shrink-0 fs-5 mt-1"></i>
+              <div>
+                <strong>Aucune session de caisse ouverte</strong> sur ce point de vente.<br>
+                Ouvrez une session depuis le module <a href="{% url 'caisse:ouvrir-session' %}" class="alert-link" target="_blank">Caisse</a> avant d'enregistrer une dépense.
+              </div>
+            </div>
+          </div>
+
+          <!-- Montant + Devise — même hauteur -->
+          <div class="row g-3">
+            <div class="col-8">
+              <label class="form-label fw-semibold small" for="id_montant">
+                Montant <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <span class="input-group-text bg-white text-muted"><i class="ti ti-coins"></i></span>
+                <input id="id_montant" type="number" name="montant"
+                       step="0.01" min="0.01"
+                       class="form-control fw-bold"
+                       placeholder="0.00" required>
+              </div>
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-semibold small" for="id_devise">
+                Devise <span class="text-danger">*</span>
+              </label>
+              <select id="id_devise" name="devise" class="form-select" required>
+                {% for dev in devises %}
+                <option value="{{ dev.pk }}"
+                        {% if devise_principale and dev.pk == devise_principale.pk %}selected{% endif %}>
+                  {{ dev.code }} — {{ dev.symbole }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Catégorie de dépense -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-tag me-1"></i>Catégorie de dépense
+          </span>
+          <a href="{% url 'depenses:liste-types-depense' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+             target="_blank" title="Configurer les types">
+            <i class="ti ti-settings me-1"></i><span class="d-none d-md-inline">Configurer</span>
+          </a>
+        </div>
+        <div class="card-body p-4">
+          {% if categories %}
+          <input type="hidden" name="categorie" id="hiddenCategorie" value="">
+          <div class="row g-3" id="categorieCards">
+            {% for cat in categories %}
+            <div class="col-6 col-md-4">
+              <div class="cat-card border rounded-3 p-3 h-100 d-flex flex-column align-items-center text-center gap-2"
+                   data-pk="{{ cat.pk }}"
+                   data-nom="{{ cat.nom }}"
+                   data-couleur="{{ cat.couleur }}"
+                   style="cursor:pointer;transition:all .15s;">
+                <span class="cat-circle rounded-circle d-flex align-items-center justify-content-center"
+                      style="width:2.8rem;height:2.8rem;background:{{ cat.couleur }}22;">
+                  <i class="ti {{ cat.icone }}" style="color:{{ cat.couleur }};font-size:1.1rem;"></i>
+                </span>
+                <span class="small fw-semibold lh-sm">{{ cat.nom }}</span>
+              </div>
+            </div>
+            {% endfor %}
+            <!-- Option "Sans catégorie" -->
+            <div class="col-6 col-md-4">
+              <div class="cat-card border rounded-3 p-3 h-100 d-flex flex-column align-items-center text-center gap-2 selected"
+                   data-pk=""
+                   data-nom="Sans catégorie"
+                   data-couleur="#6c757d"
+                   style="cursor:pointer;transition:all .15s;">
+                <span class="cat-circle rounded-circle d-flex align-items-center justify-content-center"
+                      style="width:2.8rem;height:2.8rem;background:#f0f0f0;">
+                  <i class="ti ti-circle-dashed" style="color:#6c757d;font-size:1.1rem;"></i>
+                </span>
+                <span class="small fw-semibold lh-sm text-muted">Sans catégorie</span>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="ti ti-mood-empty fs-2 d-block mb-2 opacity-40"></i>
+            <p class="small mb-2">Aucune catégorie configurée.</p>
+            <a href="{% url 'depenses:liste-types-depense' %}" class="btn btn-sm btn-primary" target="_blank">
+              <i class="ti ti-settings me-1"></i>Créer des catégories
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Motif -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 px-4">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-file-description me-1"></i>Motif / Objet <span class="text-danger">*</span>
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <textarea id="id_motif" name="motif" rows="4"
+                    class="form-control"
+                    placeholder="Décrivez précisément la raison de cette dépense…"
+                    required></textarea>
+          <div class="form-text mt-2">
+            <i class="ti ti-printer me-1"></i>Ce motif apparaîtra sur le bon de dépense imprimé.
+          </div>
+        </div>
+      </div>
+
+      <!-- Boutons -->
+      <div class="d-flex gap-2 justify-content-end">
+        <a href="{% url 'depenses:liste-depenses' %}" class="btn btn-outline-secondary px-4">
+          <i class="ti ti-arrow-left me-1"></i>Retour
+        </a>
+        <button type="submit" class="btn btn-danger px-5 fw-semibold">
+          <i class="ti ti-check me-1"></i>Enregistrer la dépense
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ── Sidebar ── -->
+    <div class="col-12 col-xl-4">
+
+      <!-- Résumé live -->
+      <div class="card border-0 shadow-sm mb-3" id="cardResume" style="display:none!important;">
+        <div class="card-body p-4">
+          <div class="text-muted small text-uppercase fw-semibold mb-3" style="letter-spacing:.06em;">Résumé</div>
+          <div class="d-flex justify-content-between align-items-baseline mb-1">
+            <span class="text-muted small">Catégorie</span>
+            <span id="resCategorie" class="fw-semibold small text-end">—</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-baseline mb-3">
+            <span class="text-muted small">Montant</span>
+            <span id="resMontant" class="fw-bold fs-4 text-danger">—</span>
+          </div>
+          <div class="border-top pt-3">
+            <div class="text-muted small mb-1">Statut après création</div>
+            <span class="badge bg-warning text-dark px-3 py-2">Brouillon — en attente de validation</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workflow -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-bottom py-3 px-4">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-git-branch me-1"></i>Workflow
+          </span>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex gap-3 align-items-start py-3 px-4">
+              <span class="badge bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style="width:1.6rem;height:1.6rem;font-size:.65rem;">1</span>
+              <div>
+                <div class="fw-semibold">Brouillon</div>
+                <div class="text-muted" style="font-size:.78rem;">Dépense créée, modifiable jusqu'à validation.</div>
+              </div>
+            </li>
+            <li class="list-group-item d-flex gap-3 align-items-start py-3 px-4">
+              <span class="badge bg-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style="width:1.6rem;height:1.6rem;font-size:.65rem;">2</span>
+              <div>
+                <div class="fw-semibold">Validée</div>
+                <div class="text-muted" style="font-size:.78rem;">Un responsable confirme la sortie de fonds.</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="alert alert-light border small mb-0">
+        <i class="ti ti-asterisk text-danger me-1"></i>
+        Les champs marqués <span class="text-danger fw-bold">*</span> sont obligatoires.
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<style>
+.cat-card { border-color: #e9ecef!important; }
+.cat-card:hover { border-color: #4c6ef5!important; background: #f4f7ff; }
+.cat-card.selected {
+  border-color: #4c6ef5!important;
+  background: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(76,110,245,.15);
+}
+</style>
+{% endblock content %}
+
+{% block page_scripts %}
+<script>
+(function(){
+  const hidden   = document.getElementById('hiddenCategorie');
+  const cards    = document.querySelectorAll('.cat-card');
+  const inpMont  = document.getElementById('id_montant');
+  const inpDev   = document.getElementById('id_devise');
+  const resCat   = document.getElementById('resCategorie');
+  const resMont  = document.getElementById('resMontant');
+  const cardRes  = document.getElementById('cardResume');
+
+  function selectCard(card) {
+    if (!card) return;
+    cards.forEach(c => {
+      const sel = c === card;
+      c.classList.toggle('selected', sel);
+      const circle = c.querySelector('.cat-circle');
+      const couleur = c.dataset.couleur || '#6c757d';
+      if (circle) circle.style.background = sel ? couleur : couleur + '22';
+      const icon = c.querySelector('i');
+      if (icon) icon.style.color = sel ? '#fff' : couleur;
+    });
+    if (hidden) hidden.value = card.dataset.pk || '';
+    if (resCat) resCat.textContent = card.dataset.nom || '—';
+    updateResume();
+  }
+
+  function updateResume() {
+    const m = parseFloat(inpMont?.value) || 0;
+    const devSel = inpDev?.options[inpDev.selectedIndex];
+    const sym = devSel ? (devSel.text.split('—')[1] || '').trim() : '';
+    if (m > 0) {
+      cardRes?.style.removeProperty('display');
+      if (resMont) resMont.textContent = m.toLocaleString('fr-FR', {minimumFractionDigits:2}) + (sym ? ' ' + sym : '');
+    } else {
+      cardRes?.style.setProperty('display','none','important');
+    }
+  }
+
+  // Appliquer couleurs initiales
+  cards.forEach(c => {
+    const couleur = c.dataset.couleur || '#6c757d';
+    const circle = c.querySelector('.cat-circle');
+    const icon = c.querySelector('i');
+    if (c.classList.contains('selected')) {
+      if (circle) circle.style.background = couleur;
+      if (icon) icon.style.color = '#fff';
+    }
+  });
+
+  cards.forEach(c => c.addEventListener('click', () => selectCard(c)));
+  inpMont?.addEventListener('input', updateResume);
+  inpDev?.addEventListener('change', updateResume);
+
+  // ── Vérification session caisse ───────────────────────────────────────────
+  const pvSel      = document.getElementById('id_point_vente');
+  const alerteSess = document.getElementById('alerte-session');
+  const submitBtn  = document.querySelector('button[type="submit"]');
+
+  function checkSession() {
+    if (!pvSel || !alerteSess) return;
+    const opt = pvSel.options[pvSel.selectedIndex];
+    const hasSession = opt && opt.dataset.session === '1';
+    const noSelection = !pvSel.value;
+
+    if (!noSelection && !hasSession) {
+      alerteSess.classList.remove('d-none');
+      pvSel.classList.add('is-invalid');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.title = 'Impossible : aucune session de caisse ouverte sur ce PDV';
+      }
+    } else {
+      alerteSess.classList.add('d-none');
+      pvSel.classList.remove('is-invalid');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.title = '';
+      }
+    }
+  }
+
+  pvSel?.addEventListener('change', checkSession);
+  checkSession(); // vérifier à l'initialisation (re-render après erreur)
+})();
+</script>
+{% endblock page_scripts %}

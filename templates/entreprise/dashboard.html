@@ -1,6 +1,314 @@
 {% extends 'base.html' %}
-
-
+{% load acces_tags %}
 {% block content %}
-    {% include 'entreprise/partial/dash.html' %}
-{% endblock content %}
+<div class="content pb-5">
+
+  <!-- En-tête de bienvenue -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="fs-3 fw-bold mb-1">
+        Bonjour, {{ request.user.prenom|default:request.user }}
+        <span style="font-size:1.4rem">👋</span>
+      </h1>
+      <p class="text-muted mb-0">
+        <i class="bi bi-calendar3 me-1"></i>{{ today|date:"l d F Y" }}
+        {% if entreprise %}
+        &nbsp;·&nbsp; <strong class="text-primary">{{ entreprise.nom }}</strong>
+        {% endif %}
+      </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'facturation:nouvelle-facture' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Nouvelle facture
+      </a>
+      <a href="{% url 'rapports:hub' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-chart-bar me-1"></i>Rapports
+      </a>
+    </div>
+  </div>
+
+  <!-- ── KPI Ligne 1 : Ventes du jour / mois ────────────────────────────── -->
+  <div class="row g-3 mb-4">
+
+    <!-- CA Aujourd'hui -->
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #1565c0 !important">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="text-muted small text-uppercase fw-semibold" style="font-size:10px;letter-spacing:.5px">CA Aujourd'hui</span>
+            <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#e3f2fd">
+              <i class="ti ti-receipt text-primary"></i>
+            </span>
+          </div>
+          <div class="fw-bold fs-4 text-primary">{{ ca_jour|floatformat:0 }}</div>
+          <div class="text-muted small mt-1"><i class="bi bi-file-text me-1"></i>{{ nb_fact }} facture{{ nb_fact|pluralize }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CA du mois -->
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #4caf50 !important">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="text-muted small text-uppercase fw-semibold" style="font-size:10px;letter-spacing:.5px">CA Ce mois</span>
+            <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#e8f5e9">
+              <i class="ti ti-trending-up text-success"></i>
+            </span>
+          </div>
+          <div class="fw-bold fs-4 text-success">{{ ca_mois|floatformat:0 }}</div>
+          <div class="text-muted small mt-1">
+            <span class="text-success">↑ {{ paye_mois|floatformat:0 }}</span> encaissé
+            {% if du_mois > 0 %}&nbsp;·&nbsp;<span class="text-danger">{{ du_mois|floatformat:0 }} dû</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Encaissements du jour -->
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #ff9800 !important">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="text-muted small text-uppercase fw-semibold" style="font-size:10px;letter-spacing:.5px">Caisse aujourd'hui</span>
+            <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#fff3e0">
+              <i class="ti ti-cash text-warning"></i>
+            </span>
+          </div>
+          <div class="fw-bold fs-4 text-warning">{{ encaiss_jour|floatformat:0 }}</div>
+          <div class="text-muted small mt-1">
+            <span class="{% if sessions_ouvertes > 0 %}text-success{% else %}text-muted{% endif %}">
+              <i class="bi bi-circle-fill" style="font-size:7px"></i>
+              {{ sessions_ouvertes }} session{{ sessions_ouvertes|pluralize }} ouverte{{ sessions_ouvertes|pluralize }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dépenses mois -->
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #dc3545 !important">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="text-muted small text-uppercase fw-semibold" style="font-size:10px;letter-spacing:.5px">Dépenses ce mois</span>
+            <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#fde8ec">
+              <i class="ti ti-receipt-2 text-danger"></i>
+            </span>
+          </div>
+          <div class="fw-bold fs-4 text-danger">{{ dep_mois|floatformat:0 }}</div>
+          <div class="text-muted small mt-1">
+            <span class="{% if benefice_approx >= 0 %}text-success{% else %}text-danger{% endif %}">
+              Bénéfice estimé : {{ benefice_approx|floatformat:0 }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Alertes et actions urgentes ─────────────────────────────────────── -->
+  {% if nb_ruptures or nb_expirations or nb_conges_att or nb_avances_att or nb_bulletins_att %}
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm" style="border-top:3px solid #ff9800 !important">
+        <div class="card-body py-3 px-4">
+          <div class="fw-semibold small text-uppercase text-warning mb-2" style="font-size:10px;letter-spacing:.5px">
+            <i class="bi bi-bell-fill me-2"></i>Alertes en attente
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+
+            {% if nb_ruptures > 0 %}
+            <a href="{% url 'rapports:ruptures' %}" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              <strong>{{ nb_ruptures }}</strong> rupture{{ nb_ruptures|pluralize }} stock
+            </a>
+            {% endif %}
+
+            {% if nb_expirations > 0 %}
+            <a href="{% url 'rapports:expirations' %}" class="btn btn-sm btn-outline-warning">
+              <i class="ti ti-clock-exclamation me-1"></i>
+              <strong>{{ nb_expirations }}</strong> lot{{ nb_expirations|pluralize }} expir. prochaine
+            </a>
+            {% endif %}
+
+            {% if nb_conges_att > 0 %}
+            <a href="{% url 'rh:liste-conges' %}" class="btn btn-sm btn-outline-info">
+              <i class="bi bi-calendar-check me-1"></i>
+              <strong>{{ nb_conges_att }}</strong> congé{{ nb_conges_att|pluralize }} à approuver
+            </a>
+            {% endif %}
+
+            {% if nb_avances_att > 0 %}
+            <a href="{% url 'caisse:avances' %}" class="btn btn-sm btn-outline-warning">
+              <i class="ti ti-wallet me-1"></i>
+              <strong>{{ nb_avances_att }}</strong> avance{{ nb_avances_att|pluralize }} à décaisser
+            </a>
+            {% endif %}
+
+            {% if nb_bulletins_att > 0 %}
+            <a href="{% url 'rh:liste-bulletins' %}" class="btn btn-sm btn-outline-secondary">
+              <i class="ti ti-file-text me-1"></i>
+              <strong>{{ nb_bulletins_att }}</strong> bulletin{{ nb_bulletins_att|pluralize }} à valider
+            </a>
+            {% endif %}
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Contenu principal ─────────────────────────────────────────────────── -->
+  <div class="row g-4">
+
+    <!-- Factures récentes -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-receipt text-primary me-2"></i>Factures récentes</h6>
+          <a href="{% url 'facturation:liste-factures' %}" class="btn btn-xs btn-outline-primary btn-sm">Voir tout</a>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light">
+                <tr><th>Facture</th><th>Client</th><th class="text-end">Montant</th><th class="text-end">Payé</th><th>Statut</th></tr>
+              </thead>
+              <tbody>
+                {% for f in factures_recentes %}
+                <tr>
+                  <td>
+                    <a href="{% url 'facturation:detail-facture' pk=f.pk %}" class="text-decoration-none fw-semibold small">
+                      {{ f.numero_facture }}
+                    </a>
+                    <div class="text-muted" style="font-size:10px">{{ f.date_facture|date:"d/m H:i" }}</div>
+                  </td>
+                  <td class="small">{{ f.client.nom|truncatechars:20 }}</td>
+                  <td class="text-end fw-semibold small">{{ f.total_ttc|floatformat:0 }}</td>
+                  <td class="text-end small {% if f.reste_a_payer > 0 %}text-warning{% else %}text-success{% endif %}">
+                    {{ f.montant_paye|floatformat:0 }}
+                  </td>
+                  <td>
+                    {% if f.reste_a_payer <= 0 %}
+                    <span class="badge bg-success-subtle text-success border" style="font-size:9px">Soldé</span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-warning border" style="font-size:9px">{{ f.reste_a_payer|floatformat:0 }} dû</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Aucune facture aujourd'hui</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne droite : accès rapides + modules -->
+    <div class="col-lg-5 d-flex flex-column gap-3">
+
+      <!-- Accès rapides -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-lightning-fill text-warning me-2"></i>Accès rapides</h6>
+        </div>
+        <div class="card-body p-3">
+          <div class="row g-2">
+            {% url 'facturation:nouvelle-facture' as url_fact %}
+            {% url 'facturation:liste-factures' as url_lfact %}
+            {% url 'caisse:dashboard' as url_caisse %}
+            {% url 'stock:hub-stock' as url_stock %}
+            {% url 'rh:hub' as url_rh %}
+            {% url 'depenses:liste-depenses' as url_dep %}
+            {% url 'rapports:benefice' as url_benef %}
+            {% url 'rapports:creances' as url_crean %}
+
+            {% for item in accès_rapides_liste %}{% endfor %}
+
+            <div class="col-6">
+              <a href="{{ url_fact }}" class="btn btn-outline-primary w-100 btn-sm py-2 d-flex align-items-center gap-2">
+                <i class="ti ti-plus fs-5"></i><span class="small">Nouvelle facture</span>
+              </a>
+            </div>
+            <div class="col-6">
+              <a href="{{ url_caisse }}" class="btn btn-outline-warning w-100 btn-sm py-2 d-flex align-items-center gap-2">
+                <i class="ti ti-cash-register fs-5"></i><span class="small">Caisse</span>
+              </a>
+            </div>
+            <div class="col-6">
+              <a href="{{ url_stock }}" class="btn btn-outline-success w-100 btn-sm py-2 d-flex align-items-center gap-2">
+                <i class="ti ti-package fs-5"></i><span class="small">Stock</span>
+              </a>
+            </div>
+            <div class="col-6">
+              <a href="{{ url_rh }}" class="btn btn-outline-secondary w-100 btn-sm py-2 d-flex align-items-center gap-2">
+                <i class="ti ti-users-group fs-5"></i><span class="small">RH</span>
+              </a>
+            </div>
+            <div class="col-6">
+              <a href="{{ url_benef }}" class="btn btn-outline-info w-100 btn-sm py-2 d-flex align-items-center gap-2">
+                <i class="bi bi-graph-up-arrow fs-5"></i><span class="small">Bénéfice</span>
+              </a>
+            </div>
+            <div class="col-6">
+              <a href="{{ url_crean }}" class="btn btn-outline-danger w-100 btn-sm py-2 d-flex align-items-center gap-2">
+                <i class="bi bi-exclamation-triangle fs-5"></i><span class="small">Créances</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI mois résumé -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Résumé du mois</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+            <span class="small text-muted">CA facturé</span>
+            <span class="fw-bold text-primary">{{ ca_mois|floatformat:2 }}</span>
+          </div>
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+            <span class="small text-muted"><i class="bi bi-dash me-1"></i>Dépenses</span>
+            <span class="fw-semibold text-danger">{{ dep_mois|floatformat:2 }}</span>
+          </div>
+          <div class="px-4 py-3 d-flex justify-content-between align-items-center bg-{% if benefice_approx >= 0 %}success{% else %}danger{% endif %}-subtle rounded-bottom">
+            <span class="fw-bold {% if benefice_approx >= 0 %}text-success{% else %}text-danger{% endif %}">
+              ≈ Bénéfice estimé
+            </span>
+            <span class="fw-bold fs-5 {% if benefice_approx >= 0 %}text-success{% else %}text-danger{% endif %}">
+              {{ benefice_approx|floatformat:2 }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Points de vente actifs -->
+      {% if pdvs %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-shop text-success me-2"></i>Points de vente actifs</h6>
+        </div>
+        <div class="card-body p-0">
+          {% for pdv in pdvs %}
+          <div class="px-4 py-2 border-bottom d-flex align-items-center gap-2 small">
+            <span class="rounded-circle bg-success d-inline-block flex-shrink-0" style="width:8px;height:8px"></span>
+            <span class="fw-semibold">{{ pdv.nom }}</span>
+            <span class="text-muted ms-auto">{{ pdv.branche.nom|default:"" }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

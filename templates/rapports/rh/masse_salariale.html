@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Masse salariale</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-file-text text-success me-2"></i>Masse salariale</h1>
+  {% include 'rapports/_barre_outils.html' %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #1565c0 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Bulletins générés</div>
+        <div class="fw-bold fs-3">{{ bulletins|length }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #4caf50 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Total brut</div>
+        <div class="fw-bold fs-4 text-success">{{ total_brut|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #ff9800 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Total retenues</div>
+        <div class="fw-bold fs-4 text-warning">{{ total_retenues|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #198754 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Total net à payer</div>
+        <div class="fw-bold fs-4 text-primary">{{ total_net|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Évolution mensuelle -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">Évolution mensuelle</h6>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light"><tr><th>Mois</th><th class="text-end">Brut</th><th class="text-end">Net</th><th class="text-end">Nb</th></tr></thead>
+            <tbody>
+              {% for key, data in mensuel %}
+              <tr>
+                <td class="fw-semibold small">{{ key.1 }}/{{ key.0 }}</td>
+                <td class="text-end small">{{ data.brut|floatformat:2 }}</td>
+                <td class="text-end small text-primary fw-semibold">{{ data.net|floatformat:2 }}</td>
+                <td class="text-end small">{{ data.nb }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">Aucune donnée</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Détail bulletins -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">Détail des bulletins</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr><th>Employé</th><th>Période</th><th class="text-end">Brut</th><th class="text-end">Net</th><th>Statut</th></tr>
+              </thead>
+              <tbody>
+                {% for b in bulletins %}
+                <tr>
+                  <td class="fw-semibold small">{{ b.employe.prenom }} {{ b.employe.nom }}</td>
+                  <td class="small text-muted">{{ b.periode_mois }}/{{ b.periode_annee }}</td>
+                  <td class="text-end small">{{ b.salaire_brut|floatformat:2 }}</td>
+                  <td class="text-end small fw-semibold text-primary">{{ b.salaire_net|floatformat:2 }}</td>
+                  <td>
+                    {% if b.statut == 'PAYE' %}<span class="badge bg-success">Payé</span>
+                    {% elif b.statut == 'VALIDE' %}<span class="badge bg-warning text-dark">Validé</span>
+                    {% else %}<span class="badge bg-secondary">Brouillon</span>{% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Aucun bulletin</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

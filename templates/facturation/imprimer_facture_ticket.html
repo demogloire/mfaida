@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Ticket {{ facture.numero_facture }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #f4f5f7; color: #111; }
+        .toolbar {
+            padding: .75rem 1rem; background: #1e293b; color: #fff;
+            display: flex; gap: .5rem; flex-wrap: wrap;
+            justify-content: center; align-items: center;
+        }
+        .toolbar button, .toolbar a.btn-like {
+            font: inherit; cursor: pointer; padding: .45rem 1rem;
+            border-radius: 999px; border: 0; text-decoration: none; font-size: .875rem;
+        }
+        .btn-print { background: #3b82f6; color: #fff; }
+        .btn-close { background: #334155; color: #fff; }
+        .ticket-wrap { max-width: 80mm; margin: .75rem auto; padding: .5rem .75rem .75rem; }
+        .ticket {
+            background: #fff; padding: .6rem .5rem .75rem; border-radius: 4px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.06);
+            font-family: Consolas,"Courier New",ui-monospace,monospace;
+            font-size: 11px; line-height: 1.4;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            html, body { background: #fff !important; }
+            .ticket-wrap { margin: 0; padding: 0; max-width: none; }
+            .ticket { box-shadow: none !important; border-radius: 0 !important; padding: 0 .15rem !important; }
+        }
+        @page { size: 80mm auto; margin: 2mm; }
+        h1.shop { font-size: 12px; margin: .2rem 0 .35rem; text-align: center; letter-spacing: .02em; }
+        .muted  { opacity: .75; }
+        .center { text-align: center; }
+        .dash   { border: 0; border-top: 1px dashed #333; margin: .55rem 0; }
+        .row-line { margin: .15rem 0; word-break: break-word; }
+        .qty  { float: left; clear: left; width: 3.5ch; }
+        .lbl  { overflow: hidden; display: block; padding-left: 4ch; }
+        .totals td { padding: .1rem 0; }
+        .totals .lab { opacity: .85; }
+        .mono { letter-spacing: .02em; }
+        strong.big { font-size: 12px; }
+        .ticket-logo { text-align: center; margin-bottom: .35rem; }
+        .ticket-logo img { display: inline-block; max-height: 14mm; max-width: 68mm; width: auto; height: auto; object-fit: contain; }
+    </style>
+</head>
+<body>
+<div class="toolbar no-print">
+    <span class="mono" style="margin-right:auto;font-size:.8rem;opacity:.9">Ticket caisse (~80 mm)</span>
+    <button type="button" class="btn-print" onclick="window.print()">Imprimer</button>
+    <button type="button" class="btn-close mono" onclick="window.close();">Fermer</button>
+    <small class="muted mono" style="width:100%;text-align:center">Astuce : Fichier → Imprimer → papier continu / ticket thermique</small>
+</div>
+<div class="ticket-wrap">
+  <article class="ticket">
+    {% if entreprise.logo %}
+    <div class="ticket-logo"><img src="{{ entreprise.logo.url }}" alt=""></div>
+    {% endif %}
+    <h1 class="shop mono">{{ entreprise.nom }}</h1>
+    <div class="center muted mono" style="font-size:10px;">
+        {% if entreprise.adresse_siege %}<div>{{ entreprise.adresse_siege }}</div>{% endif %}
+        {% if entreprise.telephone %}<div>Tél.&nbsp;{{ entreprise.telephone }}</div>{% endif %}
+        {% if entreprise.email %}<div>{{ entreprise.email }}</div>{% endif %}
+        {% if entreprise.rccm %}<div>RCCM&nbsp;{{ entreprise.rccm }}</div>{% endif %}
+        {% if entreprise.idnat %}<div>ID nat.&nbsp;{{ entreprise.idnat }}</div>{% endif %}
+        {% if entreprise.numero_impot %}<div>N°&nbsp;impôt&nbsp;{{ entreprise.numero_impot }}</div>{% endif %}
+    </div>
+    <div class="dash"></div>
+    <div class="center muted mono" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Point de vente</div>
+    <div class="center mono" style="font-weight:700;margin:.1rem 0;">{{ facture.point_vente.nom }}</div>
+    {% if facture.point_vente.adresse %}<div class="center muted mono" style="font-size:10px;">{{ facture.point_vente.adresse }}</div>{% endif %}
+    <div class="dash"></div>
+    <div class="center mono">{{ facture.get_statut_display }}</div>
+    <div class="row-line center muted mono">{{ facture.date_facture|date:"d/m/Y H:i" }}</div>
+    <div class="row-line mono"><strong>#</strong>&nbsp;{{ facture.numero_facture }}</div>
+    <div class="dash"></div>
+    <div class="row-line muted mono" style="font-size:9px;text-transform:uppercase;">Client</div>
+    <div class="row-line mono" style="font-weight:700;">{{ facture.client.nom }}</div>
+    <div class="row-line muted mono" style="font-size:10px;">{{ facture.client.get_type_client_display }} · {{ facture.client.code_client }}{% if facture.client.est_client_passager %} · Passager{% endif %}</div>
+    {% if facture.client.telephone %}<div class="row-line mono" style="font-size:10px;">Tél. {{ facture.client.telephone }}</div>{% endif %}
+    {% if facture.client.email %}<div class="row-line muted mono" style="font-size:10px;">{{ facture.client.email }}</div>{% endif %}
+    {% if facture.client.adresse %}<div class="row-line muted mono" style="font-size:10px;white-space:pre-line;">{{ facture.client.adresse }}</div>{% endif %}
+    <div class="dash"></div>
+    {% for l in lignes %}
+    <div class="row-line mono">
+        <span class="qty">{{ l.quantite }}</span>
+        <span class="lbl">{{ l.produit.libelle_ligne_achat|default:l.produit.nom }}</span>
+    </div>
+    <div class="row-line muted mono" style="font-size:10px;text-align:right;margin-top:.1rem;margin-bottom:.35rem;">
+        PU HT {{ l.prix_unitaire_ht }} · Ss-tot HT {{ l.sous_total_ht }}{% if l.tva_montant %} · TVA {{ l.tva_montant }}{% endif %} · TTC {{ l.sous_total_ttc }}
+    </div>
+    {% empty %}
+    <div class="row-line center muted">Aucune ligne</div>
+    {% endfor %}
+    <div class="dash"></div>
+    <table class="totals mono" style="width:100%;border-collapse:collapse;">
+        <tr><td class="lab">Total HT</td><td style="text-align:right;">{{ facture.total_ht }}</td></tr>
+        {% if facture.total_tva %}<tr><td class="lab">Total TVA</td><td style="text-align:right;">{{ facture.total_tva }}</td></tr>{% endif %}
+        <tr><td colspan="2"><div class="dash" style="margin:.25rem 0;"></div></td></tr>
+        <tr><td><strong>TOTAL TTC</strong></td><td style="text-align:right;"><strong class="big">{{ facture.total_ttc }}&nbsp;{{ facture.devise.symbole }}</strong></td></tr>
+        <tr><td class="lab">Payé</td><td style="text-align:right;">{{ facture.montant_paye }}</td></tr>
+        {% if facture.reste_a_payer %}<tr><td class="lab">Reste</td><td style="text-align:right;font-weight:700;">{{ facture.reste_a_payer }}</td></tr>{% endif %}
+        <tr><td class="lab">Paiement</td><td style="text-align:right;">{{ facture.get_mode_paiement_display }}</td></tr>
+    </table>
+    <div class="dash"></div>
+    <div class="center muted mono" style="font-size:10px;">Vendeur : {% firstof facture.vendeur.get_full_name facture.vendeur.username %}</div>
+    <div class="center mono" style="margin-top:.6rem;font-size:10px;">Merci&nbsp;!</div>
+  </article>
+</div>
+</body>
+</html>

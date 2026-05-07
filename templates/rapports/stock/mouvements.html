@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Mouvements de stock</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-arrows-exchange text-info me-2"></i>Mouvements de stock</h1>
+  {% include 'rapports/_barre_outils.html' %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Produit</th><th>PDV</th><th>Origine</th><th class="text-end">Qté reçue</th><th class="text-end">Qté affectée</th><th class="text-end">Qté active</th><th class="text-end">Prix unit.</th></tr>
+          </thead>
+          <tbody>
+            {% for m in qs %}
+            <tr>
+              <td class="fw-semibold small">{{ m.produit.nom }}</td>
+              <td class="small text-muted">{{ m.pointvente.nom|default:"—" }}</td>
+              <td><span class="badge bg-secondary-subtle text-secondary border" style="font-size:10px">{{ m.origine|default:"—" }}</span></td>
+              <td class="text-end small">{{ m.quantite_recu|floatformat:2 }}</td>
+              <td class="text-end small">{{ m.quantite_affectee|floatformat:2 }}</td>
+              <td class="text-end small fw-semibold">{{ m.quantite_active|floatformat:2 }}</td>
+              <td class="text-end small">{{ m.prix_unitaire|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-5">Aucun mouvement</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

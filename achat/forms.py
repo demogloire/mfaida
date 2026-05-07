@@ -17,9 +17,10 @@ class OrdreAchatForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
-    def __init__(self, *args, entreprise=None, admin=False, **kwargs):
+    def __init__(self, *args, entreprise=None, admin=False, user=None, **kwargs):
         self._entreprise_scope = entreprise
         self._admin = admin
+        self._user = user
         super().__init__(*args, **kwargs)
         from tiers.models import Fournisseur
         from entreprise.models import Depot, PointVente, Devise, Branche
@@ -32,11 +33,21 @@ class OrdreAchatForm(forms.ModelForm):
             self.fields['pointdevente_destination'].queryset = PointVente.objects.filter(branche__in=branches_actives, est_actif=True).order_by('branche__nom', 'nom')
             self.fields['devise'].queryset = Devise.objects.all()
         elif entreprise:
-            # Utilisateur normal : uniquement son entreprise
+            # Utilisateur normal : dépôt / PDV limités aux accès explicites (AccesDepot / AccesPointVente)
             self.fields['fournisseur'].queryset = Fournisseur.objects.filter(entreprise=entreprise, est_actif=True)
-            branches = entreprise.branches.filter(est_actif=True)
-            self.fields['depot_destination'].queryset = Depot.objects.filter(branche__in=branches, est_actif=True)
-            self.fields['pointdevente_destination'].queryset = PointVente.objects.filter(branche__in=branches, est_actif=True)
+            u = user
+            if u is None or not getattr(u, 'is_authenticated', False):
+                self.fields['depot_destination'].queryset = Depot.objects.none()
+                self.fields['pointdevente_destination'].queryset = PointVente.objects.none()
+            else:
+                from stock.access import queryset_depots_visibles, queryset_points_vente_visibles
+
+                self.fields['depot_destination'].queryset = queryset_depots_visibles(
+                    u, entreprise, False,
+                ).order_by('branche__nom', 'nom')
+                self.fields['pointdevente_destination'].queryset = queryset_points_vente_visibles(
+                    u, entreprise, False,
+                ).order_by('branche__nom', 'nom')
             self.fields['devise'].queryset = Devise.objects.filter(entreprise=entreprise)
         else:
             self.fields['fournisseur'].queryset = Fournisseur.objects.none()
@@ -183,10 +194,11 @@ class BonReceptionForm(forms.ModelForm):
         model = BonReception
         fields = ['depot_destination', 'point_destination', 'fournisseur']
 
-    def __init__(self, *args, commande=None, entreprise=None, admin=False, **kwargs):
+    def __init__(self, *args, commande=None, entreprise=None, admin=False, user=None, **kwargs):
         self.commande = commande
         self._entreprise_scope = entreprise
         self._admin = admin
+        self._user = user
         super().__init__(*args, **kwargs)
 
         from entreprise.models import Depot, PointVente, Branche
@@ -204,9 +216,19 @@ class BonReceptionForm(forms.ModelForm):
                 Fournisseur.objects.filter(est_actif=True).order_by('entreprise__nom', 'nom_societe')
             )
         elif entreprise:
-            branches = entreprise.branches.filter(est_actif=True)
-            self.fields['depot_destination'].queryset = Depot.objects.filter(branche__in=branches, est_actif=True).order_by('nom')
-            self.fields['point_destination'].queryset = PointVente.objects.filter(branche__in=branches, est_actif=True).order_by('nom')
+            u = user
+            if u is None or not getattr(u, 'is_authenticated', False):
+                self.fields['depot_destination'].queryset = Depot.objects.none()
+                self.fields['point_destination'].queryset = PointVente.objects.none()
+            else:
+                from stock.access import queryset_depots_visibles, queryset_points_vente_visibles
+
+                self.fields['depot_destination'].queryset = queryset_depots_visibles(
+                    u, entreprise, False,
+                ).order_by('nom')
+                self.fields['point_destination'].queryset = queryset_points_vente_visibles(
+                    u, entreprise, False,
+                ).order_by('nom')
             self.fields['fournisseur'].queryset = Fournisseur.objects.filter(entreprise=entreprise, est_actif=True).order_by('nom_societe')
         else:
             self.fields['depot_destination'].queryset = Depot.objects.none()

@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item active">Bulletins de paie</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-file-earmark-text text-primary me-2"></i>Bulletins de paie</h4>
+      <p class="text-muted small mb-0">Génération, validation et paiement des salaires</p>
+    </div>
+    <a href="{% url 'rh:nouveau-bulletin' %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i>Générer un bulletin
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-3 bg-secondary bg-opacity-10 p-3">
+            <i class="bi bi-pencil-square text-secondary fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-4 fw-bold">{{ nb_brouillons }}</div>
+            <div class="small text-muted">Brouillons</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-3 bg-warning bg-opacity-10 p-3">
+            <i class="bi bi-check-circle text-warning fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-4 fw-bold">{{ nb_valides }}</div>
+            <div class="small text-muted">Validés (à payer)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-3 bg-primary bg-opacity-10 p-3">
+            <i class="bi bi-files text-primary fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-4 fw-bold">{{ bulletins.count }}</div>
+            <div class="small text-muted">Total filtrés</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Employé</label>
+          <select name="employe" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            {% for emp in employes %}
+            <option value="{{ emp.pk }}" {% if employe_id == emp.pk|stringformat:"s" %}selected{% endif %}>
+              {{ emp.prenom }} {{ emp.nom }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Mois</label>
+          <input type="month" name="mois" value="{{ mois_str }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Statut</label>
+          <select name="statut" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            {% for code, lib in statuts %}
+            <option value="{{ code }}" {% if code == statut %}selected{% endif %}>{{ lib }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm flex-fill">
+            <i class="bi bi-funnel me-1"></i>Filtrer
+          </button>
+          <a href="{% url 'rh:liste-bulletins' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-x-lg"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tableau -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      {% if bulletins %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4">Numéro</th>
+              <th>Employé</th>
+              <th>Période</th>
+              <th class="text-center">Jours prestés</th>
+              <th class="text-end">Brut</th>
+              <th class="text-end">Net</th>
+              <th>Devise</th>
+              <th>Statut</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in bulletins %}
+            <tr>
+              <td class="ps-4">
+                <a href="{% url 'rh:detail-bulletin' pk=b.pk %}" class="fw-mono text-decoration-none fw-semibold">
+                  {{ b.numero }}
+                </a>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  {% if b.employe.photo %}
+                  <img src="{{ b.employe.photo.url }}" class="rounded-circle" width="28" height="28" style="object-fit:cover">
+                  {% else %}
+                  <div class="rounded-circle bg-primary bg-opacity-10 text-primary fw-bold d-flex align-items-center justify-content-center"
+                       style="width:28px;height:28px;font-size:10px">
+                    {{ b.employe.prenom|slice:":1" }}{{ b.employe.nom|slice:":1" }}
+                  </div>
+                  {% endif %}
+                  <div>
+                    <div class="fw-semibold small">{{ b.employe.prenom }} {{ b.employe.nom }}</div>
+                    <div class="text-muted" style="font-size:11px">{{ b.contrat.titre_poste|default:"—" }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="fw-semibold">{{ b.nom_mois }} {{ b.periode_annee }}</td>
+              <td class="text-center">
+                <span class="fw-semibold">{{ b.jours_prestes }}</span>
+                <span class="text-muted small">/ {{ b.jours_ouvrables }}</span>
+              </td>
+              <td class="text-end fw-semibold">{{ b.salaire_brut|floatformat:2 }}</td>
+              <td class="text-end fw-bold text-primary">{{ b.salaire_net|floatformat:2 }}</td>
+              <td class="text-muted small">{{ b.devise.code|default:"—" }}</td>
+              <td>
+                {% if b.statut == 'BROUILLON' %}
+                <span class="badge bg-secondary-subtle text-secondary border">Brouillon</span>
+                {% elif b.statut == 'VALIDE' %}
+                <span class="badge bg-warning-subtle text-warning border"><i class="bi bi-check me-1"></i>Validé</span>
+                {% elif b.statut == 'PAYE' %}
+                <span class="badge bg-success-subtle text-success border"><i class="bi bi-check2-all me-1"></i>Payé</span>
+                {% endif %}
+              </td>
+              <td class="text-end pe-3">
+                <a href="{% url 'rh:detail-bulletin' pk=b.pk %}" class="btn btn-sm btn-outline-primary me-1">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="{% url 'rh:imprimer-bulletin' pk=b.pk %}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-printer"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-file-earmark-x display-4 text-muted opacity-50"></i>
+        <p class="text-muted mt-3 mb-0">Aucun bulletin trouvé.</p>
+        <a href="{% url 'rh:nouveau-bulletin' %}" class="btn btn-primary btn-sm mt-3">
+          <i class="bi bi-plus-lg me-1"></i>Générer le premier bulletin
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

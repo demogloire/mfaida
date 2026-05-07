@@ -1,90 +1,758 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
+
 {% block content %}
-<div class="content">
-    <div class="page-header d-flex justify-content-between flex-wrap gap-2">
-        <div>
-            <h4 class="fw-bold">Facture {{ facture.numero_facture }}</h4>
-            <h6>{{ facture.point_vente.nom }} — {{ facture.client.nom }}</h6>
+<style>
+    .page-detail-facture .select2-container { width: 100% !important; margin-bottom: 0.125rem; }
+    .page-detail-facture .select2-container .select2-selection--single { min-height: 2.875rem; border-radius: 0.375rem; padding-top: 0.2rem; }
+</style>
+<div class="content page-detail-facture pb-5">
+    <nav class="mb-3" aria-label="Fil de navigation">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'facturation:liste-factures' %}" class="text-decoration-none">Vente — Factures</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ facture.numero_facture }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-column flex-xl-row gap-3 justify-content-xl-between align-items-xl-start mb-4">
+        <div class="d-flex gap-3 align-items-start flex-grow-1">
+            <div class="flex-shrink-0">
+                <span class="avatar avatar-lg bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 3rem; height: 3rem;">
+                    <i class="ti ti-file-text fs-3"></i>
+                </span>
+            </div>
+            <div class="flex-grow-1 min-w-0">
+                <h1 class="fs-4 fw-bold mb-1 lh-sm">{{ facture.numero_facture }}</h1>
+                <p class="text-muted small mb-1">{{ facture.point_vente.nom }}</p>
+                <p class="text-muted mb-2 small lh-base">
+                    Client : <strong class="text-body">{{ facture.client.nom }}</strong>
+                    {% if facture.client.est_client_passager %}<span class="badge rounded-pill bg-info text-dark ms-1">Passager</span>{% endif %}
+                    <span class="text-muted">&nbsp;{{ facture.client.code_client }}</span>
+                </p>
+                {% if facture.statut == 'BROUILLON' %}
+                    <span class="badge rounded-pill bg-warning text-dark">Brouillon</span>
+                    <span class="text-muted small ms-2">Finalisez les lignes, puis <strong>Terminer</strong> (caisse) ou encaisser si vous avez le droit caisse.</span>
+                {% elif facture.statut == 'EN_CAISSE' %}
+                    <span class="badge rounded-pill bg-info text-dark">{{ facture.get_statut_display }}</span>
+                    <span class="text-muted small ms-2">En attente d’encaissement au point de vente.</span>
+                {% elif facture.statut == 'ANNULEE' %}
+                    <span class="badge rounded-pill bg-danger">{{ facture.get_statut_display }}</span>
+                {% else %}
+                    <span class="badge rounded-pill bg-success">{{ facture.get_statut_display }}</span>
+                {% endif %}
+            </div>
         </div>
-        <div class="d-flex gap-2">
-            <span class="badge {% if facture.statut == 'VALIDEE' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ facture.statut }}</span>
-            <a href="{% url 'facturation:liste-factures' %}" class="btn btn-outline-secondary btn-sm">Liste</a>
+        <div class="d-flex flex-wrap gap-2 align-items-start ms-xl-auto">
+            <div class="btn-group" role="group" aria-label="Impression">
+                <a href="{% url 'facturation:imprimer-facture-ticket' facture.pk %}"
+                   target="_blank" rel="noopener"
+                   class="btn btn-outline-primary btn-sm rounded-pill px-3"
+                   title="Ticket simple (~80 mm)">
+                   <i class="ti ti-printer me-1"></i>Ticket
+                </a>
+                <a href="{% url 'facturation:imprimer-facture-ticket-detail' facture.pk %}"
+                   target="_blank" rel="noopener"
+                   class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                   title="Ticket détaillé : lot, dates, emplacement, vendeur">
+                   <i class="ti ti-list-details me-1"></i>Ticket détaillé
+                </a>
+                <a href="{% url 'facturation:imprimer-facture-a4' facture.pk %}"
+                   target="_blank" rel="noopener"
+                   class="btn btn-primary btn-sm rounded-pill px-3"
+                   title="Format A4"><i class="ti ti-file-download me-1"></i>A4 / PDF</a>
+            </div>
+            <a href="{% url 'facturation:liste-factures' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="ti ti-list me-1"></i>Liste
+            </a>
+            {% if facture.statut == 'BROUILLON' %}
+            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3"
+                    data-bs-toggle="modal" data-bs-target="#modalSupprimerBrouillon"
+                    title="Supprimer ce brouillon">
+                <i class="ti ti-trash me-1"></i>Supprimer
+            </button>
+            {% endif %}
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-body row">
-            <div class="col-md-4"><strong>Tot. HT</strong> {{ facture.total_ht }}</div>
-            <div class="col-md-4"><strong>TVA</strong> {{ facture.total_tva }}</div>
-            <div class="col-md-4"><strong>TTC</strong> {{ facture.total_ttc }}</div>
-        </div>
-    </div>
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="fw-bold text-muted small text-uppercase ls-05">Sommaire entête facture</span>
+                    {% if facture.statut == 'BROUILLON' %}<small class="text-muted">Brouillon modifiable ci-dessous.</small>{% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 gy-4">
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Pièce</div>
+                            <div class="fw-semibold">{{ facture.numero_facture }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Date</div>
+                            <div class="fw-semibold">{{ facture.date_facture|date:"d/m/Y H:i" }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Vendeur</div>
+                            <div>{% firstof facture.vendeur.get_full_name facture.vendeur.username %}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Mode de paiement</div>
+                            <div class="fw-medium">{{ facture.get_mode_paiement_display }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="text-muted small text-uppercase ls-03">Devise · taux (historique)</div>
+                            <div><span class="fw-medium">{{ facture.devise.code }}</span> {{ facture.devise.symbole }} · {{ facture.taux_echange_appliqué }}</div>
+                        </div>
+                    </div>
 
-    {% if facture.statut == 'BROUILLON' %}
-    <div class="card mb-3">
-        <div class="card-header"><h6 class="mb-0">Ajouter une ligne (mouvement / lot disponible)</h6></div>
-        <div class="card-body">
-            <form method="post" action="{% url 'facturation:ajouter-ligne-facture' facture.pk %}" class="row g-2">
-                {% csrf_token %}
-                <div class="col-md-5">
-                    <label class="form-label">{{ ligne_form.mouvement_stock.label }}</label>
-                    {% render_field ligne_form.mouvement_stock class="form-select" %}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">{{ ligne_form.quantite.label }}</label>
-                    {% render_field ligne_form.quantite class="form-control" %}
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">{{ ligne_form.prix_unitaire_ht.label }}</label>
-                    {% render_field ligne_form.prix_unitaire_ht class="form-control" %}
-                </div>
-                <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100" type="submit">Ajouter</button></div>
-            </form>
-        </div>
-    </div>
-    {% endif %}
+                    <hr class="border opacity-50 my-4">
 
-    <div class="card">
-        <div class="card-body p-0 table-responsive">
-            <table class="table mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Produit</th><th>Mouvement</th><th class="text-end">Qté</th><th class="text-end">Prix HT</th><th class="text-end">TVA</th>
-                        {% if facture.statut == 'BROUILLON' %}<th></th>{% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for l in lignes %}
-                    <tr>
-                        <td>{{ l.produit.libelle_ligne_achat }}</td>
-                        <td class="small">#{{ l.mouvement_stock_id }} — actif {{ l.mouvement_stock.quantite_active }}</td>
-                        <td class="text-end">{{ l.quantite }}</td>
-                        <td class="text-end">{{ l.prix_unitaire_ht }}</td>
-                        <td class="text-end">{{ l.tva_montant }}</td>
-                        {% if facture.statut == 'BROUILLON' %}
-                        <td>
-                            <form method="post" action="{% url 'facturation:supprimer-ligne-facture' facture.pk l.pk %}" class="mb-0" onsubmit="return confirm('Supprimer ?');">
+                    <h6 class="text-muted small text-uppercase fw-bold mb-3 ls-03">Coordonnées client</h6>
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <div class="text-muted small text-uppercase ls-03">Nom</div>
+                            <div class="fw-semibold">{{ facture.client.nom }}</div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="text-muted small text-uppercase ls-03">Catégorie</div>
+                            <div class="fw-medium">{{ facture.client.get_type_client_display }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small text-uppercase ls-03">Code</div>
+                            <div>{{ facture.client.code_client }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small text-uppercase ls-03">Téléphone</div>
+                            <div>{{ facture.client.telephone|default:"—" }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small text-uppercase ls-03">E-mail</div>
+                            <div>{{ facture.client.email|default:"—" }}</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="text-muted small text-uppercase ls-03">Adresse</div>
+                            <div class="fw-medium" style="white-space:pre-line">{{ facture.client.adresse|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center text-center text-md-start">
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">Total HT</div>
+                            <div class="fs-5 fw-bold">{{ facture.total_ht }} <span class="fs-6 fw-normal text-muted">{{ facture.devise.symbole }}</span></div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">Total TVA</div>
+                            <div class="fs-5 fw-bold">{{ facture.total_tva }} <span class="fs-6 fw-normal text-muted">{{ facture.devise.symbole }}</span></div>
+                        </div>
+                        <div class="col-12 col-md-4 mt-3 mt-md-0">
+                            {% if facture.statut == 'VALIDEE' and reste_reel > 0 %}
+                            <div class="rounded-3 px-4 py-3 text-center" style="background:rgba(253,126,20,.1);border:1px solid rgba(253,126,20,.3);">
+                                <div class="small fw-semibold text-uppercase mb-1" style="color:#fd7e14;">Reste à payer</div>
+                                <div class="fs-4 fw-bold" style="color:#fd7e14;">{{ reste_reel }} <span class="fs-6 opacity-75">{{ facture.devise.symbole }}</span></div>
+                                <div class="small mt-1 text-muted">Total TTC : {{ facture.total_ttc }} · Payé : {{ facture.montant_paye }}</div>
+                                <button type="button" class="btn btn-warning btn-sm rounded-pill px-3 mt-2 w-100"
+                                        data-bs-toggle="modal" data-bs-target="#modalPaiementDetail">
+                                    <i class="ti ti-cash me-1"></i>Enregistrer un paiement
+                                </button>
+                            </div>
+                            {% else %}
+                            <div class="rounded-3 bg-primary bg-opacity-10 px-4 py-3 text-center">
+                                <div class="small text-primary fw-semibold text-uppercase">Total TTC</div>
+                                <div class="fs-4 fw-bold text-primary">{{ facture.total_ttc }} <span class="fs-6 opacity-75">{{ facture.devise.symbole }}</span></div>
+                                <div class="small mt-2 text-muted">Payé&nbsp;: <strong class="text-body">{{ facture.montant_paye }}</strong> · Reste&nbsp;: <strong class="text-success">{{ facture.reste_a_payer }}</strong></div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if facture.statut == 'BROUILLON' and lignes_hors_perimetre_pdv %}
+            <div class="alert alert-warning border-0 shadow-sm rounded-3 d-flex gap-2 align-items-start mb-4" role="status">
+                <i class="ti ti-alert-triangle fs-5 flex-shrink-0"></i>
+                <div class="small">
+                    Certaines lignes de cette facture pointent vers des lots <strong>hors point de vente</strong>
+                    (dépôt sans PDV ou autre lieu). Elles ne sont pas prises en compte dans les totaux «&nbsp;disponible&nbsp;»
+                    ci-dessous&nbsp;; seuls les mouvements rattachés à <strong>{{ facture.point_vente.nom }}</strong> sont utilisés pour les nouveaux ajouts.
+                </div>
+            </div>
+            {% endif %}
+
+            {% if facture.statut == 'BROUILLON' %}
+            <div class="card border-0 shadow-sm rounded-3 mb-4 border-primary border-opacity-25 overflow-hidden">
+                <div class="card-header bg-primary bg-opacity-10 border-0 py-3 px-4">
+                    <h6 class="mb-1 fw-bold"><i class="ti ti-stack-2 me-1"></i>Ajouter une ligne</h6>
+                    <p class="small text-muted mb-0">
+                        Stock utilisable : <strong>mouvements rattachés à ce point de vente</strong> uniquement (pas le stock «&nbsp;dépôt seul&nbsp;» sans PDV).
+                        Prix HT catalogue appliqué automatiquement.
+                        Sortie des lots : <strong>FIFO</strong> / <strong>FEFO</strong> / <strong>LIFO</strong> selon la fiche produit.
+                    </p>
+                </div>
+                <div class="card-body px-4 py-4">
+                    {{ produits_catalogue|json_script:"facturation-produits-catalogue" }}
+                    <form method="post" action="{% url 'facturation:ajouter-ligne-facture' facture.pk %}" id="form-ajout-ligne-facture">
+                        {% csrf_token %}
+                        {% for e in ligne_form.non_field_errors %}
+                        <div class="alert alert-danger py-2">{{ e }}</div>
+                        {% endfor %}
+                        <div class="row g-3 mb-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="{{ ligne_form.produit_selection.id_for_label }}">{{ ligne_form.produit_selection.label }}</label>
+                                {% render_field ligne_form.produit_selection %}
+                                {% if ligne_form.produit_selection.help_text %}<div class="form-text">{{ ligne_form.produit_selection.help_text }}</div>{% endif %}
+                                {% for e in ligne_form.produit_selection.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                            </div>
+                        </div>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-sm-6 col-lg-3">
+                                <label class="form-label fw-semibold" for="{{ ligne_form.quantite.id_for_label }}">{{ ligne_form.quantite.label }}</label>
+                                {% render_field ligne_form.quantite class="form-control form-control-lg" placeholder="0" %}
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <label class="form-label fw-semibold" for="facture-prix-ht-readonly">Prix vente HT</label>
+                                <input type="text" class="form-control form-control-lg bg-body-secondary" id="facture-prix-ht-readonly" value="—" readonly tabindex="-1" autocomplete="off" aria-describedby="facture-produit-infos">
+                            </div>
+                            <div class="col-12 col-lg-6 d-grid gap-2 d-lg-flex justify-content-lg-end">
+                                <button class="btn btn-primary btn-lg rounded-3 px-4" type="submit">
+                                    <i class="ti ti-plus me-1"></i>Ajouter la ligne
+                                </button>
+                            </div>
+                        </div>
+                        <div id="facture-produit-infos" class="mt-4 rounded-3 border bg-light px-3 py-3 small d-none" role="region" aria-live="polite">
+                            <div class="text-uppercase text-muted fw-semibold mb-2" style="letter-spacing:.04em;font-size:.7rem;">Détail produit sélectionné</div>
+                            <p class="mb-2 fw-medium" id="facture-methode-label">—</p>
+                            <p class="mb-0 text-body-secondary" id="facture-stock-dispo-hint">—</p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="fw-bold text-muted small text-uppercase ls-05">Produits</span>
+                    <div class="d-flex gap-1">
+                        <a href="{% url 'facturation:imprimer-facture-ticket' facture.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary rounded-pill" title="Ticket simple"><i class="ti ti-printer"></i></a>
+                        <a href="{% url 'facturation:imprimer-facture-ticket-detail' facture.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary rounded-pill" title="Ticket détaillé"><i class="ti ti-list-details"></i></a>
+                        <a href="{% url 'facturation:imprimer-facture-a4' facture.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary rounded-pill">A4</a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produit</th>
+                                <th class="text-end">Qté</th>
+                                <th class="text-end">PU&nbsp;HT</th>
+                                <th class="text-end">Sous-total&nbsp;HT</th>
+                                <th class="text-end">TVA</th>
+                                <th class="text-end">Sous-total&nbsp;TTC</th>
+                                {% if facture.statut == 'BROUILLON' %}<th class="w-1"></th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for l in lignes %}
+                            <tr>
+                                <td class="fw-medium">{{ l.produit.libelle_ligne_achat }}</td>
+                                <td class="text-end">{{ l.quantite }}</td>
+                                <td class="text-end">{{ l.prix_unitaire_ht }}</td>
+                                <td class="text-end fw-medium">{{ l.sous_total_ht }}</td>
+                                <td class="text-end">{% if l.tva_montant %}{{ l.tva_montant }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                                <td class="text-end fw-semibold">{{ l.sous_total_ttc }}</td>
+                                {% if facture.statut == 'BROUILLON' %}
+                                <td>
+                                    <form method="post" action="{% url 'facturation:supprimer-ligne-facture' facture.pk l.pk %}" class="mb-0" onsubmit="return confirm('Supprimer cette ligne&nbsp;?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2" aria-label="Supprimer ligne">×</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{% if facture.statut == 'BROUILLON' %}7{% else %}6{% endif %}" class="text-center py-5 text-muted">Aucune ligne.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if facture.statut == 'BROUILLON' and lignes %}
+                <div class="card-footer bg-light border-0 py-4">
+                    <div class="d-flex flex-column gap-3">
+                        <p class="small text-muted mb-0">
+                            <strong>Terminer</strong> envoie la pièce à la caisse sans déstockage.
+                            {% if peut_encaisser %}
+                            Avec le droit caisse sur ce PV, vous pouvez aussi <strong>encaisser</strong> directement&nbsp;: déstockage et validation à ce moment-là (si chaque lot a assez de quantité disponible).
+                            {% else %}
+                            L’encaissement sera fait à la caisse du point de vente.
+                            {% endif %}
+                        </p>
+                        <div class="d-flex flex-column flex-md-row gap-2 flex-wrap align-items-md-center">
+                            <form method="post" action="{% url 'facturation:terminer-facture-caisse' facture.pk %}" class="mb-0" onsubmit="return confirm('Envoyer cette facture à la caisse pour paiement&nbsp;? (Pas encore de déstockage.)');">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger">×</button>
+                                <button type="submit" class="btn btn-warning rounded-pill px-4 text-dark"><i class="ti ti-send me-1"></i>Terminer</button>
                             </form>
-                        </td>
-                        {% endif %}
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center py-4 text-muted">Pas de lignes.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            {% if peut_encaisser %}
+                            <button type="button" class="btn btn-success rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalValiderFacture">
+                                <i class="ti ti-cash me-1"></i>Encaisser / valider
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if facture.statut == 'EN_CAISSE' %}
+                <div class="card-footer {% if peut_encaisser %}bg-light{% else %}bg-info bg-opacity-10{% endif %} border-0 py-4">
+                    {% if peut_encaisser and lignes %}
+                    <div class="d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
+                        <p class="small text-muted mb-0">Client prêt&nbsp;: encaissement = validation finale et déstockage (contrôle des quantités par lot avant enregistrement).</p>
+                        <button type="button" class="btn btn-success rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalValiderFacture">
+                            <i class="ti ti-cash me-1"></i>Encaisser / valider
+                        </button>
+                    </div>
+                    {% elif not lignes %}
+                    <p class="small text-warning mb-0">Aucune ligne — ajout impossible après envoi à la caisse&nbsp;: repassez en brouillon via l’administrateur si besoin.</p>
+                    {% else %}
+                    <p class="small mb-0"><i class="ti ti-info-circle me-1"></i>Cette facture est en file d’attente caisse. Seul un utilisateur avec le droit <strong>Gérer la caisse</strong> sur ce point de vente peut encaisser.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if paiements %}
+            <div class="card border-0 shadow-sm rounded-3 mt-4" style="border-top:3px solid #fd7e14 !important;">
+                <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold d-flex align-items-center gap-2">
+                        <i class="ti ti-receipt" style="color:#fd7e14;"></i>
+                        Historique des paiements
+                    </span>
+                    <span class="badge rounded-pill text-white" style="background:#fd7e14;">{{ paiements|length }}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr class="text-muted text-uppercase" style="font-size:.65rem;letter-spacing:.04em;">
+                                <th class="ps-3 py-2">N° Reçu</th>
+                                <th>Date</th>
+                                <th>Mode</th>
+                                <th>Par</th>
+                                <th class="text-end pe-3">Montant</th>
+                                <th class="pe-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in paiements %}
+                            <tr>
+                                <td class="ps-3 font-monospace fw-semibold small">{{ p.numero }}</td>
+                                <td class="text-muted small">{{ p.date_paiement|date:"d/m/Y H:i" }}</td>
+                                <td class="small">{{ p.get_mode_paiement_display }}</td>
+                                <td class="text-muted small">{{ p.effectue_par.get_full_name|default:p.effectue_par.username }}</td>
+                                <td class="text-end pe-3 fw-bold text-success">{{ p.montant }} <small class="text-muted fw-normal">{{ facture.devise.symbole }}</small></td>
+                                <td class="pe-3">
+                                    <a href="{% url 'facturation:recu-paiement' p.pk %}" target="_blank"
+                                       class="btn btn-xs btn-outline-secondary rounded-pill px-2" title="Imprimer le reçu">
+                                        <i class="ti ti-printer" style="font-size:.8rem;"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
         </div>
-        {% if facture.statut == 'BROUILLON' and lignes %}
-        <div class="card-footer">
-            <form method="post" action="{% url 'facturation:valider-facture' facture.pk %}" onsubmit="return confirm('Valider : déstockage et coûts comptabilisés ?');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success">Valider la facture</button>
-            </form>
-        </div>
-        {% endif %}
+
+        <aside class="col-xl-4">
+            <div class="card border-0 bg-light rounded-3 sticky-xl-top mb-4" style="top: 5.5rem;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="rounded-circle bg-primary bg-opacity-10 text-primary p-2"><i class="ti ti-cloud-download fs-5"></i></span>
+                        <span class="fw-bold small text-uppercase text-muted ls-03">Formats d’impression</span>
+                    </div>
+                    <p class="small text-muted mb-3">
+                        Ouvert dans un nouvel onglet, prêt pour l’étape suivante : fichier → imprimer ou enregistrer en PDF navigateur sur A4.
+                    </p>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'facturation:imprimer-facture-ticket' facture.pk %}" target="_blank" rel="noopener" class="btn btn-outline-primary rounded-3 px-4">
+                            <span class="d-block fw-semibold">Ticket caisse</span>
+                            <span class="d-block small text-muted fw-normal mt-1">Format étroit ~ thermal 80 mm</span>
+                        </a>
+                        <a href="{% url 'facturation:imprimer-facture-a4' facture.pk %}" target="_blank" rel="noopener" class="btn btn-primary rounded-3 px-4">
+                            <span class="d-block fw-semibold">Document A4</span>
+                            <span class="d-block small text-white-50 fw-normal mt-1">Portrait, prêt imprimante ou PDF</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
     </div>
 </div>
+
+<style>
+    .page-detail-facture .ls-03 { letter-spacing: 0.04em; }
+    .page-detail-facture .ls-05 { letter-spacing: 0.05em; }
+</style>
+
+<!-- Modal paiement crédit/partiel -->
+{% if facture.statut == 'VALIDEE' and reste_reel > 0 %}
+<div class="modal fade" id="modalPaiementDetail" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold"><i class="ti ti-cash me-2" style="color:#fd7e14;"></i>Enregistrer un paiement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'facturation:paiement-facture' facture.pk %}">
+        {% csrf_token %}
+        <div class="modal-body pt-2">
+          <!-- Rappel solde -->
+          <div class="rounded-3 px-4 py-3 text-center mb-4" style="background:rgba(253,126,20,.1);">
+            <div class="small fw-semibold text-uppercase mb-1" style="color:#fd7e14;">Reste à payer</div>
+            <div class="fs-3 fw-bold" style="color:#fd7e14;">{{ reste_reel }} <span class="fs-6 opacity-75">{{ facture.devise.symbole }}</span></div>
+            <div class="small text-muted mt-1">Total TTC : {{ facture.total_ttc }} · Déjà payé : {{ facture.montant_paye }}</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Mode de paiement <span class="text-danger">*</span></label>
+            <select name="mode_paiement" class="form-select" required>
+              {% for val, label in modes_paiement %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Montant reçu <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="number" name="montant" id="id_montant_paiement_detail"
+                     class="form-control form-control-lg" step="0.01" min="0.01"
+                     max="{{ reste_reel }}" value="{{ reste_reel }}" required>
+              <span class="input-group-text fw-semibold">{{ facture.devise.symbole }}</span>
+            </div>
+            <div class="form-text">Saisissez le montant reçu. Maximum : {{ reste_reel }} {{ facture.devise.symbole }}</div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold">Notes</label>
+            <input type="text" name="notes" class="form-control" placeholder="Optionnel…">
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-warning rounded-pill px-4">
+            <i class="ti ti-check me-1"></i>Confirmer le paiement
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal suppression brouillon -->
+{% if facture.statut == 'BROUILLON' %}
+<div class="modal fade" id="modalSupprimerBrouillon" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold text-danger"><i class="ti ti-trash me-2"></i>Supprimer le brouillon</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-2 small text-muted">
+        Supprimer définitivement le brouillon <strong class="text-body">{{ facture.numero_facture }}</strong>&nbsp;?
+        Cette action est irréversible.
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Annuler</button>
+        <form method="post" action="{% url 'facturation:supprimer-facture' facture.pk %}" class="mb-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger rounded-pill px-3">
+            <i class="ti ti-trash me-1"></i>Supprimer définitivement
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal validation / encaissement -->
+{% if peut_encaisser %}
+<div class="modal fade" id="modalValiderFacture" tabindex="-1" aria-labelledby="modalValiderFactureLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="modalValiderFactureLabel">
+          <i class="ti ti-cash me-2 text-success"></i>Encaisser &amp; valider
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'facturation:valider-facture' facture.pk %}">
+        {% csrf_token %}
+        <div class="modal-body pt-3">
+
+          <!-- Rappel totaux -->
+          <div class="rounded-3 bg-primary bg-opacity-10 px-4 py-3 text-center mb-4">
+            <div class="small text-primary fw-semibold text-uppercase mb-1">Total TTC à régler</div>
+            <div class="fs-3 fw-bold text-primary">{{ facture.total_ttc }} <span class="fs-6 opacity-75">{{ facture.devise.symbole }}</span></div>
+          </div>
+
+          <!-- Mode de paiement (lecture seule, déjà fixé sur l'entête) -->
+          <div class="mb-3 p-3 bg-light rounded-3 d-flex justify-content-between align-items-center">
+            <span class="text-muted small fw-semibold text-uppercase">Mode de paiement</span>
+            <span class="fw-bold">{{ facture.get_mode_paiement_display }}</span>
+          </div>
+
+          {% if facture.mode_paiement == 'CREDIT' %}
+          <!-- Vente à crédit -->
+          <div class="alert alert-warning d-flex gap-2 align-items-start mb-0">
+            <i class="ti ti-alert-circle flex-shrink-0 fs-5 mt-1"></i>
+            <div>
+              <div class="fw-semibold">Vente à crédit</div>
+              <div class="small mt-1">
+                Aucun encaissement immédiat. Une dette de
+                <strong>{{ facture.total_ttc }} {{ facture.devise.symbole }}</strong>
+                sera enregistrée pour <strong>{{ facture.client.nom }}</strong>.
+                Le stock sera débité dès la validation.
+              </div>
+            </div>
+          </div>
+
+          {% else %}
+          <!-- Paiement comptant (partiel ou total) -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="id_montant_recu">
+              Montant reçu <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+              <input
+                type="number"
+                name="montant_recu"
+                id="id_montant_recu"
+                class="form-control form-control-lg"
+                step="0.01"
+                min="0"
+                max="{{ facture.total_ttc }}"
+                value="{{ facture.total_ttc }}"
+                required
+                autocomplete="off"
+              >
+              <span class="input-group-text fw-semibold">{{ facture.devise.symbole }}</span>
+            </div>
+            <div class="form-text">
+              Saisissez le montant effectivement reçu. Si inférieur au total, la différence devient une dette du client.
+            </div>
+          </div>
+
+          <!-- Indicateur reste à payer dynamique -->
+          <div id="encaissement-recap" class="rounded-3 bg-light px-3 py-2 small d-flex justify-content-between">
+            <span class="text-muted">Reste à payer</span>
+            <span id="encaissement-reste" class="fw-semibold text-success">0,00 {{ facture.devise.symbole }}</span>
+          </div>
+          {% endif %}
+
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success rounded-pill px-4">
+            <i class="ti ti-check me-1"></i>
+            {% if facture.mode_paiement == 'CREDIT' %}Valider à crédit{% else %}Confirmer l'encaissement{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block page_scripts %}
+{% if facture.statut == 'BROUILLON' %}
+<script>
+(function () {
+    function parseQty(s) {
+        if (s === undefined || s === null) return NaN;
+        var t = String(s).trim().replace(',', '.');
+        if (t === '') return NaN;
+        return parseFloat(t);
+    }
+    var dataEl = document.getElementById('facturation-produits-catalogue');
+    if (!dataEl) return;
+    var catalogue = JSON.parse(dataEl.textContent);
+    var sel = document.getElementById('{{ ligne_form.produit_selection.id_for_label }}');
+    var prix = document.getElementById('facture-prix-ht-readonly');
+    var meth = document.getElementById('facture-methode-label');
+    var stockHint = document.getElementById('facture-stock-dispo-hint');
+    var infoBox = document.getElementById('facture-produit-infos');
+    var form = document.getElementById('form-ajout-ligne-facture');
+    var qtyInput = document.getElementById('{{ ligne_form.quantite.id_for_label }}');
+
+    function sync() {
+        if (!sel) return;
+        var id = sel.value;
+        if (!id || !catalogue[id]) {
+            if (prix) prix.value = '—';
+            if (meth) meth.textContent = '—';
+            if (stockHint) stockHint.textContent = '—';
+            if (infoBox) infoBox.classList.add('d-none');
+            return;
+        }
+        var c = catalogue[id];
+        if (infoBox) infoBox.classList.remove('d-none');
+        if (prix) prix.value = c.prix_ht;
+        if (meth) {
+            var ml = 'Méthode stock : ' + c.methode + ' — ' + c.methode_label;
+            if (c.tva_applicable) {
+                ml += ' · TVA produit : ' + c.taux_tva + ' %';
+            } else {
+                ml += ' · TVA non appliquée (taux nul ou inexistant)';
+            }
+            meth.textContent = ml;
+        }
+        if (stockHint) {
+            var un = c.unite || '';
+            stockHint.textContent =
+                'Sur ce point de vente uniquement — disponible pour un nouvel ajout : '
+                + c.disponible_ajout + ' ' + un
+                + '. Stock actif sur les lots du PDV : ' + c.stock_lots_total
+                + '. Quantité déjà sur cette facture (lignes PDV) : '
+                + c.deja_sur_facture + '.';
+        }
+    }
+
+    function bindSelect2AndSync() {
+        if (!sel || typeof jQuery === 'undefined') return;
+        var urlAuto = '{% url "facturation:produits-autocomplete-facture" facture.pk %}';
+        var $jq = jQuery(sel);
+        if ($jq.hasClass('select2-hidden-accessible')) {
+            $jq.off('.factureprd');
+            $jq.select2('destroy');
+        }
+        $jq.select2({
+            width: '100%',
+            placeholder: 'Rechercher par nom, SKU ou code-barres…',
+            allowClear: true,
+            minimumInputLength: 2,
+            ajax: {
+                url: urlAuto,
+                delay: 280,
+                data: function (params) {
+                    return { q: params.term || '' };
+                },
+                processResults: function (data) {
+                    return { results: data.results || [] };
+                }
+            },
+            language: {
+                inputTooShort: function () {
+                    return 'Saisissez au moins 2 caractères…';
+                }
+            }
+        });
+        $jq.on('change.factureprd select2:select.factureprd select2:clear.factureprd', function () {
+            sync();
+        });
+        sync();
+    }
+
+    bindSelect2AndSync();
+
+    if (form && qtyInput) {
+        form.addEventListener('submit', function (ev) {
+            var pid = sel ? sel.value : '';
+            if (!pid || !catalogue[pid]) {
+                return;
+            }
+            var q = parseQty(qtyInput.value);
+            var max = parseFloat(String(catalogue[pid].disponible_ajout).replace(',', '.'));
+            if (!isNaN(q) && !isNaN(max) && q > max) {
+                ev.preventDefault();
+                var un = catalogue[pid].unite || '';
+                var msg =
+                    'Quantité trop élevée pour ce point de vente.\n\n' +
+                    'Disponible pour ajout : ' + catalogue[pid].disponible_ajout + ' ' + un + '\n' +
+                    'Stock actif sur les lots du PDV : ' + catalogue[pid].stock_lots_total + '\n' +
+                    'Déjà sur cette facture (lignes PDV) : ' + catalogue[pid].deja_sur_facture;
+                alert(msg);
+            }
+        });
+    }
+})();
+</script>
+{% endif %}
+
+{% if peut_encaisser and facture.mode_paiement != 'CREDIT' %}
+<script>
+(function () {
+    var totalTtc = parseFloat('{{ facture.total_ttc }}'.replace(',', '.')) || 0;
+    var sym      = '{{ facture.devise.symbole }}';
+    var input    = document.getElementById('id_montant_recu');
+    var resteEl  = document.getElementById('encaissement-reste');
+    var recap    = document.getElementById('encaissement-recap');
+    if (!input || !resteEl) return;
+
+    function update() {
+        var recu = parseFloat(String(input.value).replace(',', '.'));
+        if (isNaN(recu) || recu < 0) recu = 0;
+        var reste = Math.max(0, totalTtc - recu);
+        resteEl.textContent = reste.toFixed(2) + ' ' + sym;
+        if (reste > 0) {
+            resteEl.classList.remove('text-success');
+            resteEl.classList.add('text-danger');
+            recap.classList.remove('bg-light');
+            recap.classList.add('bg-danger', 'bg-opacity-10');
+        } else {
+            resteEl.classList.remove('text-danger');
+            resteEl.classList.add('text-success');
+            recap.classList.remove('bg-danger', 'bg-opacity-10');
+            recap.classList.add('bg-light');
+        }
+    }
+    input.addEventListener('input', update);
+    update();
+})();
+</script>
+{% endif %}
+
+{% if facture.statut == 'VALIDEE' and reste_reel > 0 %}
+<script>
+(function () {
+    var maxPay  = parseFloat('{{ reste_reel }}'.replace(',', '.')) || 0;
+    var sym     = '{{ facture.devise.symbole }}';
+    var input   = document.getElementById('id_montant_paiement_detail');
+    var form    = input ? input.closest('form') : null;
+    var submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    if (!input) return;
+
+    // Créer le bandeau d'alerte dynamique
+    var alertEl = document.createElement('div');
+    alertEl.className = 'alert alert-danger d-flex gap-2 align-items-center py-2 mt-2 d-none';
+    alertEl.innerHTML = '<i class="ti ti-alert-triangle flex-shrink-0"></i><span id="pay-over-msg"></span>';
+    input.closest('.mb-3').appendChild(alertEl);
+
+    function validate() {
+        var val = parseFloat(String(input.value).replace(',', '.'));
+        if (!isNaN(val) && val > maxPay) {
+            alertEl.classList.remove('d-none');
+            document.getElementById('pay-over-msg').textContent =
+                'Le montant saisi (' + val.toFixed(2) + ' ' + sym +
+                ') dépasse le reste dû (' + maxPay.toFixed(2) + ' ' + sym + ').';
+            input.classList.add('is-invalid');
+            if (submitBtn) submitBtn.disabled = true;
+        } else {
+            alertEl.classList.add('d-none');
+            input.classList.remove('is-invalid');
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+    input.addEventListener('input', validate);
+    input.addEventListener('change', validate);
+    validate();
+})();
+</script>
+{% endif %}
 {% endblock %}

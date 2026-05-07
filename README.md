@@ -48,12 +48,60 @@ Application dédiée : URLs sous `/stock/` (voir `stock/urls.py`).
 **Contrôle d’accès stock** : `stock/access.py` (visibilité et droits **modifier** par dépôt / point de vente selon `Profil`).
 
 ### Facturation (`facturation`)
-- Facturation : références client alignées sur `tiers.Client` ; mouvements de stock utilisables sur les lignes selon périmètre (voir formulaires et vues du module).
+- Factures clients avec lignes produits et mouvements de stock
+- **Proformas** (devis) : brouillon → soumis → approuvé → converti en facture
+- **Retours vente** : workflow soumission / approbation / avoir
+- **Hub approbations** : validation proformas et retours en un seul endroit
+- Paiements multiples par facture (espèces, Mobile Money, carte, crédit)
+- Impression facture A4, ticket et ticket détaillé
+
+### Caisse (`caisse`)
+- **Sessions de caisse** : ouverture / fermeture avec bilan automatique
+- Encaissement des factures en attente (`statut = EN_CAISSE`)
+- Comptes clients : solde, transactions, historique
+- **Décaissement des avances sur salaire** approuvées (sortie de fonds tracée)
+- Dashboard caisse avec KPIs en temps réel
+
+### Dépenses (`depenses`)
+- Création et validation de dépenses par point de vente
+- **Types de dépenses configurables** (catégories personnalisables)
+- Impression de reçus de dépense
+
+### Ressources Humaines (`rh`)
+- **Annuaire employés** : fiche complète (photo, état civil, contrat, département)
+- **Contrats** (CDI, CDD, stage, prestataire) avec date début/fin
+- **Départements** et organigramme
+- **Présences & Pointage** : saisie quotidienne, tableau mensuel, rapport
+- **Congés** : demande → approbation manager → clôture (annuel, maladie, maternité…)
+- **Avances sur salaire** : demande → approbation → décaissement caisse → retenue sur bulletin
+- **Bulletins de paie** : génération automatique (salaire de base, avantages, déductions, avances retenues, net à payer) ; workflow brouillon → validé → payé
+- Impression fiche employé
+
+### Comptabilité & Finance (`finance`)
+- **Hub Finance** : vue d'ensemble des modules financiers actifs
+- Accès centralisé : Dépenses, Caisse, Facturation, Bulletins de paie
+- Modules à venir : Plan comptable, Journaux, Grand Livre, Bilan, Budget, TVA
+
+### Rapports (`rapports`)
+- **14 rapports opérationnels** couvrant tous les modules métier
+- Filtrage par **branche** (pour les admins) ou périmètre utilisateur
+- **Export PDF** optimisé impression (déclenchement automatique `window.print()`)
+- Permissions granulaires par section de rapport
+
+| Catégorie | Rapports disponibles |
+|---|---|
+| Ventes & Facturation | CA, Bénéfice brut & net, Produits vendus, Créances impayées, Retours |
+| Stock | Inventaire valorisé, Mouvements, Ruptures & alertes, Expirations |
+| Achats | Achats par fournisseur, commandes en attente |
+| Ressources Humaines | Présences, Masse salariale, Avances salaire |
+| Caisse & Trésorerie | Sessions, encaissements par mode de paiement |
+| Dépenses | Par type, catégorie, point de vente, évolution mensuelle |
+| Clients & Tiers | Top clients, Vieillissement des créances |
 
 ### Utilisateurs
 - Authentification et gestion des sessions
-- Rôles et permissions personnalisées
-- Accès granulaires par dépôt et point de vente
+- Rôles et permissions personnalisées (18+ migrations de permissions)
+- Accès granulaires par dépôt, point de vente et module métier
 - Profil : photo, **signature image** (PDF bons de commande), etc.
 - Journal des connexions et actions (audit)
 
@@ -133,17 +181,19 @@ Les retours utilisateur passent par `django.contrib.messages` et **`MESSAGE_TAGS
 
 ```
 m-faida/
-├── core/               # Configuration Django (settings, urls)
-├── entreprise/         # Entreprises, branches, dépôts, PdV, devises, produits…
+├── core/               # Configuration Django (settings, urls, context_processors)
+├── entreprise/         # Entreprises, branches, dépôts, PdV, devises, produits, dashboard
 ├── tiers/              # Clients et fournisseurs
 ├── achat/              # Bons de commande, réceptions, exports Excel/PDF
-├── utilisateur/        # Utilisateurs, rôles, permissions
+├── utilisateur/        # Utilisateurs, rôles, permissions (18+ migrations)
 ├── produit/            # Vues / templates catalogue (réexport entreprise.Produit)
-├── stock/              # Stock dépôt/PDV, inventaires, réception, exports, correction interne, services (`services.py`)
-├── finance/           # Écritures / postings (variations inventaire OHADA, etc.)
-├── facturation/        # Factures, proformas
-├── finance/            # Comptabilité
-├── rh/                 # Ressources humaines
+├── stock/              # Stock dépôt/PDV, inventaires, réception, transferts, exports
+├── finance/            # Hub Comptabilité & Finance, écritures (OHADA)
+├── facturation/        # Factures, proformas, retours, approbations, paiements
+├── caisse/             # Sessions de caisse, encaissements, décaissements
+├── depenses/           # Dépenses par point de vente, types configurables
+├── rh/                 # Employés, contrats, présences, congés, avances, bulletins
+├── rapports/           # 14 rapports multi-modules avec export PDF
 ├── templates/          # Templates HTML globaux et par module
 ├── static/             # Fichiers statiques (CSS, JS)
 └── media/              # Fichiers téléversés (logos, signatures, etc.)
@@ -185,6 +235,21 @@ Colonnes typiques : `nom`, `categorie`, `sous_categorie`, SKU, `code_barre`, `de
 - **Correction interne** des lignes (lot, DLC/DLUO, emplacement, marque, conditionnement) sans mouvement de quantités.
 - **Toasts Bootstrap** harmonisés (titres FR, phrase de confirmation sur les succès) ; **`toasts.js`** pour HTMX.
 - Droits **`voir prix achat HT`** (permission profil / template tags) où applicable à l’ERP.
+
+
+### Recent (RH, Caisse, Finance, Rapports, UI)
+
+- **Module RH complet** : annuaire employes, contrats, departements, presences & pointage, conges (workflow approbation manager), avances sur salaire (workflow caisse), bulletins de paie automatiques avec retenues.
+- **Caisse enrichie** : sessions ouverture/fermeture, encaissement factures EN_CAISSE, decaissement avances RH (sortie de fonds tracee), comptes clients, dashboard KPIs.
+- **Depenses** : types configurables par entreprise, validation, impression recus.
+- **Hub Comptabilite & Finance** (finance/) : vue d ensemble avec modules actifs et modules a venir (Plan comptable, Journaux, Grand Livre, Bilan, Budget, TVA).
+- **Module Rapports** (rapports/) : 14 rapports couvrant Ventes, Stock, Achats, RH, Caisse, Depenses et Tiers - filtrage multi-branche/entreprise, export PDF print-optimise, permissions granulaires.
+- **Dashboard principal redesigne** : KPIs temps reel (CA jour/mois, caisse, depenses, profit estime), barre d alertes dynamique, factures recentes, acces rapides.
+- **Header entierement dynamique** : selecteur entreprise/branche reel, menu Creer en francais (9 actions rapides M-Faida), notifications temps reel (ruptures, factures caisse, conges, avances a decaisser), bouton Caisse.
+- **Sidebar remplacee** : ancien menu template generique supprime ; menu M-Faida operationnel (8 sections, permissions par module, etats actifs).
+- **Context processor global** (core/context_processors.py) : injection automatique de entreprise_courante, branche_courante, branches_disponibles et notifs_header dans tous les templates.
+- **Transferts de stock** inter-depots/PDV avec contraintes metier et tracabilite complete.
+- **Permissions etendues** (migrations 0008-0019) : RH, proforma, retours, bons de commande, depenses, stock avance, depot/PDV, transferts, caisse, rapports.
 
 ---
 

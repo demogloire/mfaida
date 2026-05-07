@@ -1,0 +1,24 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Ruptures de stock{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Ruptures &amp; faible stock</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">En rupture (qté = 0)</div><div class="kpi-val text-danger">{{ critique|length }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Stock faible</div><div class="kpi-val text-warning">{{ faible|length }}</div></div>
+</div>
+{% if critique %}
+<div class="section-title">En rupture totale</div>
+<table>
+  <tr><th>Produit</th><th>Catégorie</th><th>PDV</th><th class="text-right">Quantité</th></tr>
+  {% for s in critique %}<tr><td>{{ s.produit.nom }}</td><td>{{ s.produit.sous_categorie.nom|default:"—" }}</td><td>{{ s.pointdevente.nom|default:"—" }}</td><td class="text-right text-danger">{{ s.quantite_reelle|floatformat:2 }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+{% if faible %}
+<div class="section-title">Stock faible (sous seuil d'alerte)</div>
+<table>
+  <tr><th>Produit</th><th>Catégorie</th><th>PDV</th><th class="text-right">Quantité</th><th class="text-right">Seuil</th></tr>
+  {% for s in faible %}<tr><td>{{ s.produit.nom }}</td><td>{{ s.produit.sous_categorie.nom|default:"—" }}</td><td>{{ s.pointdevente.nom|default:"—" }}</td><td class="text-right text-warning">{{ s.quantite_reelle|floatformat:2 }}</td><td class="text-right">{{ s.produit.stock_alerte|default:"—" }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+{% if not critique and not faible %}<p>Aucune rupture détectée.</p>{% endif %}
+{% endblock %}

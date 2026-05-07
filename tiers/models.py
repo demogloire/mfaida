@@ -101,6 +101,13 @@ class Client(models.Model):
     notes = models.TextField(blank=True)
 
     est_actif = models.BooleanField(default=True)
+
+    est_client_passager = models.BooleanField(
+        default=False,
+        verbose_name='Client passager / comptoir',
+        help_text='Client occasionnel enregistré rapidement lors d’un achat, à distinguer d’un client suivi régulièrement.',
+    )
+
     date_creation = models.DateTimeField(auto_now_add=True)
 
     class Meta:

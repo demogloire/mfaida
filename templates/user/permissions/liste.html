@@ -1,7 +1,46 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="content settings-content">
+<style>
+    /* Permet au tableau de défiler horizontalement jusqu’à la colonne Actions dans le layout flex réglages */
+    .liste-permissions-metier .settings-permissions-main {
+        min-width: 0;
+    }
+    /* Colonne flex : sans cela la carte élargit le flux et coupe la colonne Actions */
+    .liste-permissions-metier .settings-permissions-main > .alert,
+    .liste-permissions-metier .settings-permissions-main > .card {
+        min-width: 0;
+    }
+    .liste-permissions-metier .permissions-table-scroll {
+        overflow-x: auto;
+        overflow-y: visible;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+    }
+    .liste-permissions-metier .permissions-list-table {
+        table-layout: auto;
+        width: 100%;
+    }
+    .liste-permissions-metier .permissions-list-table th,
+    .liste-permissions-metier .permissions-list-table td {
+        vertical-align: middle;
+    }
+    .liste-permissions-metier .permissions-list-table td.perm-code code {
+        word-break: break-word;
+        white-space: normal;
+    }
+    .liste-permissions-metier .perm-roles-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        max-width: 36rem;
+    }
+    .liste-permissions-metier .permissions-list-table td.perm-actions {
+        white-space: nowrap;
+        width: 1%;
+    }
+</style>
+<div class="content settings-content liste-permissions-metier">
     <div class="page-header">
         <div class="add-item d-flex">
             <div class="page-title">
@@ -23,7 +62,7 @@
             <div class="settings-wrapper d-flex">
                 {% include 'Utilities/user/sidebar-conf.html' with actif='liste-permissions' actif_section='permissions' %}
 
-                <div class="flex-fill d-flex flex-column gap-3">
+                <div class="flex-fill d-flex flex-column gap-3 settings-permissions-main">
                     <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2">
                         <i class="ti ti-shield-lock fs-5"></i>
                         <span class="small">
@@ -44,29 +83,31 @@
                     </div>
 
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
+                        <div class="table-responsive permissions-table-scroll">
+                            <table class="table table-hover table-sm mb-0 permissions-list-table">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Nom</th>
-                                        <th>Code</th>
+                                        <th class="perm-code">Code</th>
                                         <th>Utilisé dans</th>
-                                        <th class="text-end">Actions</th>
+                                        <th class="text-end perm-actions">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for perm in permissions %}
                                     <tr>
-                                        <td class="fw-medium">{{ perm.nom }}</td>
-                                        <td><code>{{ perm.code }}</code></td>
+                                        <td class="fw-medium text-wrap">{{ perm.nom }}</td>
+                                        <td class="perm-code"><code class="small">{{ perm.code }}</code></td>
                                         <td>
+                                            <div class="perm-roles-badges">
                                             {% for rp in perm.roles.all %}
-                                                <span class="badge bg-light text-dark border me-1">{{ rp.role.nom }}</span>
+                                                <span class="badge bg-light text-dark border">{{ rp.role.nom }}</span>
                                             {% empty %}
                                                 <span class="text-muted small">—</span>
                                             {% endfor %}
+                                            </div>
                                         </td>
-                                        <td class="text-end">
+                                        <td class="text-end perm-actions">
                                             <div class="btn-group btn-group-sm">
                                                 <a hx-get="{% url 'user:modifier-permission' perm.pk %}"
                                                    hx-target="body" hx-push-url="true"

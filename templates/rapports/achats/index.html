@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Achats</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-truck-delivery text-warning me-2"></i>Rapport Achats</h1>
+  {% include 'rapports/_barre_outils.html' %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px">Commandes</div>
+        <div class="fw-bold fs-3">{{ synthese.nb_total }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px">Total TTC</div>
+        <div class="fw-bold fs-4 text-primary">{{ synthese.total_ttc|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px">En cours</div>
+        <div class="fw-bold fs-3 text-warning">{{ en_cours|length }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Par fournisseur -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">Par fournisseur</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light"><tr><th>Fournisseur</th><th class="text-end">Commandes</th><th class="text-end">Total TTC</th></tr></thead>
+              <tbody>
+                {% for f in par_fournisseur %}
+                <tr>
+                  <td class="fw-semibold">{{ f.fournisseur__nom_societe }}</td>
+                  <td class="text-end">{{ f.nb }}</td>
+                  <td class="text-end text-primary fw-semibold">{{ f.total_ttc|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted py-4">Aucun achat</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- En cours -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-clock-history text-warning me-2"></i>Bons de commande en cours</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light"><tr><th>N° BC</th><th>Fournisseur</th><th>Statut</th><th>Livraison prévue</th><th class="text-end">Montant</th></tr></thead>
+              <tbody>
+                {% for o in en_cours %}
+                <tr>
+                  <td class="fw-semibold small">{{ o.numero_commande }}</td>
+                  <td class="small">{{ o.fournisseur.nom_societe }}</td>
+                  <td><span class="badge bg-warning text-dark">{{ o.get_statut_display }}</span></td>
+                  <td class="small {% if o.date_livraison_prevue and o.date_livraison_prevue < today %}text-danger{% endif %}">
+                    {{ o.date_livraison_prevue|date:"d/m/Y"|default:"—" }}
+                  </td>
+                  <td class="text-end small fw-semibold">{{ o.total_ttc|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Aucune commande en cours</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

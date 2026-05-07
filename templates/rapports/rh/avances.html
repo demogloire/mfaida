@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Avances RH</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-wallet text-warning me-2"></i>Avances sur salaire</h1>
+  {% include 'rapports/_barre_outils.html' %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Approuvées</div>
+        <div class="fw-bold fs-3 text-warning">{{ synthese.nb_approuvees }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Total décaissé</div>
+        <div class="fw-bold fs-4 text-danger">{{ total_decaisse|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Total remboursé</div>
+        <div class="fw-bold fs-4 text-success">{{ total_rembourse|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #ff9800 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Solde restant dû</div>
+        <div class="fw-bold fs-4 text-warning">{{ solde_restant|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>Numéro</th><th>Employé</th><th class="text-end">Montant</th><th>Devise</th><th>Date</th><th>Statut</th></tr>
+          </thead>
+          <tbody>
+            {% for a in qs %}
+            <tr>
+              <td class="fw-semibold font-monospace small">{{ a.numero }}</td>
+              <td>{{ a.employe.prenom }} {{ a.employe.nom }}</td>
+              <td class="text-end fw-semibold">{{ a.montant|floatformat:2 }}</td>
+              <td class="small text-muted">{{ a.devise.code }}</td>
+              <td class="small text-muted">{{ a.date_demande|date:"d/m/Y" }}</td>
+              <td>
+                {% if a.statut == 'REMBOURSEE' %}<span class="badge bg-success">Remboursée</span>
+                {% elif a.statut == 'DECAISSEE' %}<span class="badge bg-warning text-dark">Décaissée</span>
+                {% elif a.statut == 'APPROUVEE' %}<span class="badge bg-info text-dark">Approuvée</span>
+                {% else %}<span class="badge bg-secondary">{{ a.get_statut_display }}</span>{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-5">Aucune avance</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

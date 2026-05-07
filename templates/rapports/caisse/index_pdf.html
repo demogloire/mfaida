@@ -1,0 +1,22 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Rapport Caisse{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Rapport Caisse &amp; Trésorerie</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Encaissements</div><div class="kpi-val text-success">{{ synthese.total_encaissements|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Décaissements</div><div class="kpi-val text-danger">{{ synthese.total_decaissements|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Dépôts</div><div class="kpi-val">{{ synthese.total_depots|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Sessions</div><div class="kpi-val">{{ nb_sessions }}</div></div>
+</div>
+<div class="section-title">Encaissements par mode de paiement</div>
+<table>
+  <tr><th>Mode</th><th class="text-right">Total</th></tr>
+  {% for m in par_mode %}<tr><td>{{ m.mode_paiement }}</td><td class="text-right text-success">{{ m.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="2">Aucun encaissement</td></tr>{% endfor %}
+</table>
+<div class="section-title">Détail des sessions</div>
+<table>
+  <tr><th>Date</th><th>PDV</th><th>Caissier</th><th class="text-right">Fond ouv.</th><th class="text-right">Encaissé</th><th>Statut</th></tr>
+  {% for s in sessions %}<tr><td>{{ s.date_ouverture|date:"d/m/Y H:i" }}</td><td>{{ s.point_vente.nom }}</td><td>{{ s.ouvert_par }}</td><td class="text-right">{{ s.fond_ouverture|floatformat:2 }}</td><td class="text-right text-success">{{ s.total_encaissements|floatformat:2 }}</td><td>{{ s.get_statut_display }}</td></tr>{% empty %}<tr><td colspan="6">Aucune session</td></tr>{% endfor %}
+</table>
+{% endblock %}

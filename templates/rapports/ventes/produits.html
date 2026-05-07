@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Produits vendus</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-package text-primary me-2"></i>Analyse produits vendus</h1>
+  {% include 'rapports/_barre_outils.html' %}
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Produit</th>
+              <th>Catégorie</th>
+              <th class="text-end">Qté vendue</th>
+              <th class="text-end">CA HT</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in lignes %}
+            <tr>
+              <td class="text-muted small">{{ forloop.counter }}</td>
+              <td class="fw-semibold">{{ l.produit__nom }}</td>
+              <td class="text-muted small">{{ l.produit__sous_categorie__nom|default:"—" }}</td>
+              <td class="text-end">{{ l.qte_vendue|floatformat:0 }}</td>
+              <td class="text-end fw-semibold text-primary">{{ l.ca_ht|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-5">Aucune vente sur cette période</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

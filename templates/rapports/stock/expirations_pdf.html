@@ -1,0 +1,13 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Expirations produits{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Produits proches expiration</div>
+<div class="periode">Horizon : {{ jours }} jours — avant le {{ limite|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Lots à risque</div><div class="kpi-val text-warning">{{ qs|length }}</div></div>
+</div>
+<table>
+  <tr><th>Produit</th><th>PDV</th><th>Lot / Batch</th><th class="text-right">Qté active</th><th>Date expiration</th></tr>
+  {% for m in qs %}<tr><td>{{ m.produit.nom }}</td><td>{{ m.pointvente.nom|default:"—" }}</td><td>{{ m.lot_batch|default:"—" }}</td><td class="text-right">{{ m.quantite_active|floatformat:2 }}</td><td class="{% if m.dateexpiration <= today %}text-danger{% else %}text-warning{% endif %}">{{ m.dateexpiration|date:"d/m/Y" }}</td></tr>{% empty %}<tr><td colspan="5">Aucun produit à risque</td></tr>{% endfor %}
+</table>
+{% endblock %}

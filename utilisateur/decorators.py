@@ -15,13 +15,19 @@ def login_requis(vue):
 
 
 def admin_requis(vue):
-    """Autorise uniquement les utilisateurs avec profil.admin == True."""
+    """Accès réservé aux administrateurs ERP (profil.admin) ou superutilisateurs Django."""
     @wraps(vue)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect(f"{reverse('user:connexion')}?next={request.path}")
-        if not request.user.admin:
-            messages.error(request, "Accès refusé : vous n'avez pas les droits administrateur.")
+        if not (
+            getattr(request.user, 'admin', False)
+            or getattr(request.user, 'is_superuser', False)
+        ):
+            messages.error(
+                request,
+                "Accès réservé aux administrateurs.",
+            )
             return redirect('entreprise:dashboard')
         return vue(request, *args, **kwargs)
     return wrapper

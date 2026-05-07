@@ -1,7 +1,31 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="content settings-content">
+<style>
+    /* Aligné sur la page permissions : le flex settings + grille ne doit pas élargir la colonne */
+    .liste-roles-cards .settings-wrapper > .flex-fill {
+        min-width: 0;
+    }
+    .liste-roles-cards .settings-roles-outer-card {
+        min-width: 0;
+    }
+    .liste-roles-cards .row.g-3 > [class*="col-"] {
+        min-width: 0;
+    }
+    .liste-roles-cards .role-card-body {
+        min-width: 0;
+    }
+    /* Les .badge sont en nowrap par défaut : les longs intitulés débordent de la carte */
+    .liste-roles-cards .role-permissions-badges .badge {
+        white-space: normal;
+        word-break: break-word;
+        text-align: left;
+        font-weight: 500;
+        line-height: 1.35;
+        max-width: 100%;
+    }
+</style>
+<div class="content settings-content liste-roles-cards">
     <div class="page-header">
         <div class="add-item d-flex">
             <div class="page-title">
@@ -36,7 +60,7 @@
                             {% endif %}
                         </span>
                     </div>
-                <div class="card mb-0">
+                <div class="card mb-0 settings-roles-outer-card">
                     <!-- En-tête carte : titre + bouton ajouter -->
                     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <div>
@@ -59,19 +83,19 @@
                         <div class="row g-3">
                             {% for role in roles %}
                             <div class="col-lg-6 col-xl-4">
-                                <div class="card border h-100 mb-0">
+                                <div class="card border h-100 mb-0 overflow-hidden">
                                     <div class="card-header d-flex justify-content-between align-items-center py-3 flex-wrap gap-2">
-                                        <div>
-                                            <h6 class="card-title mb-0 fw-bold">{{ role.nom }}</h6>
+                                        <div class="role-card-title-block pe-2">
+                                            <h6 class="card-title mb-0 fw-bold text-break">{{ role.nom }}</h6>
                                             {% if est_super_admin %}
                                             <span class="badge bg-secondary-subtle text-secondary border mt-1">{{ role.entreprise.nom }}</span>
                                             {% endif %}
                                         </div>
                                         <span class="badge bg-primary">{{ role.utilisateurs.count }} utilisateur{{ role.utilisateurs.count|pluralize }}</span>
                                     </div>
-                                    <div class="card-body py-3">
-                                        <p class="text-muted small mb-3">{{ role.description|default:"Aucune description." }}</p>
-                                        <div class="d-flex flex-wrap gap-1">
+                                    <div class="card-body py-3 role-card-body">
+                                        <p class="text-muted small mb-3 text-break">{{ role.description|default:"Aucune description." }}</p>
+                                        <div class="d-flex flex-wrap gap-2 role-permissions-badges">
                                             {% for rp in role.permissions.all %}
                                                 <span class="badge bg-light text-dark border">{{ rp.permission.nom }}</span>
                                             {% empty %}

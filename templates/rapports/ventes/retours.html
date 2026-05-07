@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Retours sur ventes</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-arrow-back-up text-danger me-2"></i>Retours sur ventes</h1>
+  {% include 'rapports/_barre_outils.html' %}
+
+  <div class="mb-3">
+    <span class="badge bg-danger fs-6 px-3 py-2">Total retourné : {{ total_retourne|floatformat:2 }}</span>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>N° Retour</th><th>Facture d'origine</th><th>Client</th><th>PDV</th><th class="text-end">Montant</th><th>Date</th></tr>
+          </thead>
+          <tbody>
+            {% for r in qs %}
+            <tr>
+              <td class="fw-semibold">{{ r.numero_retour|default:r.pk }}</td>
+              <td>
+                {% if r.facture_origine %}
+                <a href="{% url 'facturation:detail-facture' pk=r.facture_origine.pk %}" class="text-decoration-none">{{ r.facture_origine.numero_facture }}</a>
+                {% else %}—{% endif %}
+              </td>
+              <td>{{ r.facture_origine.client.nom|default:"—" }}</td>
+              <td class="small text-muted">{{ r.point_vente.nom }}</td>
+              <td class="text-end text-danger fw-semibold">{{ r.total_ttc|floatformat:2 }}</td>
+              <td class="small text-muted">{{ r.date_retour|date:"d/m/Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-5">Aucun retour sur cette période</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

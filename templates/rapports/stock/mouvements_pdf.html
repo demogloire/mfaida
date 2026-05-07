@@ -1,0 +1,10 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Mouvements de stock{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Mouvements de stock</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<table>
+  <tr><th>Produit</th><th>PDV</th><th>Origine</th><th class="text-right">Qté reçue</th><th class="text-right">Qté active</th><th class="text-right">Prix unit.</th></tr>
+  {% for m in qs %}<tr><td>{{ m.produit.nom }}</td><td>{{ m.pointvente.nom|default:"—" }}</td><td>{{ m.origine|default:"—" }}</td><td class="text-right">{{ m.quantite_recu|floatformat:2 }}</td><td class="text-right">{{ m.quantite_active|floatformat:2 }}</td><td class="text-right">{{ m.prix_unitaire|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="6">Aucun mouvement</td></tr>{% endfor %}
+</table>
+{% endblock %}

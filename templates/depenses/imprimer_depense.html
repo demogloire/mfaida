@@ -1,0 +1,292 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dépense {{ depense.numero_depense }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #e8ecf1; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #1a1f2e; }
+
+    /* ── Barre d'outils ── */
+    .toolbar {
+      padding: .75rem 1rem;
+      background: #1e293b;
+      color: #fff;
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+    .toolbar button {
+      font: inherit; cursor: pointer;
+      padding: .5rem 1.25rem;
+      border-radius: 999px; border: 0;
+      font-size: .875rem;
+    }
+    .btn-print  { background: #3b82f6; color: #fff; }
+    .btn-fermer { background: #334155; color: #fff; }
+
+    /* ── Feuille ── */
+    .sheet-wrap { padding: 1rem 1rem 2rem; }
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #fff;
+      padding: 18mm 20mm;
+      box-shadow: 0 12px 40px rgba(0,0,0,.08);
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      html, body { background: #fff !important; }
+      .sheet-wrap { padding: 0; }
+      .sheet { box-shadow: none !important; width: auto; min-height: auto; margin: 0; padding: 0; }
+    }
+    @page { size: A4 portrait; margin: 14mm; }
+
+    /* ── En-tête ── */
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1.5rem;
+      border-bottom: 3px solid #dc2626;
+      padding-bottom: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .brand { flex: 1; display: flex; gap: 1rem; align-items: flex-start; min-width: 0; }
+    .brand-logo { display: block; max-height: 72px; max-width: 180px; width: auto; object-fit: contain; }
+    .brand-body { flex: 1; min-width: 0; }
+    .brand-body h1 { margin: 0 0 .2rem; font-size: 1.25rem; font-weight: 800; color: #0f172a; }
+    .brand-body p  { margin: .1rem 0; font-size: .78rem; color: #475569; line-height: 1.4; }
+
+    .doc-title { text-align: right; flex-shrink: 0; }
+    .doc-title h2 { margin: 0; font-size: 1.4rem; font-weight: 800; color: #dc2626; letter-spacing: .02em; }
+    .doc-title .num { font-size: .9rem; font-weight: 700; color: #374151; margin-top: .2rem; }
+    .doc-title .meta { font-size: .75rem; color: #6b7280; margin-top: .2rem; }
+
+    /* ── Pill statut ── */
+    .pill {
+      display: inline-block;
+      padding: .2rem .65rem;
+      border-radius: 999px;
+      font-size: .68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .pill-validee  { background: #dcfce7; color: #166534; }
+    .pill-brouillon { background: #fef9c3; color: #854d0e; }
+    .pill-annulee  { background: #f3f4f6; color: #6b7280; }
+
+    /* ── Info boxes ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .info-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: .6rem .85rem;
+    }
+    .info-box .lbl { font-size: .67rem; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; font-weight: 600; margin-bottom: .2rem; }
+    .info-box .val { font-size: .85rem; font-weight: 600; color: #111827; }
+    .info-box .val.small { font-size: .78rem; font-weight: 500; }
+
+    /* ── Montant principal ── */
+    .montant-block {
+      text-align: center;
+      margin: 1.5rem 0;
+      padding: 1.25rem;
+      background: #fef2f2;
+      border: 2px solid #fecaca;
+      border-radius: 10px;
+    }
+    .montant-block .label { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; font-weight: 600; margin-bottom: .4rem; }
+    .montant-block .value { font-size: 2.4rem; font-weight: 800; color: #dc2626; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .montant-block .devise { font-size: 1.1rem; font-weight: 600; color: #b91c1c; margin-left: .3rem; }
+
+    /* ── Motif ── */
+    .motif-block {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: .7rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .motif-block .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; font-weight: 600; margin-bottom: .35rem; }
+    .motif-block .txt { font-size: .85rem; color: #374151; line-height: 1.55; white-space: pre-line; }
+
+    /* ── Retour lié ── */
+    .ref-block {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 6px;
+      padding: .6rem .85rem;
+      margin-bottom: 1.25rem;
+      font-size: .8rem;
+      color: #92400e;
+    }
+    .ref-block strong { color: #7c2d12; }
+
+    /* ── Signatures ── */
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 2.5rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 1rem;
+    }
+    .sig-box { text-align: center; }
+    .sig-box .sig-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; font-weight: 600; }
+    .sig-box .sig-name  { font-size: .8rem; color: #374151; margin-top: .25rem; }
+    .sig-box .sig-area  { height: 40px; border-bottom: 1px solid #cbd5e1; margin: .5rem auto 0; width: 80%; }
+
+    /* ── Pied de page ── */
+    footer {
+      margin-top: 2rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: .6rem;
+      text-align: center;
+      font-size: .68rem;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Barre d'outils (non imprimée) -->
+<div class="toolbar no-print">
+  <button class="btn-print" onclick="window.print()">🖨 Imprimer</button>
+  <button class="btn-fermer" onclick="window.close()">✕ Fermer</button>
+</div>
+
+<div class="sheet-wrap">
+  <div class="sheet">
+
+    <!-- En-tête -->
+    <div class="top">
+      <div class="brand">
+        {% if entreprise and entreprise.logo %}
+        <img src="{{ entreprise.logo.url }}" alt="{{ entreprise.nom }}" class="brand-logo">
+        {% endif %}
+        <div class="brand-body">
+          <h1>{% if entreprise %}{{ entreprise.nom }}{% else %}—{% endif %}</h1>
+          {% if entreprise %}
+          {% if entreprise.adresse %}<p>{{ entreprise.adresse }}</p>{% endif %}
+          {% if entreprise.telephone %}<p>Tél : {{ entreprise.telephone }}</p>{% endif %}
+          {% if entreprise.email %}<p>{{ entreprise.email }}</p>{% endif %}
+          {% if entreprise.rccm %}<p style="font-size:.7rem;color:#94a3b8;">RCCM : {{ entreprise.rccm }}</p>{% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <div class="doc-title">
+        <h2>BON DE DÉPENSE</h2>
+        <div class="num">{{ depense.numero_depense }}</div>
+        <div class="meta">{{ depense.date_depense|date:"d/m/Y H:i" }}</div>
+        <div style="margin-top:.35rem;">
+          {% if depense.statut == 'VALIDEE' %}
+          <span class="pill pill-validee">Validée</span>
+          {% elif depense.statut == 'ANNULEE' %}
+          <span class="pill pill-annulee">Annulée</span>
+          {% else %}
+          <span class="pill pill-brouillon">Brouillon</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Informations principales -->
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="lbl">Type de dépense</div>
+        <div class="val">{{ depense.get_type_depense_display }}</div>
+      </div>
+      <div class="info-box">
+        <div class="lbl">Point de vente</div>
+        <div class="val">{{ depense.point_vente.nom }}</div>
+      </div>
+      <div class="info-box">
+        <div class="lbl">Enregistré par</div>
+        <div class="val small">{{ depense.enregistre_par.get_full_name|default:depense.enregistre_par.username }}</div>
+      </div>
+      {% if depense.valide_par %}
+      <div class="info-box">
+        <div class="lbl">Validé par</div>
+        <div class="val small">
+          {{ depense.valide_par.get_full_name|default:depense.valide_par.username }}
+          {% if depense.date_validation %}<br><span style="font-weight:400;color:#6b7280;">{{ depense.date_validation|date:"d/m/Y H:i" }}</span>{% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="info-box">
+        <div class="lbl">Date</div>
+        <div class="val small">{{ depense.date_depense|date:"d/m/Y" }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Montant principal -->
+    <div class="montant-block">
+      <div class="label">Montant total</div>
+      <div class="value">
+        {{ depense.montant|floatformat:2 }}
+        <span class="devise">{{ depense.devise.code }}</span>
+      </div>
+    </div>
+
+    <!-- Retour client associé -->
+    {% if depense.retour_vente %}
+    <div class="ref-block">
+      <strong>Référence retour client :</strong>
+      {{ depense.retour_vente.numero_retour }}
+      — Facture origine :
+      <strong>{{ depense.retour_vente.facture_origine.numero_facture }}</strong>
+      — Client : {{ depense.retour_vente.client.nom }}
+    </div>
+    {% endif %}
+
+    <!-- Motif -->
+    {% if depense.motif %}
+    <div class="motif-block">
+      <div class="lbl">Motif / Objet de la dépense</div>
+      <div class="txt">{{ depense.motif }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Signatures -->
+    <div class="signatures">
+      <div class="sig-box">
+        <div class="sig-label">Établi par</div>
+        <div class="sig-name">{{ depense.enregistre_par.get_full_name|default:depense.enregistre_par.username }}</div>
+        <div class="sig-area"></div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-label">Validé / Autorisé par</div>
+        {% if depense.valide_par %}
+        <div class="sig-name">{{ depense.valide_par.get_full_name|default:depense.valide_par.username }}</div>
+        {% else %}
+        <div class="sig-name" style="color:#94a3b8;">En attente</div>
+        {% endif %}
+        <div class="sig-area"></div>
+      </div>
+    </div>
+
+    <footer>
+      Document généré le {% now "d/m/Y à H:i" %} —
+      {% if entreprise %}{{ entreprise.nom }}{% endif %}
+      — Réf. {{ depense.numero_depense }}
+    </footer>
+
+  </div><!-- /.sheet -->
+</div><!-- /.sheet-wrap -->
+
+</body>
+</html>

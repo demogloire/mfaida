@@ -1,0 +1,17 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Vieillissement des créances{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Vieillissement des créances</div>
+<div class="periode">Au {{ today|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">0–30 j</div><div class="kpi-val text-success">{{ t0_30|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">31–60 j</div><div class="kpi-val text-warning">{{ t31_60|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">61–90 j</div><div class="kpi-val text-danger">{{ t61_90|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">+90 j (critique)</div><div class="kpi-val text-danger">{{ tplus90|floatformat:2 }}</div></div>
+</div>
+<table>
+  <tr><th>Facture</th><th>Client</th><th class="text-right">Solde dû</th><th>Date</th><th class="text-right">Âge</th><th>Tranche</th></tr>
+  {% for r in rows %}<tr><td>{{ r.facture.numero_facture }}</td><td>{{ r.facture.client.nom }}</td><td class="text-right text-danger">{{ r.facture.reste_a_payer|floatformat:2 }}</td><td>{{ r.facture.date_facture|date:"d/m/Y" }}</td><td class="text-right">{{ r.age }}j</td><td>{{ r.tranche }}</td></tr>{% empty %}<tr><td colspan="6">Aucune créance</td></tr>{% endfor %}
+  {% if rows %}<tr style="background:#fce4ec;font-weight:bold"><td colspan="2">TOTAL DÛ</td><td class="text-right text-danger">{{ total_du|floatformat:2 }}</td><td colspan="3"></td></tr>{% endif %}
+</table>
+{% endblock %}

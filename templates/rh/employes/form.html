@@ -1,0 +1,420 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .page-employe-form .section-title {
+    font-size: .68rem;
+    letter-spacing: .08em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+  .page-employe-form .field-icon {
+    pointer-events: none;
+    color: #9ca3af;
+  }
+  .page-employe-form .aside-card {
+    border-radius: .75rem;
+  }
+  @media (min-width: 992px) {
+    .page-employe-form .aside-card { position: sticky; top: 5.5rem; }
+  }
+  .page-employe-form .avatar-preview {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f52b2 0%, #7c7fe8 100%);
+    color: #fff;
+    font-size: 1.6rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: .04em;
+    transition: all .3s ease;
+    border: 3px solid #eef0ff;
+    box-shadow: 0 4px 15px rgba(79,82,178,.25);
+  }
+  .page-employe-form .avatar-preview.has-photo {
+    background: transparent;
+    border-color: #e5e7eb;
+    box-shadow: 0 4px 15px rgba(0,0,0,.1);
+  }
+  .page-employe-form .avatar-preview img {
+    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  }
+  .page-employe-form .upload-zone {
+    border: 2px dashed #e5e7eb;
+    border-radius: .5rem;
+    transition: border-color .2s;
+    cursor: pointer;
+  }
+  .page-employe-form .upload-zone:hover { border-color: #4f52b2; }
+  .page-employe-form .info-row { display: flex; align-items: center; gap: .5rem; padding: .5rem 0; border-bottom: 1px solid #f3f4f6; }
+  .page-employe-form .info-row:last-child { border-bottom: none; }
+  .page-employe-form .info-label { font-size: .72rem; color: #9ca3af; min-width: 6rem; }
+  .page-employe-form .info-value { font-size: .82rem; font-weight: 600; color: #374151; }
+  .page-employe-form .info-value.placeholder-val { color: #d1d5db; font-weight: 400; font-style: italic; }
+  .page-employe-form .required-dot::after {
+    content: '*'; color: #ef4444; margin-left: 2px; font-size: .75rem;
+  }
+</style>
+
+<div class="content page-employe-form pb-5">
+
+  <!-- Breadcrumb -->
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-employes' %}" class="text-decoration-none">Employés</a></li>
+      <li class="breadcrumb-item active">{{ titre }}</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête page -->
+  <div class="d-flex gap-3 align-items-start mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+          style="width:3rem;height:3rem;background:#eef0ff;color:#4f52b2;">
+      <i class="ti ti-{% if action == 'modifier' %}edit{% else %}user-plus{% endif %} fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-1">{{ titre }}</h1>
+      <p class="text-muted small mb-0">
+        {% if action == 'modifier' %}
+          Modifiez les informations personnelles de l'employé. Le contrat se gère séparément.
+        {% else %}
+          Remplissez les informations personnelles. Vous pourrez ajouter un contrat une fois l'employé créé.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2 mb-3">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <form method="post" enctype="multipart/form-data" id="form-employe">
+    {% csrf_token %}
+    <div class="row g-4 align-items-start">
+
+      <!-- ══ Colonne principale ══════════════════════════════════════════════ -->
+      <div class="col-lg-8">
+
+        <!-- Section : Identification -->
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+          <div class="card-body p-4">
+            <p class="section-title mb-3 pb-2 border-bottom">Identification</p>
+
+            {% if admin %}
+            <div class="mb-3">
+              <label class="form-label fw-medium required-dot">Branche</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-building"></i></span>
+                <select name="branche" class="form-select border-start-0 ps-0" required>
+                  <option value="">— Sélectionner une branche —</option>
+                  {% for b in branches %}
+                  <option value="{{ b.pk }}" {% if employe and employe.branche_id == b.pk %}selected{% endif %}>{{ b.nom }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="row g-3">
+              <div class="col-sm-4">
+                <label class="form-label fw-medium required-dot">Matricule</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-hash"></i></span>
+                  <input id="f-matricule" type="text" name="matricule" class="form-control border-start-0 ps-0 font-monospace"
+                         value="{{ employe.matricule|default:'' }}" required
+                         placeholder="EMP-001" autocomplete="off">
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <label class="form-label fw-medium required-dot">Nom de famille</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-user"></i></span>
+                  <input id="f-nom" type="text" name="nom" class="form-control border-start-0 ps-0"
+                         value="{{ employe.nom|default:'' }}" required
+                         placeholder="NOM" autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mt-0">
+              <div class="col-sm-6">
+                <label class="form-label fw-medium">Post-nom</label>
+                <input id="f-postnom" type="text" name="postnom" class="form-control"
+                       value="{{ employe.postnom|default:'' }}" placeholder="Post-nom">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label fw-medium required-dot">Prénom</label>
+                <input id="f-prenom" type="text" name="prenom" class="form-control"
+                       value="{{ employe.prenom|default:'' }}" required
+                       placeholder="Prénom" autocomplete="off">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section : État civil & Données personnelles -->
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+          <div class="card-body p-4">
+            <p class="section-title mb-3 pb-2 border-bottom">Données personnelles</p>
+
+            <div class="row g-3">
+              <div class="col-sm-4">
+                <label class="form-label fw-medium required-dot">Sexe</label>
+                <select id="f-sexe" name="sexe" class="form-select" required>
+                  <option value="">—</option>
+                  {% for val, label in sexe_choices %}
+                  <option value="{{ val }}" {% if employe and employe.sexe == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label fw-medium required-dot">État civil</label>
+                <select id="f-etat-civil" name="etat_civil" class="form-select" required>
+                  <option value="">—</option>
+                  {% for val, label in etat_civil_choices %}
+                  <option value="{{ val }}" {% if employe and employe.etat_civil == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label fw-medium">Nbre d'enfants</label>
+                <input type="number" name="nombre_enfants" class="form-control" min="0"
+                       value="{{ employe.nombre_enfants|default:'0' }}">
+              </div>
+            </div>
+
+            <div class="row g-3 mt-0">
+              <div class="col-sm-6">
+                <label class="form-label fw-medium required-dot">Date de naissance</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-calendar"></i></span>
+                  <input id="f-naissance" type="date" name="date_naissance" class="form-control border-start-0 ps-0"
+                         value="{{ employe.date_naissance|date:'Y-m-d'|default:'' }}" required>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label fw-medium required-dot">Téléphone</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-phone"></i></span>
+                  <input id="f-tel" type="tel" name="telephone" class="form-control border-start-0 ps-0"
+                         value="{{ employe.telephone|default:'' }}" required
+                         placeholder="+243 8XX XXX XXX">
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="form-label fw-medium">Adresse</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 field-icon align-items-start pt-2"><i class="ti ti-map-pin"></i></span>
+                <textarea name="adresse" class="form-control border-start-0 ps-0" rows="2"
+                          placeholder="Adresse complète de résidence…">{{ employe.adresse|default:'' }}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section : Photo -->
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+          <div class="card-body p-4">
+            <p class="section-title mb-3 pb-2 border-bottom">Photo de profil <span class="text-muted fw-normal normal-case" style="text-transform:none;font-size:.75rem;letter-spacing:0;">(optionnel)</span></p>
+            <div class="d-flex gap-4 align-items-start">
+              <div id="avatar-preview" class="avatar-preview flex-shrink-0 {% if employe and employe.photo %}has-photo{% endif %}">
+                {% if employe and employe.photo %}
+                <img id="avatar-img" src="{{ employe.photo.url }}" alt="">
+                {% else %}
+                <span id="avatar-initials">{{ employe.prenom|first|upper|default:'?' }}{{ employe.nom|first|upper|default:'' }}</span>
+                {% endif %}
+              </div>
+              <div class="flex-grow-1">
+                <label class="upload-zone d-block text-center p-3" for="id-photo" style="cursor:pointer;">
+                  <i class="ti ti-cloud-upload fs-3 text-muted d-block mb-1"></i>
+                  <div class="small fw-medium text-muted">Cliquez pour choisir une photo</div>
+                  <div class="text-muted" style="font-size:.72rem;">JPG, PNG · max 2 MB</div>
+                </label>
+                <input type="file" name="photo" id="id-photo" class="d-none" accept="image/*">
+                <div id="photo-name" class="small text-muted mt-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 justify-content-end">
+          {% if employe %}
+          <a href="{% url 'rh:detail-employe' employe.pk %}" class="btn btn-outline-secondary px-4">
+            <i class="ti ti-x me-1"></i>Annuler
+          </a>
+          {% else %}
+          <a href="{% url 'rh:liste-employes' %}" class="btn btn-outline-secondary px-4">
+            <i class="ti ti-x me-1"></i>Annuler
+          </a>
+          {% endif %}
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="ti ti-{% if action == 'modifier' %}device-floppy{% else %}user-plus{% endif %} me-1"></i>
+            {% if action == 'modifier' %}Enregistrer les modifications{% else %}Créer l'employé{% endif %}
+          </button>
+        </div>
+
+      </div><!-- /col-lg-8 -->
+
+      <!-- ══ Panneau latéral ════════════════════════════════════════════════ -->
+      <div class="col-lg-4">
+        <div class="aside-card card border-0 shadow-sm rounded-3">
+          <div class="card-body p-4">
+
+            <!-- Aperçu identité -->
+            <div class="text-center mb-4">
+              <div id="aside-avatar" class="avatar-preview mx-auto mb-3" style="width:72px;height:72px;font-size:1.4rem;">
+                {% if employe and employe.photo %}
+                <img id="aside-img" src="{{ employe.photo.url }}" alt="">
+                {% else %}
+                <span id="aside-initials">{{ employe.prenom|first|upper|default:'?' }}{{ employe.nom|first|upper|default:'' }}</span>
+                {% endif %}
+              </div>
+              <div id="aside-nom" class="fw-bold text-dark" style="font-size:.95rem;">
+                {{ employe.nom|default:'' }} {{ employe.prenom|default:'' }}
+                {% if not employe %}<span class="text-muted fw-normal" style="font-size:.85rem;">Nouveau collaborateur</span>{% endif %}
+              </div>
+              <div id="aside-matricule" class="font-monospace text-muted" style="font-size:.78rem;">
+                {{ employe.matricule|default:'— matricule —' }}
+              </div>
+            </div>
+
+            <p class="section-title mb-3 pb-2 border-bottom">Récapitulatif</p>
+
+            <div id="aside-details">
+              <div class="info-row">
+                <span class="info-label">Sexe</span>
+                <span id="aside-sexe" class="info-value placeholder-val">—</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">État civil</span>
+                <span id="aside-etat" class="info-value placeholder-val">—</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Naissance</span>
+                <span id="aside-naissance" class="info-value placeholder-val">—</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Téléphone</span>
+                <span id="aside-tel" class="info-value placeholder-val">—</span>
+              </div>
+            </div>
+
+            <hr class="my-3">
+            <div class="rounded-2 p-3" style="background:#f8f9fa;">
+              <div class="small fw-semibold mb-1"><i class="ti ti-info-circle me-1 text-primary"></i>Étapes suivantes</div>
+              <ol class="small text-muted mb-0 ps-3" style="line-height:1.7;">
+                <li>Créer la fiche employé <span class="text-success">(ici)</span></li>
+                <li>Ajouter un département</li>
+                <li>Attacher un contrat de travail</li>
+              </ol>
+            </div>
+
+          </div>
+        </div>
+      </div><!-- /col-lg-4 -->
+
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const nom       = document.getElementById('f-nom');
+  const prenom    = document.getElementById('f-prenom');
+  const matricule = document.getElementById('f-matricule');
+  const naissance = document.getElementById('f-naissance');
+  const tel       = document.getElementById('f-tel');
+  const sexeSel   = document.getElementById('f-sexe');
+  const etatSel   = document.getElementById('f-etat-civil');
+  const photoInput = document.getElementById('id-photo');
+
+  function getInitials() {
+    const p = (prenom?.value || '').trim();
+    const n = (nom?.value || '').trim();
+    return ((p[0] || '') + (n[0] || '')).toUpperCase() || '?';
+  }
+
+  function updateAvatars(initials) {
+    ['avatar-initials', 'aside-initials'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = initials;
+    });
+  }
+
+  function formatDate(val) {
+    if (!val) return '—';
+    const [y, m, d] = val.split('-');
+    return d && m && y ? `${d}/${m}/${y}` : '—';
+  }
+
+  function updateAside() {
+    const initials = getInitials();
+    updateAvatars(initials);
+
+    const nomEl = document.getElementById('aside-nom');
+    if (nomEl) {
+      const full = [nom?.value.trim(), prenom?.value.trim()].filter(Boolean).join(' ');
+      nomEl.innerHTML = full
+        ? `<span class="fw-bold">${full}</span>`
+        : `<span class="text-muted fw-normal" style="font-size:.85rem;">Nouveau collaborateur</span>`;
+    }
+
+    const matEl = document.getElementById('aside-matricule');
+    if (matEl) matEl.textContent = matricule?.value.trim() || '— matricule —';
+
+    const setInfo = (id, val, placeholder = '—') => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (val && val !== '—') {
+        el.textContent = val;
+        el.classList.remove('placeholder-val');
+      } else {
+        el.textContent = placeholder;
+        el.classList.add('placeholder-val');
+      }
+    };
+
+    const sexeText = sexeSel?.options[sexeSel.selectedIndex]?.text || '—';
+    const etatText = etatSel?.options[etatSel.selectedIndex]?.text || '—';
+    setInfo('aside-sexe', sexeSel?.value ? sexeText : '—');
+    setInfo('aside-etat', etatSel?.value ? etatText : '—');
+    setInfo('aside-naissance', naissance?.value ? formatDate(naissance.value) : '—');
+    setInfo('aside-tel', tel?.value.trim() || '—');
+  }
+
+  [nom, prenom, matricule, naissance, tel].forEach(el => el?.addEventListener('input', updateAside));
+  [sexeSel, etatSel].forEach(el => el?.addEventListener('change', updateAside));
+
+  // Photo preview
+  photoInput?.addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    document.getElementById('photo-name').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      ['avatar-preview', 'aside-avatar'].forEach(id => {
+        const wrap = document.getElementById(id);
+        if (!wrap) return;
+        wrap.classList.add('has-photo');
+        let img = wrap.querySelector('img');
+        if (!img) {
+          img = document.createElement('img');
+          wrap.innerHTML = '';
+          wrap.appendChild(img);
+        }
+        img.src = e.target.result;
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+
+  updateAside();
+})();
+</script>
+{% endblock %}

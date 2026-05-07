@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'stock:hub-stock' %}" class="text-decoration-none">Stock</a></li>
+      <li class="breadcrumb-item active">Transferts</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start flex-grow-1 min-w-0">
+      <span class="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary flex-shrink-0" style="width:3rem;height:3rem;">
+        <i class="ti ti-transfer fs-3"></i>
+      </span>
+      <div class="min-w-0">
+        <h1 class="fs-4 fw-bold mb-1">Transferts de stock</h1>
+        <p class="text-muted small mb-0">Déplacements de marchandises entre dépôts et points de vente.</p>
+      </div>
+    </div>
+    {% if types_avec_perm %}
+    <div class="d-flex flex-shrink-0">
+      <a href="{% url 'stock:nouveau-transfert' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+        <i class="ti ti-plus me-1"></i>Nouveau transfert
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-12 col-md-4">
+      <input type="search" name="q" value="{{ filt_q }}" class="form-control" placeholder="N° transfert, source, destination…">
+    </div>
+    <div class="col-6 col-md-3">
+      <select name="type_transfert" class="form-select">
+        <option value="">Tous types</option>
+        {% for code, label in types_choix %}
+        <option value="{{ code }}" {% if filt_type == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <select name="statut" class="form-select">
+        <option value="">Tous statuts</option>
+        {% for code, label in statuts_choix %}
+        <option value="{{ code }}" {% if filt_statut == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <button type="submit" class="btn btn-secondary"><i class="ti ti-filter me-1"></i>Filtrer</button>
+      {% if filt_q or filt_type or filt_statut %}
+      <a href="{% url 'stock:liste-transferts' %}" class="btn btn-outline-secondary">Réinit.</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+            <th class="ps-4 py-3">N°</th>
+            <th class="py-3">Type</th>
+            <th class="py-3">Source</th>
+            <th class="py-3">Destination</th>
+            <th class="py-3">Statut</th>
+            <th class="py-3">Date</th>
+            <th class="py-3 d-none d-md-table-cell">Effectué par</th>
+            <th class="pe-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transferts %}
+          <tr onclick="location.href='{% url 'stock:detail-transfert' t.pk %}'" style="cursor:pointer;">
+            <td class="ps-4 fw-semibold font-monospace">{{ t.numero }}</td>
+            <td>
+              {% if t.type_transfert == 'DEPOT_PDV' %}
+              <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Dépôt → PDV</span>
+              {% elif t.type_transfert == 'PDV_DEPOT' %}
+              <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">PDV → Dépôt</span>
+              {% elif t.type_transfert == 'DEPOT_DEPOT' %}
+              <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">Dépôt → Dépôt</span>
+              {% else %}
+              <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">PDV → PDV</span>
+              {% endif %}
+            </td>
+            <td class="fw-medium">{{ t.source_label }}</td>
+            <td class="fw-medium">{{ t.dest_label }}</td>
+            <td>
+              {% if t.statut == 'BROUILLON' %}<span class="badge bg-warning text-dark">Brouillon</span>
+              {% elif t.statut == 'VALIDE' %}<span class="badge bg-success">Validé</span>
+              {% else %}<span class="badge bg-secondary">Annulé</span>{% endif %}
+            </td>
+            <td class="text-muted">{{ t.date_creation|date:"d/m/Y H:i" }}</td>
+            <td class="d-none d-md-table-cell text-muted small">{{ t.effectue_par.get_full_name|default:t.effectue_par.username }}</td>
+            <td class="pe-4 text-end">
+              <a href="{% url 'stock:detail-transfert' t.pk %}" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation()">
+                <i class="ti ti-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-5">
+              <i class="ti ti-mood-empty fs-2 d-block mb-2 opacity-40"></i>Aucun transfert trouvé.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

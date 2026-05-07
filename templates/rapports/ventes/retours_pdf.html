@@ -1,0 +1,47 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Retours sur ventes{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Retours sur ventes</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+
+<div class="kpi-row">
+  <div class="kpi-box">
+    <div class="kpi-label">Nb retours</div>
+    <div class="kpi-val">{{ qs|length }}</div>
+  </div>
+  <div class="kpi-box">
+    <div class="kpi-label">Total retourné</div>
+    <div class="kpi-val text-danger">{{ total_retourne|floatformat:2 }}</div>
+  </div>
+</div>
+
+<table>
+  <tr>
+    <th>N° Retour</th>
+    <th>Facture d'origine</th>
+    <th>Client</th>
+    <th>PDV</th>
+    <th class="text-right">Montant</th>
+    <th>Date</th>
+  </tr>
+  {% for r in qs %}
+  <tr>
+    <td>{{ r.numero_retour|default:r.pk }}</td>
+    <td>{{ r.facture_origine.numero_facture|default:"—" }}</td>
+    <td>{{ r.facture_origine.client.nom|default:"—" }}</td>
+    <td>{{ r.point_vente.nom }}</td>
+    <td class="text-right text-danger">{{ r.total_ttc|floatformat:2 }}</td>
+    <td>{{ r.date_retour|date:"d/m/Y" }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="6">Aucun retour sur cette période</td></tr>
+  {% endfor %}
+  {% if qs %}
+  <tr style="background:#fce4ec;font-weight:bold">
+    <td colspan="4">TOTAL</td>
+    <td class="text-right text-danger">{{ total_retourne|floatformat:2 }}</td>
+    <td></td>
+  </tr>
+  {% endif %}
+</table>
+{% endblock %}

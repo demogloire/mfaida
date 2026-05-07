@@ -46,11 +46,39 @@ def queryset_points_vente_visibles(user, entreprise, admin):
         else PointVente.objects.none()
     )
     if admin or user.is_superuser:
-        return qs
+        return qs.order_by('nom')
     pids = list(
         user.acces_points_vente.filter(peut_voir=True).values_list('point_vente_id', flat=True)
     )
-    return qs.filter(pk__in=pids)
+    return qs.filter(pk__in=pids).order_by('nom')
+
+
+def queryset_points_vente_pour_vente(user, entreprise, admin):
+    """
+    PDV sur lesquels l'utilisateur peut enregistrer une vente (facture).
+    Non-admins : uniquement les points avec droit « vendre » (AccesPointVente.peut_vendre).
+    """
+    if entreprise:
+        qs = PointVente.objects.select_related('branche__entreprise', 'depot_source').filter(
+            branche__entreprise=entreprise,
+            est_actif=True,
+            depot_source__isnull=False,
+        )
+    else:
+        qs = PointVente.objects.select_related('branche__entreprise', 'depot_source').filter(
+            est_actif=True,
+            depot_source__isnull=False,
+        )
+    if admin or user.is_superuser:
+        return qs.order_by('branche_id', 'nom')
+    if not entreprise:
+        return PointVente.objects.none()
+    pids = list(
+        user.acces_points_vente.filter(peut_vendre=True).values_list('point_vente_id', flat=True)
+    )
+    if not pids:
+        return PointVente.objects.none()
+    return qs.filter(pk__in=pids).order_by('nom')
 
 
 def peut_modifier_stock_au_depot(user, depot: Depot, admin: bool):
@@ -81,7 +109,10 @@ def peut_modifier_stock_au_point_vente(user, point_vente: PointVente, admin: boo
 
 
 def mouvements_disponibles_pour_point_vente(point_vente):
-    """Mouvements pouvant être facturés depuis ce PV (dépôt source + périmètre lot)."""
+    """
+    Mouvements facturables depuis ce point de vente : dépôt source du PV et lot
+    explicitement rattaché à **ce** PDV uniquement (pas le stock « dépôt seul » sans PDV).
+    """
     from stock.models import MouvementStock
 
     depot_id = point_vente.depot_source_id
@@ -89,5 +120,6 @@ def mouvements_disponibles_pour_point_vente(point_vente):
         return MouvementStock.objects.none()
     return MouvementStock.objects.filter(
         depot_id=depot_id,
+        pointvente_id=point_vente.pk,
         quantite_active__gt=0,
-    ).filter(Q(pointvente__isnull=True) | Q(pointvente_id=point_vente.pk))
+    )

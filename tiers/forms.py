@@ -9,7 +9,7 @@ class ClientForm(forms.ModelForm):
     class Meta:
         model = Client
         fields = [
-            'branche', 'nom', 'type_client',
+            'branche', 'nom', 'type_client', 'est_client_passager',
             'telephone', 'email', 'adresse',
             'limite_credit', 'notes', 'est_actif',
         ]
@@ -54,6 +54,10 @@ class ClientForm(forms.ModelForm):
         branche_field.label = "Branche"
         self.fields['nom'].label = "Nom / Raison sociale"
         self.fields['type_client'].label = "Type de client"
+        self.fields['est_client_passager'].label = "Client passager / comptoir"
+        self.fields['est_client_passager'].help_text = (
+            "Cochez pour un acheteur occasionnel en caisse ; il reste dans la même base avec auto-complétion."
+        )
         self.fields['limite_credit'].label = "Limite de crédit"
         self.fields['est_actif'].label = "Compte actif"
 

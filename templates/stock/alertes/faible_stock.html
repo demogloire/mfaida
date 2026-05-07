@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'stock:hub-stock' %}" class="text-decoration-none">Stock</a></li>
+      <li class="breadcrumb-item active">Faible stock</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-3 d-flex align-items-center justify-content-center bg-warning bg-opacity-15 text-warning flex-shrink-0" style="width:3rem;height:3rem;">
+        <i class="ti ti-alert-triangle fs-3"></i>
+      </span>
+      <div>
+        <h1 class="fs-4 fw-bold mb-1">Faible stock</h1>
+        <p class="text-muted small mb-0">
+          Produits dont le stock total est inférieur au seuil d'alerte individuel.
+          {% if alertes %}<span class="badge bg-danger ms-1">{{ alertes|length }} produit{{ alertes|length|pluralize }}</span>{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-12 col-md-4">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="ti ti-search text-muted"></i></span>
+        <input type="search" name="q" value="{{ filt_q }}" class="form-control" placeholder="Rechercher un produit…">
+      </div>
+    </div>
+    {% if peut_depot and peut_pdv %}
+    <div class="col-6 col-md-2">
+      <select name="lieu_type" class="form-select">
+        <option value="">Tous les lieux</option>
+        <option value="depot" {% if filt_lieu == 'depot' %}selected{% endif %}>Dépôts uniquement</option>
+        <option value="pdv"   {% if filt_lieu == 'pdv'   %}selected{% endif %}>PDV uniquement</option>
+      </select>
+    </div>
+    {% endif %}
+    {% if peut_depot and depots %}
+    <div class="col-6 col-md-2">
+      <select name="depot" class="form-select">
+        <option value="">— Dépôt —</option>
+        {% for d in depots %}<option value="{{ d.pk }}" {% if filt_depot == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.nom }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    {% if peut_pdv and pdvs %}
+    <div class="col-6 col-md-2">
+      <select name="pdv" class="form-select">
+        <option value="">— Point de vente —</option>
+        {% for p in pdvs %}<option value="{{ p.pk }}" {% if filt_pdv == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nom }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-auto d-flex gap-2">
+      <button type="submit" class="btn btn-secondary"><i class="ti ti-filter me-1"></i>Filtrer</button>
+      {% if filt_q or filt_depot or filt_pdv or filt_lieu %}
+      <a href="{% url 'stock:faible-stock' %}" class="btn btn-outline-secondary">Réinit.</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if alertes %}
+  <div class="row g-3">
+    {% for a in alertes %}
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 {% if a.total <= 0 %}border-danger{% elif a.deficit > a.seuil|add:0 %}border-orange{% else %}border-warning{% endif %}">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="fw-semibold">{{ a.produit.nom }}</div>
+            {% if a.total <= 0 %}
+            <span class="badge bg-danger">Épuisé</span>
+            {% else %}
+            <span class="badge bg-warning text-dark">Faible</span>
+            {% endif %}
+          </div>
+          <div class="text-muted small mb-3">{{ a.produit.sous_categorie.nom }}</div>
+
+          <!-- Jauge visuelle -->
+          <div class="mb-2">
+            <div class="d-flex justify-content-between small mb-1">
+              <span class="text-muted">Stock actuel</span>
+              <span class="fw-bold {% if a.total <= 0 %}text-danger{% else %}text-warning{% endif %}">
+                {{ a.total }} {{ a.produit.unite_mesure }}
+              </span>
+            </div>
+            <div class="progress" style="height:8px;">
+              {% if a.seuil > 0 %}
+              {% widthratio a.total a.seuil 100 as pct %}
+              <div class="progress-bar {% if a.total <= 0 %}bg-danger{% else %}bg-warning{% endif %}"
+                   style="width:{% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%;"></div>
+              {% endif %}
+            </div>
+            <div class="d-flex justify-content-between small mt-1">
+              <span class="text-muted">Seuil d'alerte</span>
+              <span class="text-muted">{{ a.seuil }} {{ a.produit.unite_mesure }}</span>
+            </div>
+          </div>
+
+          <div class="small text-danger fw-semibold mb-3">
+            <i class="ti ti-arrow-down me-1"></i>Déficit : {{ a.deficit }} {{ a.produit.unite_mesure }}
+          </div>
+
+          <!-- Emplacements -->
+          {% if a.emplacements %}
+          <div class="border-top pt-3">
+            <div class="text-muted small fw-semibold mb-2 text-uppercase" style="letter-spacing:.04em;">Répartition</div>
+            <ul class="list-unstyled mb-0 small">
+              {% for emp in a.emplacements %}
+              <li class="d-flex justify-content-between py-1 border-bottom border-light">
+                <span class="text-muted">
+                  {% if emp.pointdevente %}
+                  <i class="ti ti-store me-1"></i>{{ emp.pointdevente.nom }}
+                  {% else %}
+                  <i class="ti ti-building-warehouse me-1"></i>{{ emp.depot.nom }}
+                  {% endif %}
+                </span>
+                <span class="fw-semibold {% if emp.quantite_reelle <= 0 %}text-danger{% endif %}">
+                  {{ emp.quantite_reelle }}
+                </span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <i class="ti ti-mood-happy fs-1 text-success opacity-50 d-block mb-3"></i>
+      <h5 class="fw-semibold mb-1">Aucune alerte de faible stock</h5>
+      <p class="text-muted small mb-0">
+        {% if filt_q %}Aucun produit correspondant à « {{ filt_q }} » n'est en faible stock.
+        {% else %}Tous les produits sont au-dessus de leur seuil d'alerte.{% endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

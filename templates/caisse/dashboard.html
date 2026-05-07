@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-3 d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success flex-shrink-0" style="width:3rem;height:3rem;">
+        <i class="ti ti-cash-register fs-3"></i>
+      </span>
+      <div>
+        <h1 class="fs-4 fw-bold mb-1">Caisse</h1>
+        <p class="text-muted small mb-0">Gestion des sessions, encaissements et décaissements.</p>
+      </div>
+    </div>
+    {% if peut_ouvrir %}
+    <a href="{% url 'caisse:ouvrir-session' %}" class="btn btn-success rounded-pill px-4 shadow-sm flex-shrink-0">
+      <i class="ti ti-plus me-1"></i>Ouvrir une session
+    </a>
+    {% endif %}
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <!-- Avances RH approuvées en attente de décaissement -->
+  {% if nb_avances_a_decaisser > 0 %}
+  <div class="alert d-flex align-items-center gap-3 mb-3 shadow-sm border-0 rounded-3"
+       style="background:#fff7ed;border-left:4px solid #f59e0b !important;">
+    <span class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+          style="width:2.5rem;height:2.5rem;background:#fef3c7;color:#d97706;">
+      <i class="ti ti-cash-banknote fs-5"></i>
+    </span>
+    <div class="flex-grow-1">
+      <div class="fw-semibold" style="color:#92400e;">
+        {{ nb_avances_a_decaisser }} avance{{ nb_avances_a_decaisser|pluralize }} sur salaire à décaisser
+      </div>
+      <div class="small" style="color:#b45309;">
+        Des avances approuvées par la direction attendent votre traitement en caisse.
+      </div>
+    </div>
+    <a href="{% url 'caisse:avances-a-decaisser' %}"
+       class="btn btn-sm fw-semibold flex-shrink-0"
+       style="background:#d97706;color:#fff;white-space:nowrap;">
+      <i class="ti ti-cash me-1"></i>Traiter maintenant
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Sessions en attente d'approbation (manager) -->
+  {% if sessions_attente %}
+  <div class="alert alert-warning d-flex align-items-center gap-2 mb-4 shadow-sm">
+    <i class="ti ti-clock-exclamation fs-4 flex-shrink-0"></i>
+    <div>
+      <strong>{{ sessions_attente|length }} session{{ sessions_attente|length|pluralize }} en attente de clôture</strong>
+      {% if peut_approuver %}
+      — <a href="{% url 'caisse:liste-sessions' %}?statut=EN_ATTENTE_CLOTURE" class="alert-link">Traiter maintenant</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Sessions ouvertes -->
+  <h6 class="fw-semibold text-uppercase text-muted mb-3" style="letter-spacing:.06em;font-size:.75rem;">
+    <i class="ti ti-door-enter me-1"></i>Sessions ouvertes
+  </h6>
+  {% if sessions_ouvertes %}
+  <div class="row g-3 mb-4">
+    {% for s in sessions_ouvertes %}
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <div class="fw-semibold">{{ s.point_vente.nom }}</div>
+              <div class="text-muted small">Ouverte {{ s.date_ouverture|date:"d/m/Y à H:i" }}</div>
+            </div>
+            <span class="badge bg-success">Ouverte</span>
+          </div>
+          <div class="row g-2 mb-3 text-center">
+            <div class="col-4">
+              <div class="p-2 bg-light rounded-3">
+                <div class="small text-muted">Fond départ</div>
+                <div class="fw-bold">{{ s.fond_ouverture }}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-2 bg-success bg-opacity-10 rounded-3">
+                <div class="small text-muted">Encaissé</div>
+                <div class="fw-bold text-success">{{ s.total_encaissements }}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-2 bg-danger bg-opacity-10 rounded-3">
+                <div class="small text-muted">Décaissé</div>
+                <div class="fw-bold text-danger">{{ s.total_decaissements }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+            <div>
+              <div class="text-muted small">Solde théorique</div>
+              <div class="fw-bold fs-5">{{ s.fond_theorique }} <small class="text-muted fw-normal">{{ s.devise }}</small></div>
+            </div>
+            <a href="{% url 'caisse:detail-session' s.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="ti ti-eye me-1"></i>Gérer
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body text-center py-4">
+      <i class="ti ti-cash-register fs-2 text-muted opacity-40 d-block mb-2"></i>
+      <div class="text-muted small">Aucune session ouverte.</div>
+      {% if peut_ouvrir %}
+      <a href="{% url 'caisse:ouvrir-session' %}" class="btn btn-sm btn-success mt-2">
+        <i class="ti ti-plus me-1"></i>Ouvrir une session
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Accès rapides -->
+  <h6 class="fw-semibold text-uppercase text-muted mb-3" style="letter-spacing:.06em;font-size:.75rem;">
+    <i class="ti ti-layout-grid me-1"></i>Accès rapides
+  </h6>
+  <div class="row g-3">
+    <div class="col-6 col-md-3">
+      <a href="{% url 'caisse:liste-sessions' %}" class="card border-0 shadow-sm text-center text-decoration-none p-3 d-block">
+        <i class="ti ti-list fs-2 text-primary d-block mb-2"></i>
+        <div class="small fw-semibold">Toutes les sessions</div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a href="{% url 'caisse:liste-clients' %}" class="card border-0 shadow-sm text-center text-decoration-none p-3 d-block">
+        <i class="ti ti-users fs-2 text-info d-block mb-2"></i>
+        <div class="small fw-semibold">Clients</div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a href="{% url 'depenses:liste-depenses' %}" class="card border-0 shadow-sm text-center text-decoration-none p-3 d-block">
+        <i class="ti ti-receipt-off fs-2 text-danger d-block mb-2"></i>
+        <div class="small fw-semibold">Dépenses</div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a href="{% url 'facturation:liste-factures' %}" class="card border-0 shadow-sm text-center text-decoration-none p-3 d-block">
+        <i class="ti ti-file-invoice fs-2 text-info d-block mb-2"></i>
+        <div class="small fw-semibold">Factures</div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a href="{% url 'facturation:liste-retours' %}" class="card border-0 shadow-sm text-center text-decoration-none p-3 d-block">
+        <i class="ti ti-arrow-back-up fs-2 text-warning d-block mb-2"></i>
+        <div class="small fw-semibold">Retours ventes</div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a href="{% url 'caisse:avances-a-decaisser' %}"
+         class="card border-0 shadow-sm text-center text-decoration-none p-3 d-block position-relative">
+        <i class="ti ti-cash-banknote fs-2 d-block mb-2" style="color:#d97706;"></i>
+        <div class="small fw-semibold">Avances RH</div>
+        {% if nb_avances_a_decaisser > 0 %}
+        <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill"
+              style="background:#d97706;font-size:.65rem;margin-top:.3rem;margin-right:.3rem;">
+          {{ nb_avances_a_decaisser }}
+        </span>
+        {% endif %}
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

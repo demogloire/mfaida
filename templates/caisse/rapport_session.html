@@ -1,0 +1,197 @@
+{% load acces_tags %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rapport de caisse — {{ session }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1a1a2e; background: #fff; }
+    .page { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a1a2e; padding-bottom: 16px; margin-bottom: 24px; }
+    .company-name { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+    .subtitle { font-size: 10px; color: #666; }
+    .title { font-size: 16px; font-weight: 700; text-align: right; }
+    .meta { font-size: 10px; color: #666; text-align: right; }
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; margin-bottom: 10px; }
+    .kpi-row { display: flex; gap: 12px; margin-bottom: 16px; }
+    .kpi { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 12px; }
+    .kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: #888; }
+    .kpi-val { font-size: 16px; font-weight: 700; }
+    .kpi-val.pos { color: #198754; }
+    .kpi-val.neg { color: #dc3545; }
+    .kpi-val.neu { color: #0d6efd; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #f4f4f8; }
+    th { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: #888; padding: 6px 8px; border-bottom: 1px solid #e0e0e0; text-align: left; }
+    td { font-size: 11px; padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
+    td.r { text-align: right; }
+    .pos { color: #198754; font-weight: 600; }
+    .neg { color: #dc3545; font-weight: 600; }
+    .footer { margin-top: 32px; border-top: 1px solid #e0e0e0; padding-top: 16px; display: flex; justify-content: space-between; font-size: 10px; color: #888; }
+    .signature { border-top: 1px solid #1a1a2e; width: 160px; padding-top: 4px; font-size: 10px; color: #555; }
+    @media print { .no-print { display: none !important; } body { font-size: 11px; } }
+  </style>
+</head>
+<body>
+<div class="page">
+  <!-- Bouton impression -->
+  <div class="no-print" style="margin-bottom:16px; display:flex; gap:8px;">
+    <button onclick="window.print()" style="padding:6px 16px;border:1px solid #0d6efd;background:#0d6efd;color:#fff;border-radius:20px;cursor:pointer;font-size:12px;">Imprimer</button>
+    <button onclick="history.back()" style="padding:6px 16px;border:1px solid #ccc;background:#fff;border-radius:20px;cursor:pointer;font-size:12px;">Retour</button>
+  </div>
+
+  <!-- En-tête -->
+  <div class="header">
+    <div>
+      <div class="company-name">{{ entreprise.nom }}</div>
+      <div class="subtitle">{{ session.point_vente.nom }}</div>
+    </div>
+    <div>
+      <div class="title">Rapport de caisse</div>
+      <div class="meta">Session du {{ session.date_ouverture|date:"d/m/Y" }}</div>
+      <div class="meta">
+        Ouverture : {{ session.date_ouverture|date:"H:i" }}
+        {% if session.date_cloture %} — Clôture : {{ session.date_cloture|date:"H:i" }}{% endif %}
+      </div>
+      <div class="meta">Caissier : {{ session.ouvert_par.get_full_name|default:session.ouvert_par.username }}</div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="section">
+    <div class="section-title">Synthèse financière</div>
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Fond d'ouverture</div>
+        <div class="kpi-val">{{ session.fond_ouverture }} {{ session.devise }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total encaissé</div>
+        <div class="kpi-val pos">+ {{ session.total_encaissements }} {{ session.devise }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total décaissé</div>
+        <div class="kpi-val neg">– {{ session.total_decaissements }} {{ session.devise }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Solde théorique</div>
+        <div class="kpi-val neu">{{ session.fond_theorique }} {{ session.devise }}</div>
+      </div>
+    </div>
+    {% if session.fond_reel_cloture is not None %}
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Fond réel déclaré</div>
+        <div class="kpi-val">{{ session.fond_reel_cloture }} {{ session.devise }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Écart</div>
+        <div class="kpi-val {% if session.ecart_cloture == 0 %}pos{% else %}neg{% endif %}">{{ session.ecart_cloture }} {{ session.devise }}</div>
+      </div>
+      <div class="kpi" style="flex:2;"></div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Breakdown par mode -->
+  {% if breakdown_encaiss %}
+  <div class="section">
+    <div class="section-title">Encaissements par mode de paiement</div>
+    <table>
+      <thead><tr><th>Mode</th><th class="r">Total</th></tr></thead>
+      <tbody>
+        {% for b in breakdown_encaiss %}
+        <tr>
+          <td>{{ modes_labels|get_item:b.mode_paiement|default:b.mode_paiement }}</td>
+          <td class="r pos">{{ b.total }} {{ session.devise }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if breakdown_decaiss %}
+  <div class="section">
+    <div class="section-title">Décaissements</div>
+    <table>
+      <thead><tr><th>Type</th><th>Mode</th><th class="r">Total</th></tr></thead>
+      <tbody>
+        {% for b in breakdown_decaiss %}
+        <tr>
+          <td>{{ types_labels|get_item:b.type_transaction|default:b.type_transaction }}</td>
+          <td>{{ modes_labels|get_item:b.mode_paiement|default:b.mode_paiement }}</td>
+          <td class="r neg">{{ b.total }} {{ session.devise }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Détail transactions -->
+  <div class="section">
+    <div class="section-title">Détail des transactions ({{ transactions|length }})</div>
+    <table>
+      <thead>
+        <tr>
+          <th>N°</th>
+          <th>Heure</th>
+          <th>Type</th>
+          <th>Mode</th>
+          <th>Référence</th>
+          <th class="r">Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td style="font-size:9px;color:#999;">{{ tx.numero }}</td>
+          <td>{{ tx.date_transaction|date:"H:i" }}</td>
+          <td>{{ types_labels|get_item:tx.type_transaction|default:tx.type_transaction }}</td>
+          <td>{{ modes_labels|get_item:tx.mode_paiement|default:tx.mode_paiement }}</td>
+          <td>
+            {% if tx.facture %}{{ tx.facture.numero_facture }}
+            {% elif tx.depense %}{{ tx.depense.numero_depense }}
+            {% elif tx.retour_vente %}{{ tx.retour_vente.numero_retour }}
+            {% else %}{{ tx.motif|truncatechars:40 }}{% endif %}
+          </td>
+          <td class="r {% if tx.type_transaction == 'ENCAISSEMENT' or tx.type_transaction == 'DEPOT' %}pos{% else %}neg{% endif %}">
+            {% if tx.type_transaction == 'ENCAISSEMENT' or tx.type_transaction == 'DEPOT' %}+{% else %}–{% endif %}{{ tx.montant }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center;color:#999;padding:12px;">Aucune transaction.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Commentaires -->
+  {% if session.commentaire_cloture %}
+  <div class="section">
+    <div class="section-title">Commentaire caissier</div>
+    <div style="background:#f9f9f9;padding:8px 12px;border-radius:4px;font-size:11px;">{{ session.commentaire_cloture }}</div>
+  </div>
+  {% endif %}
+  {% if session.commentaire_manager %}
+  <div class="section">
+    <div class="section-title">Commentaire manager</div>
+    <div style="background:#f9f9f9;padding:8px 12px;border-radius:4px;font-size:11px;">{{ session.commentaire_manager }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>Généré le {% now "d/m/Y à H:i" %}</div>
+    <div>
+      <div class="signature">Signature manager</div>
+      {% if session.approuve_par %}
+      <div style="margin-top:4px;">{{ session.approuve_par.get_full_name|default:session.approuve_par.username }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

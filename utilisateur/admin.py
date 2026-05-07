@@ -11,7 +11,7 @@ class RolePermissionInline(admin.TabularInline):
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
-    list_display = ('nom', 'entreprise', 'description')
+    list_display = ('nom', 'famille_metier', 'entreprise', 'description')
     list_filter = ('entreprise',)
     search_fields = ('nom', 'description')
     inlines = [RolePermissionInline]

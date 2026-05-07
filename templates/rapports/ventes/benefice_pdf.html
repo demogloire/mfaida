@@ -1,0 +1,39 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Bénéfice brut & net{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Bénéfice brut &amp; net</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">CA HT</div><div class="kpi-val">{{ ca_total|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Coût ventes</div><div class="kpi-val text-danger">{{ cout_total|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Bénéfice brut</div><div class="kpi-val text-success">{{ benefice_brut|floatformat:2 }}</div><div style="font-size:9px;color:#888">Marge : {{ marge_brute|floatformat:1 }}%</div></div>
+  <div class="kpi-box"><div class="kpi-label">Bénéfice net</div><div class="kpi-val" style="color:#1565c0">{{ benefice_net|floatformat:2 }}</div><div style="font-size:9px;color:#888">Marge nette : {{ marge_nette|floatformat:1 }}%</div></div>
+</div>
+
+<div class="section-title">Détail du calcul</div>
+<table>
+  <tr><td>Chiffre d'affaires HT</td><td class="text-right">{{ ca_total|floatformat:2 }}</td></tr>
+  <tr><td class="text-danger">− Coût des marchandises vendues</td><td class="text-right text-danger">{{ cout_total|floatformat:2 }}</td></tr>
+  <tr><td><strong>= Bénéfice brut</strong></td><td class="text-right text-success"><strong>{{ benefice_brut|floatformat:2 }}</strong></td></tr>
+  <tr><td class="text-danger">− Dépenses opérationnelles</td><td class="text-right text-danger">{{ depenses_total|floatformat:2 }}</td></tr>
+  <tr><td class="text-danger">− Masse salariale (bulletins payés)</td><td class="text-right text-danger">{{ bulletins|floatformat:2 }}</td></tr>
+  <tr style="background:#e3f2fd"><td><strong>= Bénéfice net</strong></td><td class="text-right" style="color:#1565c0;font-weight:bold">{{ benefice_net|floatformat:2 }}</td></tr>
+</table>
+
+{% if par_pdv %}
+<div class="section-title">Par point de vente</div>
+<table>
+  <tr><th>Point de vente</th><th class="text-right">CA HT</th><th class="text-right">Coût</th><th class="text-right">Bénéfice brut</th><th class="text-right">Marge</th></tr>
+  {% for p in par_pdv %}
+  <tr>
+    <td>{{ p.nom }}</td>
+    <td class="text-right">{{ p.ca|floatformat:2 }}</td>
+    <td class="text-right">{{ p.cout|floatformat:2 }}</td>
+    <td class="text-right {% if p.brut >= 0 %}text-success{% else %}text-danger{% endif %}">{{ p.brut|floatformat:2 }}</td>
+    <td class="text-right">{{ p.marge|floatformat:1 }}%</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

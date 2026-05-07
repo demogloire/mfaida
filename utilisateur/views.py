@@ -26,7 +26,7 @@ from .forms import (
     AccesDepotForm, AccesPointVenteForm,
     RoleForm, PermissionForm, GererPermissionsRoleForm,
 )
-from .decorators import login_requis, admin_requis
+from .decorators import login_requis
 
 User = get_user_model()
 
@@ -79,12 +79,6 @@ def _get_entreprise_liee(user):
     if getattr(user, 'branche_id', None):
         return user.branche.entreprise
     return Entreprise.objects.filter(user=user).first()
-
-
-def _peut_gerer_utilisateurs(user):
-    if _est_super_admin(user):
-        return True
-    return _get_entreprise_liee(user) is not None
 
 
 def _entreprise_utilisateur_cible(utilisateur):
@@ -231,8 +225,10 @@ def changer_mot_de_passe(request):
 
 @login_requis
 def liste_utilisateurs(request):
-    if not _peut_gerer_utilisateurs(request.user):
-        messages.error(request, "Vous n'avez pas accès à la gestion des utilisateurs.")
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
+        messages.error(request, "Accès réservé.")
         return redirect('entreprise:dashboard')
 
     qs = User.objects.select_related('branche', 'role').order_by('last_name', 'first_name')
@@ -288,8 +284,10 @@ def liste_utilisateurs(request):
 
 @login_requis
 def creer_utilisateur(request):
-    if not _peut_gerer_utilisateurs(request.user):
-        messages.error(request, "Vous n'avez pas accès à la création d'utilisateurs.")
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
+        messages.error(request, "Accès réservé.")
         return redirect('entreprise:dashboard')
 
     choix = _est_super_admin(request.user)
@@ -311,9 +309,17 @@ def creer_utilisateur(request):
     htmx_ent_url = reverse('user:creer-utilisateur') if choix else ''
     prom_admin = _est_super_admin(request.user)
 
-    if request.method == 'GET' and request.htmx and getattr(request.htmx, 'target', None) == 'form-container':
+    if (
+        request.method == 'POST'
+        and request.htmx
+        and getattr(request.htmx, 'target', None) == 'form-container'
+        and request.POST.get('entreprise_refresh') == '1'
+    ):
+        entreprise_kw = None if choix else entreprise_eff
         form = CreationUtilisateurForm(
-            entreprise=entreprise_eff,
+            request.POST,
+            request.FILES or None,
+            entreprise=entreprise_kw,
             choix_entreprise=choix,
             htmx_entreprise_url=htmx_ent_url,
             peut_promouvoir_admin=prom_admin,
@@ -362,12 +368,13 @@ def creer_utilisateur(request):
 @login_requis
 def modifier_utilisateur(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
-    if not _peut_gerer_utilisateurs(request.user):
-        messages.error(request, "Vous n'avez pas accès à la modification des utilisateurs.")
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
+        messages.error(request, "Accès réservé.")
         return redirect('entreprise:dashboard')
-    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
-        request.user, utilisateur
-    ):
+    if not (_est_super_admin(request.user)
+            or _peut_modifier_utilisateur_hors_superadmin(request.user, utilisateur)):
         messages.error(request, "Vous ne pouvez pas modifier cet utilisateur.")
         return redirect('user:liste-utilisateurs')
 
@@ -389,10 +396,18 @@ def modifier_utilisateur(request, pk):
     htmx_ent_url = reverse('user:modifier-utilisateur', args=[utilisateur.pk]) if choix else ''
     prom_admin = _est_super_admin(request.user)
 
-    if request.method == 'GET' and request.htmx and getattr(request.htmx, 'target', None) == 'form-container':
+    if (
+        request.method == 'POST'
+        and request.htmx
+        and getattr(request.htmx, 'target', None) == 'form-container'
+        and request.POST.get('entreprise_refresh') == '1'
+    ):
+        entreprise_kw = None if choix else entreprise_eff
         form = ModificationUtilisateurForm(
+            request.POST,
+            request.FILES or None,
             instance=utilisateur,
-            entreprise=entreprise_eff,
+            entreprise=entreprise_kw,
             choix_entreprise=choix,
             htmx_entreprise_url=htmx_ent_url,
             peut_promouvoir_admin=prom_admin,
@@ -451,12 +466,13 @@ def modifier_utilisateur(request, pk):
 @login_requis
 def activer_desactiver_utilisateur(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
-    if not _peut_gerer_utilisateurs(request.user):
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
         messages.error(request, "Accès refusé.")
         return redirect('entreprise:dashboard')
-    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
-        request.user, utilisateur
-    ):
+    if not (_est_super_admin(request.user)
+            or _peut_modifier_utilisateur_hors_superadmin(request.user, utilisateur)):
         messages.error(request, "Vous ne pouvez pas modifier cet utilisateur.")
         return redirect('user:liste-utilisateurs')
     if utilisateur == request.user:
@@ -474,12 +490,13 @@ def activer_desactiver_utilisateur(request, pk):
 @login_requis
 def reinitialiser_mot_de_passe(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
-    if not _peut_gerer_utilisateurs(request.user):
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
         messages.error(request, "Accès refusé.")
         return redirect('entreprise:dashboard')
-    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
-        request.user, utilisateur
-    ):
+    if not (_est_super_admin(request.user)
+            or _peut_modifier_utilisateur_hors_superadmin(request.user, utilisateur)):
         messages.error(request, "Vous ne pouvez pas modifier cet utilisateur.")
         return redirect('user:liste-utilisateurs')
     if request.method == "POST":
@@ -501,12 +518,13 @@ def reinitialiser_mot_de_passe(request, pk):
 @login_requis
 def supprimer_utilisateur(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
-    if not _peut_gerer_utilisateurs(request.user):
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
         messages.error(request, "Accès refusé.")
         return redirect('entreprise:dashboard')
-    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
-        request.user, utilisateur
-    ):
+    if not (_est_super_admin(request.user)
+            or _peut_modifier_utilisateur_hors_superadmin(request.user, utilisateur)):
         messages.error(request, "Vous ne pouvez pas supprimer cet utilisateur.")
         return redirect('user:liste-utilisateurs')
     if utilisateur == request.user:
@@ -544,12 +562,13 @@ _PV_PERMS = [
 def gerer_acces_utilisateur(request, pk):
     """Gérer les accès dépôts et points de vente d'un utilisateur."""
     utilisateur = get_object_or_404(User, pk=pk)
-    if not _peut_gerer_utilisateurs(request.user):
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
         messages.error(request, "Accès refusé.")
         return redirect('entreprise:dashboard')
-    if not _est_super_admin(request.user) and not _peut_modifier_utilisateur_hors_superadmin(
-        request.user, utilisateur
-    ):
+    if not (_est_super_admin(request.user)
+            or _peut_modifier_utilisateur_hors_superadmin(request.user, utilisateur)):
         messages.error(request, "Vous ne pouvez pas gérer les accès de cet utilisateur.")
         return redirect('user:liste-utilisateurs')
     branche = utilisateur.branche
@@ -622,19 +641,21 @@ def gerer_acces_utilisateur(request, pk):
 # ── CRUD Rôles ────────────────────────────────────────────────────────────────
 
 def _assert_peut_gerer_role(request, role):
-    """Rôle Django : même périmètre que la gestion des utilisateurs de l'entreprise."""
-    if not _peut_gerer_utilisateurs(request.user):
-        return False
-    if _est_super_admin(request.user):
+    user = request.user
+    if _est_super_admin(user):
         return True
-    ent = _get_entreprise_liee(request.user)
-    return bool(ent and role.entreprise_id == ent.pk)
+    if not user.a_la_permission('acces_administration_utilisateurs'):
+        return False
+    ae = _get_entreprise_liee(user)
+    return bool(ae and role.entreprise_id == ae.pk)
 
 
 @login_requis
 def liste_roles(request):
-    if not _peut_gerer_utilisateurs(request.user):
-        messages.error(request, "Vous n'avez pas accès à la gestion des rôles.")
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
+        messages.error(request, "Accès réservé.")
         return redirect('entreprise:dashboard')
 
     super_adm = _est_super_admin(request.user)
@@ -649,16 +670,15 @@ def liste_roles(request):
         entreprise_ctx = True
     else:
         if not ent_liee:
-            roles = Role.objects.none()
-            entreprise_ctx = None
-        else:
-            roles = (
-                Role.objects.filter(entreprise=ent_liee)
-                .select_related('entreprise')
-                .prefetch_related('permissions__permission')
-                .order_by('nom')
-            )
-            entreprise_ctx = ent_liee
+            messages.error(request, "Aucune entreprise associée à votre compte.")
+            return redirect('entreprise:dashboard')
+        roles = (
+            Role.objects.filter(entreprise=ent_liee)
+            .select_related('entreprise')
+            .prefetch_related('permissions__permission')
+            .order_by('nom')
+        )
+        entreprise_ctx = ent_liee
 
     return render(request, 'user/roles/liste.html', {
         'roles': roles,
@@ -670,8 +690,10 @@ def liste_roles(request):
 
 @login_requis
 def creer_role(request):
-    if not _peut_gerer_utilisateurs(request.user):
-        messages.error(request, "Vous n'avez pas accès à la création de rôles.")
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
+        messages.error(request, "Accès réservé.")
         return redirect('entreprise:dashboard')
 
     choix = _est_super_admin(request.user)
@@ -688,13 +710,8 @@ def creer_role(request):
     )
     if request.method == "POST":
         if form.is_valid():
-            role = form.save(commit=False)
-            if choix:
-                role.entreprise = form.cleaned_data['entreprise']
-            else:
-                role.entreprise = ent_liee
-            role.save()
-            messages.success(request, f"Rôle «\u00a0{role.nom}\u00a0» créé.")
+            form.save()
+            messages.success(request, f"Rôle «\u00a0{form.instance.nom}\u00a0» créé.")
             if request.htmx and request.htmx.target == 'form-role':
                 return render(request, 'user/roles/partial/form.html', {
                     'form': RoleForm(show_entreprise=choix, entreprise_fixe=None if choix else ent_liee),
@@ -717,8 +734,10 @@ def creer_role(request):
 
 @login_requis
 def modifier_role(request, pk):
-    if not _peut_gerer_utilisateurs(request.user):
-        messages.error(request, "Vous n'avez pas accès à la modification des rôles.")
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
+        messages.error(request, "Accès réservé.")
         return redirect('entreprise:dashboard')
 
     role = get_object_or_404(Role.objects.select_related('entreprise'), pk=pk)
@@ -770,6 +789,11 @@ def modifier_role(request, pk):
 @login_requis
 def supprimer_role(request, pk):
     role = get_object_or_404(Role, pk=pk)
+    if not (_est_super_admin(request.user) or request.user.a_la_permission(
+        'acces_administration_utilisateurs'
+    )):
+        messages.error(request, "Accès réservé.")
+        return redirect('entreprise:dashboard')
     if not _assert_peut_gerer_role(request, role):
         messages.error(request, "Vous ne pouvez pas supprimer ce rôle.")
         return redirect('user:liste-roles')
@@ -824,13 +848,15 @@ def gerer_permissions_role(request, pk):
 
 # ── CRUD Permissions ──────────────────────────────────────────────────────────
 
-@admin_requis
+@login_requis
 def liste_permissions(request):
-    permissions = PermissionPersonnalisee.objects.order_by('nom')
+    permissions = (
+        PermissionPersonnalisee.objects.order_by('nom').prefetch_related('roles__role')
+    )
     return render(request, 'user/permissions/liste.html', {'permissions': permissions})
 
 
-@admin_requis
+@login_requis
 def creer_permission(request):
     form = PermissionForm(request.POST or None)
     if request.method == "POST":
@@ -847,7 +873,7 @@ def creer_permission(request):
     return render(request, 'user/permissions/form.html', {'form': form, 'titre': "Créer une permission"})
 
 
-@admin_requis
+@login_requis
 def modifier_permission(request, pk):
     permission = get_object_or_404(PermissionPersonnalisee, pk=pk)
     form = PermissionForm(request.POST or None, instance=permission)
@@ -869,7 +895,7 @@ def modifier_permission(request, pk):
     })
 
 
-@admin_requis
+@login_requis
 def supprimer_permission(request, pk):
     permission = get_object_or_404(PermissionPersonnalisee, pk=pk)
     if request.method == "POST":
@@ -884,7 +910,7 @@ def supprimer_permission(request, pk):
 
 # ── Journal des connexions ────────────────────────────────────────────────────
 
-@admin_requis
+@login_requis
 def journal_connexions(request):
     qs = JournalConnexion.objects.select_related('utilisateur').order_by('-date_heure')
 
@@ -923,7 +949,15 @@ def journal_connexions(request):
 @login_requis
 def activite_utilisateur(request, pk):
     utilisateur = get_object_or_404(User, pk=pk)
-    if not request.user.admin and request.user.pk != pk:
+    peut_voir = (
+        request.user.pk == pk
+        or _est_super_admin(request.user)
+        or (
+            request.user.a_la_permission('acces_administration_utilisateurs')
+            and _peut_modifier_utilisateur_hors_superadmin(request.user, utilisateur)
+        )
+    )
+    if not peut_voir:
         messages.error(request, "Accès refusé.")
         return redirect('entreprise:dashboard')
     journal = JournalConnexion.objects.filter(utilisateur=utilisateur).order_by('-date_heure')

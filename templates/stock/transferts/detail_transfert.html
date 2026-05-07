@@ -1,0 +1,483 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'stock:liste-transferts' %}" class="text-decoration-none">Transferts</a></li>
+      <li class="breadcrumb-item active">{{ transfert.numero }}</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête -->
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary flex-shrink-0" style="width:3rem;height:3rem;">
+        <i class="ti ti-transfer fs-3"></i>
+      </span>
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+          <h1 class="fs-5 fw-bold mb-0">{{ transfert.numero }}</h1>
+          {% if transfert.statut == 'BROUILLON' %}<span class="badge bg-warning text-dark">Brouillon</span>
+          {% elif transfert.statut == 'VALIDE' %}<span class="badge bg-success">Validé</span>
+          {% else %}<span class="badge bg-secondary">Annulé</span>{% endif %}
+        </div>
+        <p class="text-muted small mb-0">{{ transfert.get_type_transfert_display }} — {{ transfert.source_label }} → {{ transfert.dest_label }}</p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if transfert.statut == 'BROUILLON' %}
+        {% if transfert.lignes.count > 0 %}
+        <form method="post" action="{% url 'stock:valider-transfert' transfert.pk %}" onsubmit="return confirm('Confirmer la validation du transfert ? Cette action est irréversible.')">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success">
+            <i class="ti ti-check me-1"></i>Valider le transfert
+          </button>
+        </form>
+        {% else %}
+        <button class="btn btn-success" disabled title="Ajoutez au moins un article"><i class="ti ti-check me-1"></i>Valider</button>
+        {% endif %}
+        <form method="post" action="{% url 'stock:annuler-transfert' transfert.pk %}" onsubmit="return confirm('Annuler ce transfert ?')">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger"><i class="ti ti-x me-1"></i>Annuler</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="row g-4 align-items-start">
+    <!-- Colonne principale -->
+    <div class="col-12 col-lg-8">
+      <!-- Tableau des lignes -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 px-4 border-bottom">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-package me-1"></i>Articles transférés
+          </span>
+          <span class="badge bg-primary rounded-pill">{{ transfert.lignes.count }}</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+              <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+                <th class="ps-4 py-3">Produit</th>
+                <th class="py-3">Lot</th>
+                <th class="py-3 text-end">Quantité</th>
+                <th class="py-3 text-end">P.U. coût</th>
+                {% if transfert.statut == 'BROUILLON' %}<th class="pe-4 py-3"></th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for ligne in transfert.lignes.all %}
+              <tr>
+                <td class="ps-4 fw-medium">{{ ligne.produit.nom }}</td>
+                <td class="font-monospace text-muted">{{ ligne.mouvement_source.lot_batch|default:"—" }}</td>
+                <td class="text-end fw-semibold">{{ ligne.quantite }}</td>
+                <td class="text-end text-muted">{{ ligne.prix_unitaire }}</td>
+                {% if transfert.statut == 'BROUILLON' %}
+                <td class="pe-4 text-end">
+                  <form method="post" action="{% url 'stock:supprimer-ligne-transfert' transfert.pk ligne.pk %}" onsubmit="return confirm('Supprimer cette ligne ?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                      <i class="ti ti-trash"></i>
+                    </button>
+                  </form>
+                </td>
+                {% endif %}
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                  <i class="ti ti-package-off fs-2 d-block mb-2 opacity-40"></i>
+                  Aucun article ajouté.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Ajouter une ligne (brouillon) -->
+      {% if peut_editer %}
+      <div class="card border-0 shadow-sm border-start border-4 border-primary">
+        <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-plus me-1 text-primary"></i>Ajouter un article
+          </span>
+          <span class="badge bg-primary bg-opacity-10 text-primary small">Étape 1 → 2 → 3</span>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" action="{% url 'stock:ajouter-ligne-transfert' transfert.pk %}" id="formAjoutLigne">
+            {% csrf_token %}
+            <input type="hidden" name="mouvement_source" id="hidMvt">
+
+            <!-- Étape 1 : Chercher le produit -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">
+                <span class="badge bg-primary rounded-circle me-1" style="font-size:.65rem;width:1.4em;height:1.4em;line-height:1.4em;">1</span>
+                Rechercher un produit
+              </label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="ti ti-search text-muted"></i></span>
+                <input type="text" id="inpRecherche" class="form-control" placeholder="Tapez le nom du produit…" autocomplete="off">
+                <button type="button" class="btn btn-outline-secondary" id="btnClearRecherche" style="display:none;">
+                  <i class="ti ti-x"></i>
+                </button>
+              </div>
+              <div id="listeProduits" class="border rounded-3 mt-1 bg-white shadow-sm" style="max-height:220px;overflow-y:auto;display:none;"></div>
+            </div>
+
+            <!-- Étape 2 : Choisir le lot (apparaît après sélection produit) -->
+            <div id="blocLots" style="display:none;" class="mb-3">
+              <label class="form-label small fw-semibold">
+                <span class="badge bg-info text-dark rounded-circle me-1" style="font-size:.65rem;width:1.4em;height:1.4em;line-height:1.4em;">2</span>
+                Sélectionner le lot
+                <span id="lblProduitChoisi" class="fw-bold text-primary ms-1"></span>
+              </label>
+              <div id="tableauLots"></div>
+            </div>
+
+            <!-- Étape 3 : Quantité + bouton (apparaît après sélection lot) -->
+            <div id="blocQte" style="display:none;">
+              <div class="p-3 bg-light rounded-3 d-flex flex-wrap gap-3 align-items-end">
+                <div>
+                  <label class="form-label small fw-semibold mb-1">
+                    <span class="badge bg-success rounded-circle me-1" style="font-size:.65rem;width:1.4em;height:1.4em;line-height:1.4em;">3</span>
+                    Lot sélectionné
+                  </label>
+                  <div id="infoLotChoisi" class="small fw-medium"></div>
+                </div>
+                <div style="min-width:140px;">
+                  <label class="form-label small fw-semibold mb-1">Quantité <span class="text-danger">*</span></label>
+                  <input type="number" name="quantite" id="inpQte" class="form-control" step="0.01" min="0.01"
+                         placeholder="0.00" required>
+                  <div class="small text-muted mt-1" id="infoDisp"></div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary px-4">
+                    <i class="ti ti-plus me-1"></i>Ajouter
+                  </button>
+                  <button type="button" id="btnReset" class="btn btn-outline-secondary">
+                    <i class="ti ti-refresh"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Sidebar info -->
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-3 px-4 border-bottom">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">Informations</span>
+        </div>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item d-flex justify-content-between py-3">
+            <span class="text-muted">Type</span>
+            <span class="fw-semibold">{{ transfert.get_type_transfert_display }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between py-3">
+            <span class="text-muted">Source</span>
+            <span class="fw-semibold">{{ transfert.source_label }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between py-3">
+            <span class="text-muted">Destination</span>
+            <span class="fw-semibold">{{ transfert.dest_label }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between py-3">
+            <span class="text-muted">Créé par</span>
+            <span>{{ transfert.effectue_par.get_full_name|default:transfert.effectue_par.username }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between py-3">
+            <span class="text-muted">Date création</span>
+            <span>{{ transfert.date_creation|date:"d/m/Y H:i" }}</span>
+          </li>
+          {% if transfert.date_validation %}
+          <li class="list-group-item d-flex justify-content-between py-3">
+            <span class="text-muted">Date validation</span>
+            <span>{{ transfert.date_validation|date:"d/m/Y H:i" }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between py-3">
+            <span class="text-muted">Validé par</span>
+            <span>{{ transfert.valide_par.get_full_name|default:transfert.valide_par.username }}</span>
+          </li>
+          {% endif %}
+          {% if transfert.motif %}
+          <li class="list-group-item py-3">
+            <div class="text-muted small mb-1">Motif</div>
+            <div>{{ transfert.motif }}</div>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <!-- Workflow -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 px-4 border-bottom">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">Workflow</span>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex gap-2 py-3">
+              {% if transfert.statut != 'BROUILLON' %}
+              <i class="ti ti-circle-check text-success mt-1"></i>
+              {% else %}<i class="ti ti-circle-dot text-warning mt-1"></i>{% endif %}
+              <div><div class="fw-semibold">Brouillon</div><div class="text-muted">Transfert créé, lignes à ajouter.</div></div>
+            </li>
+            <li class="list-group-item d-flex gap-2 py-3">
+              {% if transfert.statut == 'VALIDE' %}
+              <i class="ti ti-circle-check text-success mt-1"></i>
+              {% elif transfert.statut == 'ANNULE' %}
+              <i class="ti ti-circle-x text-danger mt-1"></i>
+              {% else %}<i class="ti ti-circle text-muted mt-1"></i>{% endif %}
+              <div>
+                <div class="fw-semibold">{% if transfert.statut == 'VALIDE' %}Validé{% elif transfert.statut == 'ANNULE' %}Annulé{% else %}Validation{% endif %}</div>
+                <div class="text-muted">Stock déplacé, mouvements enregistrés.</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if peut_editer %}
+<script>
+(function () {
+  const apiProduits = '{% url "stock:api-produits-source" %}';
+  const apiLots     = '{% url "stock:api-lots-source" %}';
+  const typeTrf     = '{{ transfert.type_transfert }}';
+  const srcDepot    = '{{ transfert.source_depot_id|default:"" }}';
+  const srcPdv      = '{{ transfert.source_pdv_id|default:"" }}';
+
+  function sourceParam() {
+    if (typeTrf === 'DEPOT_PDV' || typeTrf === 'DEPOT_DEPOT') {
+      return srcDepot ? 'depot_pk=' + srcDepot : '';
+    }
+    return srcPdv ? 'pdv_pk=' + srcPdv : '';
+  }
+
+  // ── Éléments ──────────────────────────────────────────────────────────
+  const inpRecherche   = document.getElementById('inpRecherche');
+  const btnClear       = document.getElementById('btnClearRecherche');
+  const listeProduits  = document.getElementById('listeProduits');
+  const blocLots       = document.getElementById('blocLots');
+  const blocQte        = document.getElementById('blocQte');
+  const tableauLots    = document.getElementById('tableauLots');
+  const lblProduit     = document.getElementById('lblProduitChoisi');
+  const infoLotChoisi  = document.getElementById('infoLotChoisi');
+  const inpQte         = document.getElementById('inpQte');
+  const infoDisp       = document.getElementById('infoDisp');
+  const hidMvt         = document.getElementById('hidMvt');
+  const btnReset       = document.getElementById('btnReset');
+
+  let timerRecherche;
+  let produitSelPk = null;
+
+  // ── Étape 1 : Recherche produit ────────────────────────────────────────
+  inpRecherche.addEventListener('input', function () {
+    clearTimeout(timerRecherche);
+    const q = this.value.trim();
+    btnClear.style.display = q ? '' : 'none';
+    if (q.length < 1) { listeProduits.style.display = 'none'; return; }
+    timerRecherche = setTimeout(function () { rechercherProduits(q); }, 280);
+  });
+
+  function rechercherProduits(q) {
+    const param = sourceParam();
+    if (!param) return;
+    fetch(apiProduits + '?' + param + '&q=' + encodeURIComponent(q))
+      .then(r => r.json())
+      .then(data => {
+        listeProduits.innerHTML = '';
+        if (!data.results.length) {
+          listeProduits.innerHTML = '<div class="p-3 text-muted small">Aucun produit disponible.</div>';
+          listeProduits.style.display = '';
+          return;
+        }
+        data.results.forEach(function (p) {
+          const div = document.createElement('div');
+          div.className = 'px-3 py-2 d-flex justify-content-between align-items-center produit-item';
+          div.style.cursor = 'pointer';
+          div.innerHTML =
+            '<span class="fw-medium small">' + escH(p.nom) + '</span>' +
+            '<span class="badge bg-success bg-opacity-10 text-success small">Dispo : ' + p.total_dispo + '</span>';
+          div.addEventListener('mouseenter', function () { this.classList.add('bg-light'); });
+          div.addEventListener('mouseleave', function () { this.classList.remove('bg-light'); });
+          div.addEventListener('click', function () { selectionnerProduit(p); });
+          listeProduits.appendChild(div);
+        });
+        listeProduits.style.display = '';
+      });
+  }
+
+  // ── Étape 2 : Sélection produit → chargement lots ──────────────────────
+  function selectionnerProduit(p) {
+    produitSelPk = p.id;
+    inpRecherche.value = p.nom;
+    listeProduits.style.display = 'none';
+    btnClear.style.display = '';
+    lblProduit.textContent = p.nom;
+    blocLots.style.display = '';
+    blocQte.style.display  = 'none';
+    hidMvt.value = '';
+    chargerLots(p.id);
+  }
+
+  function chargerLots(produitPk) {
+    const param = sourceParam();
+    if (!param) return;
+    const url = apiLots + '?' + param + '&produit_pk=' + produitPk;
+    tableauLots.innerHTML = '<div class="text-muted small p-2"><i class="ti ti-loader me-1"></i>Chargement…</div>';
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        tableauLots.innerHTML = '';
+        if (!data.results.length) {
+          tableauLots.innerHTML = '<div class="alert alert-warning small py-2 mb-0">Aucun lot disponible pour ce produit à la source.</div>';
+          return;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-responsive';
+
+        const table = document.createElement('table');
+        table.className = 'table table-sm table-hover align-middle mb-0 small border rounded-3';
+
+        table.innerHTML =
+          '<thead class="table-light"><tr>' +
+          '<th class="ps-3 py-2">Lot / Référence</th>' +
+          '<th class="py-2 text-end">Disponible</th>' +
+          '<th class="py-2 text-end">P.U. coût</th>' +
+          '<th class="py-2">Expiration</th>' +
+          '<th class="pe-3 py-2"></th>' +
+          '</tr></thead>';
+
+        const tbody = document.createElement('tbody');
+
+        data.results.forEach(function (lot) {
+          const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          // Stocker les données dans data-attributes — pas d'inline onclick
+          tr.dataset.mvId  = lot.id;
+          tr.dataset.lot   = lot.lot;
+          tr.dataset.dispo = lot.disponible;
+          tr.dataset.pu    = lot.prix_pu;
+          tr.dataset.exp   = lot.expiration || '';
+
+          const tdLot  = document.createElement('td');
+          tdLot.className = 'ps-3 font-monospace';
+          tdLot.textContent = lot.lot;
+
+          const tdDispo = document.createElement('td');
+          tdDispo.className = 'text-end fw-semibold text-success';
+          tdDispo.textContent = lot.disponible;
+
+          const tdPu = document.createElement('td');
+          tdPu.className = 'text-end text-muted';
+          tdPu.textContent = lot.prix_pu;
+
+          const tdExp = document.createElement('td');
+          tdExp.className = 'text-muted';
+          tdExp.textContent = lot.expiration || '—';
+
+          const tdBtn = document.createElement('td');
+          tdBtn.className = 'pe-3';
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-sm btn-outline-primary';
+          btn.textContent = 'Choisir';
+          tdBtn.appendChild(btn);
+
+          tr.appendChild(tdLot);
+          tr.appendChild(tdDispo);
+          tr.appendChild(tdPu);
+          tr.appendChild(tdExp);
+          tr.appendChild(tdBtn);
+
+          // Listener sur la ligne et le bouton
+          function onChoisir(e) {
+            e.stopPropagation();
+            choisirLotData(tr);
+          }
+          tr.addEventListener('click', onChoisir);
+          btn.addEventListener('click', onChoisir);
+
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+        tableauLots.appendChild(wrapper);
+      });
+  }
+
+  // ── Étape 3 : Sélection lot → affichage quantité ──────────────────────
+  function choisirLotData(tr) {
+    const mvId = tr.dataset.mvId;
+    const lot  = tr.dataset.lot;
+    const dispo = tr.dataset.dispo;
+    const pu   = tr.dataset.pu;
+
+    hidMvt.value = mvId;
+
+    infoLotChoisi.innerHTML =
+      '<i class="ti ti-box me-1 text-primary"></i>' +
+      '<strong>Lot :</strong> ' + escH(lot) +
+      ' &nbsp;|&nbsp; <strong>P.U. :</strong> ' + escH(pu) +
+      ' &nbsp;|&nbsp; <span class="text-success fw-semibold">Dispo : ' + escH(dispo) + '</span>';
+
+    inpQte.max   = dispo;
+    inpQte.value = '';
+    infoDisp.textContent = 'Maximum transférable : ' + dispo;
+    blocQte.style.display = '';
+    inpQte.focus();
+
+    // Highlight ligne active
+    document.querySelectorAll('#tableauLots tbody tr').forEach(function (r) {
+      r.classList.remove('table-primary');
+    });
+    tr.classList.add('table-primary');
+  }
+
+  // ── Reset ──────────────────────────────────────────────────────────────
+  function reset() {
+    inpRecherche.value = '';
+    btnClear.style.display  = 'none';
+    listeProduits.innerHTML = '';
+    listeProduits.style.display = 'none';
+    blocLots.style.display  = 'none';
+    blocQte.style.display   = 'none';
+    hidMvt.value = '';
+    inpQte.value = '';
+    produitSelPk = null;
+  }
+
+  btnClear.addEventListener('click', reset);
+  btnReset.addEventListener('click', reset);
+
+  // Fermer la liste si clic hors
+  document.addEventListener('click', function (e) {
+    if (!listeProduits.contains(e.target) && e.target !== inpRecherche) {
+      listeProduits.style.display = 'none';
+    }
+  });
+
+  // Helpers
+  function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+})();
+</script>
+{% endif %}
+{% endblock %}

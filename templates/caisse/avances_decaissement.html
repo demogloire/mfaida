@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'caisse:dashboard' %}" class="text-decoration-none">Caisse</a></li>
+      <li class="breadcrumb-item active">Avances à décaisser</li>
+    </ol>
+  </nav>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+            style="width:3rem;height:3rem;background:#fff7ed;color:#d97706;">
+        <i class="ti ti-cash-banknote fs-3"></i>
+      </span>
+      <div>
+        <h1 class="fs-4 fw-bold mb-1">Avances à décaisser</h1>
+        <p class="text-muted small mb-0">
+          Avances sur salaire approuvées par la direction, en attente de paiement en caisse.
+        </p>
+      </div>
+    </div>
+    {% if nb_avances > 0 %}
+    <span class="badge rounded-pill px-3 py-2 flex-shrink-0"
+          style="background:#fff7ed;color:#d97706;border:1.5px solid #fed7aa;font-size:.82rem;">
+      <i class="ti ti-clock-hour-4 me-1"></i>{{ nb_avances }} en attente
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- Avertissement si une session manque -->
+  {% for pdv in pdvs_manquants %}
+  <div class="alert alert-warning d-flex align-items-center gap-2 py-2 small mb-3">
+    <i class="ti ti-alert-triangle flex-shrink-0"></i>
+    Aucune session ouverte sur <strong>{{ pdv.nom }}</strong> —
+    décaissement impossible tant que la session n'est pas ouverte.
+    <a href="{% url 'caisse:ouvrir-session' %}" class="alert-link ms-1">Ouvrir une session</a>
+  </div>
+  {% endfor %}
+
+  {% if avances %}
+  <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="card-header bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between">
+      <span class="fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em;">
+        File de décaissement
+      </span>
+      <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+        {{ nb_avances }} avance{{ nb_avances|pluralize }}
+      </span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Référence</th>
+            <th>Employé</th>
+            <th>Point de vente</th>
+            <th class="text-end">Montant</th>
+            <th>Approuvé par</th>
+            <th>Depuis</th>
+            <th class="text-center">Session</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for avance in avances %}
+          <tr class="{% if not avance.session_disponible %}table-warning opacity-75{% endif %}">
+            <td>
+              <a href="{% url 'rh:detail-avance' avance.pk %}" class="fw-mono text-decoration-none fw-semibold">
+                {{ avance.numero }}
+              </a>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                      style="width:30px;height:30px;font-size:.65rem;background:#eef0ff;color:#4f52b2;">
+                  {{ avance.employe.prenom|first|upper }}{{ avance.employe.nom|first|upper }}
+                </span>
+                <div>
+                  <div class="fw-semibold">{{ avance.employe.nom }} {{ avance.employe.prenom }}</div>
+                  <div class="text-muted" style="font-size:.72rem;">{{ avance.employe.matricule }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="fw-medium">{{ avance.point_vente.nom }}</div>
+            </td>
+            <td class="text-end">
+              <span class="fw-bold" style="color:#d97706;">
+                {{ avance.montant|floatformat:2 }}
+              </span>
+              <span class="text-muted ms-1">{{ avance.devise.code }}</span>
+            </td>
+            <td class="text-muted small">
+              {{ avance.approuve_par.get_full_name|default:avance.approuve_par.username }}<br>
+              <span style="font-size:.7rem;">{{ avance.date_approbation|date:"d/m/Y H:i" }}</span>
+            </td>
+            <td class="text-muted small text-nowrap">
+              {{ avance.date_approbation|timesince }} ago
+            </td>
+            <td class="text-center">
+              {% if avance.session_disponible %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="ti ti-circle-check me-1"></i>Ouverte
+              </span>
+              {% else %}
+              <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                <i class="ti ti-door-off me-1"></i>Fermée
+              </span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if avance.session_disponible %}
+              <form method="post" action="{% url 'rh:decaisser-avance' avance.pk %}"
+                    onsubmit="return confirm('Décaisser {{ avance.montant|floatformat:2 }} {{ avance.devise.code }} pour {{ avance.employe.nom }} {{ avance.employe.prenom }} ?')">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'caisse:avances-a-decaisser' %}">
+                <button type="submit" class="btn btn-sm btn-warning fw-semibold">
+                  <i class="ti ti-cash me-1"></i>Décaisser
+                </button>
+              </form>
+              {% else %}
+              <button class="btn btn-sm btn-outline-secondary" disabled title="Ouvrez d'abord une session sur ce PDV">
+                <i class="ti ti-lock me-1"></i>Décaisser
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Totaux par devise -->
+    <div class="card-footer bg-white border-top px-4 py-3">
+      <div class="d-flex flex-wrap gap-4 align-items-center">
+        <span class="small text-muted fw-semibold">Total à décaisser :</span>
+        {% regroup avances by devise.code as avances_par_devise %}
+        {% for groupe in avances_par_devise %}
+        <span class="fw-bold" style="color:#d97706;">
+          {% with total=0 %}
+          {% for av in groupe.list %}
+          {% endfor %}
+          {{ groupe.list|length }} avance{{ groupe.list|length|pluralize }}
+          {% endwith %}
+          — {{ groupe.grouper }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- État vide -->
+  <div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body text-center py-5">
+      <div class="mb-3">
+        <span class="rounded-circle d-inline-flex align-items-center justify-content-center"
+              style="width:64px;height:64px;background:#f0fdf4;">
+          <i class="ti ti-circle-check text-success fs-1"></i>
+        </span>
+      </div>
+      <h5 class="fw-bold text-success mb-1">Aucune avance en attente</h5>
+      <p class="text-muted small mb-4">
+        Toutes les avances approuvées ont été décaissées. Rien à traiter pour le moment.
+      </p>
+      <a href="{% url 'caisse:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-arrow-left me-1"></i>Retour au dashboard
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Rapport Dépenses{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Rapport Dépenses</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Total dépenses</div><div class="kpi-val text-danger">{{ total|floatformat:2 }}</div></div>
+</div>
+<div class="section-title">Par type</div>
+<table>
+  <tr><th>Type</th><th class="text-right">Nb</th><th class="text-right">Total</th></tr>
+  {% for t in par_type %}<tr><td>{{ t.type_depense }}</td><td class="text-right">{{ t.nb }}</td><td class="text-right text-danger">{{ t.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3">Aucune</td></tr>{% endfor %}
+</table>
+<div class="section-title">Par point de vente</div>
+<table>
+  <tr><th>PDV</th><th class="text-right">Nb</th><th class="text-right">Total</th></tr>
+  {% for p in par_pdv %}<tr><td>{{ p.point_vente__nom }}</td><td class="text-right">{{ p.nb }}</td><td class="text-right text-danger">{{ p.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3">Aucune</td></tr>{% endfor %}
+</table>
+<div class="section-title">Détail (200 dernières)</div>
+<table>
+  <tr><th>N°</th><th>PDV</th><th>Type</th><th>Motif</th><th class="text-right">Montant</th><th>Date</th></tr>
+  {% for d in detail %}<tr><td>{{ d.numero_depense }}</td><td>{{ d.point_vente.nom }}</td><td>{{ d.categorie.nom|default:d.get_type_depense_display }}</td><td>{{ d.motif|truncatechars:30 }}</td><td class="text-right text-danger">{{ d.montant|floatformat:2 }}</td><td>{{ d.date_depense|date:"d/m/Y" }}</td></tr>{% empty %}<tr><td colspan="6">Aucune dépense</td></tr>{% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-conges' %}" class="text-decoration-none">Congés</a></li>
+      <li class="breadcrumb-item active">Demande #{{ conge.pk }}</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête statut -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <!-- Avatar -->
+          {% if conge.employe.photo %}
+          <img src="{{ conge.employe.photo.url }}" class="rounded-circle shadow-sm"
+               width="64" height="64" style="object-fit:cover">
+          {% else %}
+          <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold shadow-sm"
+               style="width:64px;height:64px;font-size:20px">
+            {{ conge.employe.prenom|slice:":1" }}{{ conge.employe.nom|slice:":1" }}
+          </div>
+          {% endif %}
+          <div>
+            <h5 class="fw-bold mb-0">{{ conge.employe.prenom }} {{ conge.employe.nom }}</h5>
+            <div class="text-muted small">
+              {{ conge.employe.contrat_set.first.titre_poste|default:"—" }}
+              {% if conge.employe.contrat_set.first.departement %}
+              · {{ conge.employe.contrat_set.first.departement.nom }}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <!-- Badge statut -->
+        <div>
+          {% if conge.statut == 'DEMANDE' %}
+          <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+            <i class="bi bi-hourglass-split me-1"></i>En attente d'approbation
+          </span>
+          {% elif conge.statut == 'APPROUVEE' %}
+          <span class="badge bg-success fs-6 px-3 py-2">
+            <i class="bi bi-check-circle me-1"></i>Congé approuvé
+          </span>
+          {% elif conge.statut == 'REJETEE' %}
+          <span class="badge bg-danger fs-6 px-3 py-2">
+            <i class="bi bi-x-circle me-1"></i>Demande rejetée
+          </span>
+          {% elif conge.statut == 'ANNULEE' %}
+          <span class="badge bg-secondary fs-6 px-3 py-2">
+            <i class="bi bi-slash-circle me-1"></i>Annulé
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Colonne principale -->
+    <div class="col-lg-8">
+
+      <!-- Détails du congé -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-calendar2-week text-primary me-2"></i>Détails du congé</h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="text-muted small">Type</label>
+              <div class="fw-semibold">
+                {% if conge.type_conge == 'ANNUEL' %}<i class="bi bi-sun text-primary me-1"></i>
+                {% elif conge.type_conge == 'MALADIE' %}<i class="bi bi-bandaid text-warning me-1"></i>
+                {% elif conge.type_conge == 'MATERNITE' %}<i class="bi bi-heart text-info me-1"></i>
+                {% else %}<i class="bi bi-three-dots text-muted me-1"></i>{% endif %}
+                {{ conge.get_type_conge_display }}
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="text-muted small">Durée</label>
+              <div class="fw-bold fs-4 text-primary">{{ conge.nb_jours }} <span class="fs-6 fw-normal text-muted">jour(s)</span></div>
+            </div>
+            <div class="col-sm-6">
+              <label class="text-muted small">Date de début</label>
+              <div class="fw-semibold">{{ conge.date_debut|date:"l d F Y" }}</div>
+            </div>
+            <div class="col-sm-6">
+              <label class="text-muted small">Date de fin</label>
+              <div class="fw-semibold">{{ conge.date_fin|date:"l d F Y" }}</div>
+            </div>
+            {% if conge.motif %}
+            <div class="col-12">
+              <label class="text-muted small">Motif</label>
+              <div class="p-3 bg-light rounded">{{ conge.motif }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Traitement / approbation -->
+      {% if conge.statut == 'DEMANDE' and can_approuver %}
+      <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-shield-check text-warning me-2"></i>Action requise</h6>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            Ajoutez une note optionnelle avant d'approuver ou de rejeter cette demande.
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Note de décision</label>
+            <textarea id="noteDecision" class="form-control" rows="2" placeholder="Commentaire facultatif..."></textarea>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <form method="post" action="{% url 'rh:approuver-conge' pk=conge.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="note_approbation" id="noteApprouver">
+              <button type="submit" class="btn btn-success px-4"
+                      onclick="document.getElementById('noteApprouver').value=document.getElementById('noteDecision').value">
+                <i class="bi bi-check-circle me-1"></i>Approuver
+              </button>
+            </form>
+            <form method="post" action="{% url 'rh:rejeter-conge' pk=conge.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="note_approbation" id="noteRejeter">
+              <button type="submit" class="btn btn-danger px-4"
+                      onclick="document.getElementById('noteRejeter').value=document.getElementById('noteDecision').value">
+                <i class="bi bi-x-circle me-1"></i>Rejeter
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Note de décision (si traitée) -->
+      {% if conge.statut != 'DEMANDE' and conge.approuve_par %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-chat-quote text-muted me-2"></i>Décision</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-person-check text-muted"></i>
+            <span class="small text-muted">Par <strong>{{ conge.approuve_par }}</strong>
+            le {{ conge.date_approbation|date:"d/m/Y à H:i" }}</span>
+          </div>
+          {% if conge.note_approbation %}
+          <blockquote class="blockquote mb-0">
+            <p class="mb-0 fs-6 fst-italic text-muted">"{{ conge.note_approbation }}"</p>
+          </blockquote>
+          {% else %}
+          <span class="text-muted small fst-italic">Aucune note ajoutée.</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Annulation -->
+      {% if conge.statut in 'DEMANDE APPROUVEE' %}
+      <div class="d-flex gap-2">
+        <form method="post" action="{% url 'rh:annuler-conge' pk=conge.pk %}"
+              onsubmit="return confirm('Confirmer l\'annulation de ce congé ?')">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-slash-circle me-1"></i>Annuler le congé
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <div class="position-sticky" style="top:80px">
+
+        <!-- Infos demande -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold small text-uppercase text-muted">Informations</h6>
+          </div>
+          <div class="card-body small">
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted">Demandé par</span>
+              <span class="fw-semibold">{{ conge.demande_par }}</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted">Date demande</span>
+              <span>{{ conge.date_demande|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="d-flex justify-content-between py-1">
+              <span class="text-muted">Référence</span>
+              <span class="text-muted">#{{ conge.pk }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historique congés employé -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold small text-uppercase text-muted">Autres congés de l'employé</h6>
+          </div>
+          <div class="card-body p-0">
+            {% for c in conge.employe.conges.all|slice:":5" %}
+            {% if c.pk != conge.pk %}
+            <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
+              <div>
+                <div class="small fw-semibold">{{ c.get_type_conge_display }}</div>
+                <div class="text-muted" style="font-size:11px">{{ c.date_debut|date:"d/m" }} → {{ c.date_fin|date:"d/m/Y" }}</div>
+              </div>
+              {% if c.statut == 'APPROUVEE' %}
+              <span class="badge bg-success-subtle text-success" style="font-size:10px">✓</span>
+              {% elif c.statut == 'DEMANDE' %}
+              <span class="badge bg-warning-subtle text-warning-emphasis" style="font-size:10px">…</span>
+              {% else %}
+              <span class="badge bg-secondary-subtle text-secondary" style="font-size:10px">✗</span>
+              {% endif %}
+            </div>
+            {% endif %}
+            {% empty %}
+            <div class="text-center py-3 text-muted small">Aucun autre congé.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <a href="{% url 'rh:detail-employe' pk=conge.employe.pk %}" class="btn btn-outline-primary btn-sm w-100">
+            <i class="bi bi-person-badge me-1"></i>Fiche employé
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

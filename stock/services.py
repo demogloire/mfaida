@@ -33,6 +33,79 @@ def ajuster_stock_agrege(produit_id, depot_id, pointdevente_id, delta_qte, minim
         row.save(update_fields=['quantite_reelle', 'derniere_mise_a_jour'])
 
 
+def ordonner_mouvements_stock_actifs_pour_methode(qs, methode_gestion: str | None):
+    """
+    Ordonne les lignes de lot (queryset déjà filtrée, typiquement quantite_active > 0)
+    pour une sortie selon la méthode de gestion du produit.
+    """
+    methode = (methode_gestion or 'FEFO').strip().upper()
+    if methode not in ('FIFO', 'FEFO', 'LIFO'):
+        methode = 'FEFO'
+    if methode == 'LIFO':
+        return qs.order_by('-date_creation', '-pk')
+    if methode == 'FIFO':
+        return qs.order_by('date_creation', 'pk')
+    return qs.annotate(
+        _fefo_null_last=Case(
+            When(dateexpiration__isnull=True, then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        ),
+    ).order_by('_fefo_null_last', 'dateexpiration', 'date_creation', 'pk')
+
+
+def repartir_quantite_facture_sur_lots(point_vente, produit, quantite):
+    """
+    Répartit la quantité sur un ou plusieurs MouvementStock du périmètre du point de vente,
+    selon ``produit.methode_gestion`` (FIFO / FEFO / LIFO).
+
+    À appeler dans ``transaction.atomic()``. Retourne une liste de
+    ``(mouvement_stock, quantite_sur_ce_lot)``.
+
+    Lève ``ValueError`` si le stock disponible total est insuffisant.
+    """
+    from decimal import Decimal as D
+
+    from stock.access import mouvements_disponibles_pour_point_vente
+
+    q = D(str(quantite))
+    if q <= D('0'):
+        raise ValueError('La quantité doit être strictement positive.')
+
+    if not point_vente or not getattr(point_vente, 'depot_source_id', None):
+        raise ValueError('Point de vente sans dépôt source.')
+
+    qs0 = mouvements_disponibles_pour_point_vente(point_vente).filter(
+        produit_id=produit.pk,
+        quantite_active__gt=0,
+    )
+    qs_ord = ordonner_mouvements_stock_actifs_pour_methode(qs0, produit.methode_gestion)
+    ids = list(qs_ord.values_list('pk', flat=True))
+
+    remaining = q
+    chunks = []
+    for mv_pk in ids:
+        if remaining <= 0:
+            break
+        mv = MouvementStock.objects.select_for_update().select_related('produit').get(pk=mv_pk)
+        act = mv.quantite_active or D('0')
+        if act <= 0:
+            continue
+        take = min(act, remaining)
+        if take <= 0:
+            continue
+        chunks.append((mv, take))
+        remaining -= take
+
+    tol = D('0.000001')
+    if remaining > tol:
+        raise ValueError(
+            f'Stock disponible insuffisant pour « {produit.nom} » (manque environ {remaining} '
+            f'{produit.unite_mesure}). Méthode appliquée : {produit.methode_gestion}.'
+        )
+    return chunks
+
+
 def theorique_produit_lieu(produit_id, depot, pointvente):
     """
     « Théorique » inventaire : somme des quantités actives par lot (disponible réel au SKU,
@@ -158,10 +231,6 @@ def _appliquer_deficit_inventaire_sur_lots(
     if q_sortie <= 0:
         return
 
-    methode = (methode_gestion or 'FEFO').strip().upper()
-    if methode not in ('FIFO', 'FEFO', 'LIFO'):
-        methode = 'FEFO'
-
     qs = (
         MouvementStock.objects.select_for_update()
         .filter(
@@ -175,19 +244,7 @@ def _appliquer_deficit_inventaire_sur_lots(
     else:
         qs = qs.filter(pointvente__isnull=True)
 
-    if methode == 'LIFO':
-        qs = qs.order_by('-date_creation', '-pk')
-    elif methode == 'FIFO':
-        qs = qs.order_by('date_creation', 'pk')
-    else:
-        qs = qs.annotate(
-            _fefo_null_last=Case(
-                When(dateexpiration__isnull=True, then=Value(1)),
-                default=Value(0),
-                output_field=IntegerField(),
-            ),
-        ).order_by('_fefo_null_last', 'dateexpiration', 'date_creation', 'pk')
-
+    qs = ordonner_mouvements_stock_actifs_pour_methode(qs, methode_gestion)
     mvs = list(qs)
     remaining = q_sortie
     for mv in mvs:
@@ -203,17 +260,21 @@ def _appliquer_deficit_inventaire_sur_lots(
         remaining -= chunk
 
     if remaining > Decimal('0.000001'):
+        m = (methode_gestion or 'FEFO').strip().upper()
+        if m not in ('FIFO', 'FEFO', 'LIFO'):
+            m = 'FEFO'
         raise ValueError(
             f'Inventaire : il reste {remaining} unité(s) à sortir alors que '
-            'le stock disponible par lot est insuffisant (méthode ' + methode + ').'
+            f'le stock disponible par lot est insuffisant (méthode {m}).'
         )
 
 
 def appliquer_ecarts_inventaire(inventaire: Inventaire, utilisateur):
     """
     Clôture : compare la quantité physique à la disponibilité par lots (somme des qtés actives),
-    aligne l’agrégé Stock et enregistre des lignes Inventaire avec la quantité physique constatée
-    (entrée Δ sur excédent ; sortie FIFO/FEFO/LIFO sur manquant + ligne constat physique active = 0).
+    aligne l’agrégé Stock et crée des MouvementStock traçabilité :
+    excédent — quantite_recu / quantite_active = Δ (pas la physique totale) ;
+    déficit — sortie FIFO/FEFO/LIFO sur les lots + ligne constat (reçue et active à 0).
     """
     from stock.access import (
         peut_modifier_stock_au_depot,
@@ -277,11 +338,12 @@ def appliquer_ecarts_inventaire(inventaire: Inventaire, utilisateur):
 
             if ecart > 0:
                 ajuster_stock_agrege(li.produit_id, depot_id, pv_id, ecart)
+                # Une ligne d’excédent : seul le delta entre en stock (pas la quantité physique totale).
                 MouvementStock.objects.create(
                     produit_id=li.produit_id,
                     depot=depot_cible,
                     pointvente=pv_stock,
-                    quantite_recu=phys,
+                    quantite_recu=ecart,
                     quantite_ecarter=Decimal('0'),
                     quantite_affectee=Decimal('0'),
                     quantite_active=ecart,
@@ -309,7 +371,7 @@ def appliquer_ecarts_inventaire(inventaire: Inventaire, utilisateur):
                     produit_id=li.produit_id,
                     depot=depot_cible,
                     pointvente=pv_stock,
-                    quantite_recu=phys,
+                    quantite_recu=Decimal('0'),
                     quantite_ecarter=Decimal('0'),
                     quantite_affectee=Decimal('0'),
                     quantite_active=Decimal('0'),
@@ -330,6 +392,23 @@ def appliquer_ecarts_inventaire(inventaire: Inventaire, utilisateur):
         locked.save(update_fields=['cloture', 'valide_par'])
 
     return montant_augment_val, montant_dimin_val
+
+
+def verifier_quantites_lignes_facture(facture) -> list[str]:
+    """Vérifie que chaque lot a une quantité active >= à la qté facturée (avant consommation stock)."""
+    from decimal import Decimal as D
+
+    errors: list[str] = []
+    for lig in facture.lignes.select_related('mouvement_stock', 'produit'):
+        mv = lig.mouvement_stock
+        act = mv.quantite_active if mv.quantite_active is not None else D('0')
+        q = D(str(lig.quantite))
+        if act < q:
+            pname = getattr(lig.produit, 'nom', str(lig.produit_id))
+            errors.append(
+                f"Ligne « {pname} » (lot #{mv.pk}) : disponible {act}, requis pour la facture {q}."
+            )
+    return errors
 
 
 def consommer_mouvements_facture(facture, utilisateur):
@@ -552,3 +631,150 @@ def enregistrer_correction_interne_ligne(
             ]
         )
     return mv
+
+
+def valider_transfert_stock(transfert, utilisateur):
+    """
+    Valide un TransfertStock :
+      — Diminue la quantite_active sur le lot source
+      — Crée un nouveau MouvementStock à destination (TRANSFERT_ENTREE)
+      — Met à jour le Stock agrégé source (−) et destination (+)
+      — Marque le transfert VALIDE
+    """
+    from django.utils import timezone
+    from stock.models import LigneTransfert, TransfertStock
+
+    if transfert.statut != 'BROUILLON':
+        raise ValueError('Seul un transfert en brouillon peut être validé.')
+
+    # ── Résoudre le dépôt physique source et destination ─────────────────
+    # Stock.depot est NOT NULL : pour un PDV, on résout via son depot_source.
+
+    def _depot_physique(depot_obj, pdv_obj, label):
+        """Retourne le dépôt physique (jamais None) pour la table Stock."""
+        if depot_obj:
+            return depot_obj
+        if pdv_obj:
+            ds = getattr(pdv_obj, 'depot_source', None)
+            if ds:
+                return ds
+            raise ValueError(
+                f"Le point de vente « {pdv_obj} » ({label}) n'a pas de dépôt source configuré. "
+                "Veuillez en configurer un avant d'effectuer ce transfert."
+            )
+        raise ValueError(f"Impossible de déterminer le dépôt physique pour : {label}.")
+
+    src_pdv            = transfert.source_pdv
+    dest_pdv           = transfert.dest_pdv
+    src_depot_physique = _depot_physique(transfert.source_depot, src_pdv,  'source')
+    dest_depot_physique= _depot_physique(transfert.dest_depot,   dest_pdv, 'destination')
+
+    with transaction.atomic():
+        for ligne in transfert.lignes.select_related(
+            'mouvement_source', 'mouvement_source__produit',
+            'mouvement_source__depot', 'mouvement_source__pointvente',
+        ).all():
+            q = Decimal(str(ligne.quantite))
+            mv_src = MouvementStock.objects.select_for_update().get(pk=ligne.mouvement_source_id)
+
+            if mv_src.quantite_active < q:
+                raise ValueError(
+                    f'Stock actif insuffisant sur le lot {mv_src.produit.nom} '
+                    f'(disponible : {mv_src.quantite_active}, demandé : {q}).'
+                )
+
+            # ── Sortie source ──────────────────────────────────────────────
+            # Stock.depot NOT NULL → on utilise src_depot_physique
+            mv_src.quantite_active -= q
+            mv_src.save(update_fields=['quantite_active'])
+            ajuster_stock_agrege(
+                mv_src.produit_id,
+                src_depot_physique.pk,
+                src_pdv.pk if src_pdv else None,
+                -q,
+                minimum_zero=False,
+            )
+
+            # ── Entrée destination ─────────────────────────────────────────
+            mv_dest = MouvementStock.objects.create(
+                produit_id      = mv_src.produit_id,
+                depot           = dest_depot_physique,
+                pointvente      = dest_pdv,
+                quantite_recu   = q,
+                quantite_active = q,
+                prix_unitaire   = mv_src.prix_unitaire,
+                lot_batch       = mv_src.lot_batch,
+                dateproduction  = mv_src.dateproduction,
+                dateexpiration  = mv_src.dateexpiration,
+                unite           = mv_src.unite,
+                marque          = mv_src.marque,
+                conditionnement = mv_src.conditionnement,
+                origine         = MouvementOrigine.TRANSFERT_ENTREE,
+                reference_piece = transfert.numero,
+                motif           = f'Transfert {transfert.numero} — depuis {transfert.source_label}',
+                effectue_par    = utilisateur,
+            )
+            ajuster_stock_agrege(
+                mv_src.produit_id,
+                dest_depot_physique.pk,
+                dest_pdv.pk if dest_pdv else None,
+                +q,
+                minimum_zero=False,
+            )
+
+            # Marquer la ligne source pour traçabilité
+            ligne.mouvement_dest = mv_dest
+            ligne.prix_unitaire  = mv_src.prix_unitaire
+            ligne.save(update_fields=['mouvement_dest', 'prix_unitaire'])
+
+            # Annotation de la source
+            MouvementStock.objects.filter(pk=mv_src.pk).update(
+                origine=MouvementOrigine.TRANSFERT_SORTIE,
+                reference_piece=transfert.numero,
+            )
+
+        transfert.statut          = 'VALIDE'
+        transfert.valide_par      = utilisateur
+        transfert.date_validation = timezone.now()
+        transfert.save(update_fields=['statut', 'valide_par', 'date_validation'])
+
+
+def reintegrer_mouvements_retour(retour, utilisateur):
+    """
+    Inverse partiel de consommer_mouvements_facture.
+    Pour chaque LigneRetour :
+      - quantite_active  += quantite_retournee
+      - quantite_affectee -= quantite_retournee
+      - ajuste le stock agrégé en positif
+    Retourne le montant coût de stock réintégré (pour l'écriture comptable inverse).
+    """
+    montant_cos = Decimal('0')
+    with transaction.atomic():
+        for ligne in retour.lignes.select_related(
+            'mouvement_stock', 'mouvement_stock__produit',
+            'mouvement_stock__depot', 'mouvement_stock__pointvente',
+        ).all():
+            q = Decimal(str(ligne.quantite_retournee))
+            mv = MouvementStock.objects.select_for_update().get(pk=ligne.mouvement_stock_id)
+
+            if mv.quantite_affectee < q:
+                raise ValueError(
+                    f'Quantité affectée insuffisante sur le lot pour {ligne.produit} '
+                    f'(affectée : {mv.quantite_affectee}, demandée : {q}).'
+                )
+
+            mv.quantite_active   += q
+            mv.quantite_affectee -= q
+            mv.save(update_fields=['quantite_active', 'quantite_affectee'])
+
+            ajuster_stock_agrege(
+                mv.produit_id,
+                mv.depot_id,
+                mv.pointvente_id,
+                +q,
+                minimum_zero=False,
+            )
+
+            montant_cos += q * Decimal(str(mv.prix_unitaire))
+
+    return montant_cos

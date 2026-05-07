@@ -1,0 +1,590 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-bulletins' %}" class="text-decoration-none">Bulletins de paie</a></li>
+      <li class="breadcrumb-item active">{{ bulletin.numero }}</li>
+    </ol>
+  </nav>
+
+  <!-- ── Hero card ──────────────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+    <!-- Bande couleur selon statut -->
+    <div class="py-1
+      {% if bulletin.statut == 'PAYE' %}bg-success
+      {% elif bulletin.statut == 'VALIDE' %}bg-warning
+      {% else %}bg-secondary{% endif %}">
+    </div>
+    <div class="card-body px-4 py-3">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+
+        <!-- Identité agent -->
+        <div class="d-flex align-items-center gap-3">
+          {% if bulletin.employe.photo %}
+          <img src="{{ bulletin.employe.photo.url }}" class="rounded-circle shadow"
+               width="72" height="72" style="object-fit:cover;border:3px solid #fff">
+          {% else %}
+          <div class="rounded-circle shadow d-flex align-items-center justify-content-center fw-bold text-white"
+               style="width:72px;height:72px;font-size:24px;background:linear-gradient(135deg,#4f52b2,#7b78e8);border:3px solid #fff">
+            {{ bulletin.employe.prenom|slice:":1" }}{{ bulletin.employe.nom|slice:":1" }}
+          </div>
+          {% endif %}
+          <div>
+            <h5 class="fw-bold mb-0">{{ bulletin.employe.prenom }} {{ bulletin.employe.nom }}</h5>
+            <div class="text-muted">
+              {{ bulletin.contrat.titre_poste|default:"—" }}
+              {% if bulletin.contrat.departement %}<span class="mx-1">·</span>{{ bulletin.contrat.departement.nom }}{% endif %}
+            </div>
+            <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
+              <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle fw-mono">
+                {{ bulletin.numero }}
+              </span>
+              <span class="badge bg-light text-dark border">
+                <i class="bi bi-calendar3 me-1"></i>{{ bulletin.nom_mois }} {{ bulletin.periode_annee }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statut + actions -->
+        <div class="d-flex flex-column align-items-end gap-2">
+          {% if bulletin.statut == 'BROUILLON' %}
+          <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 fs-6">
+            <i class="bi bi-pencil me-1"></i>Brouillon
+          </span>
+          {% elif bulletin.statut == 'VALIDE' %}
+          <span class="badge bg-warning text-dark px-3 py-2 fs-6">
+            <i class="bi bi-check-circle me-1"></i>Validé
+          </span>
+          {% elif bulletin.statut == 'PAYE' %}
+          <span class="badge bg-success px-3 py-2 fs-6">
+            <i class="bi bi-check2-all me-1"></i>Payé
+          </span>
+          {% endif %}
+          <a href="{% url 'rh:imprimer-bulletin' pk=bulletin.pk %}" target="_blank"
+             class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-printer me-1"></i>Imprimer
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ── Colonne principale ──────────────────────────────────────────── -->
+    <div class="col-lg-8">
+
+      <!-- Présences -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-calendar-check text-primary me-2"></i>Présences — {{ bulletin.nom_mois }} {{ bulletin.periode_annee }}
+          </h6>
+          <a href="{% url 'rh:tableau-presences' %}?annee={{ bulletin.periode_annee }}&mois={{ bulletin.periode_mois }}"
+             class="btn btn-xs btn-outline-secondary" target="_blank">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Tableau
+          </a>
+        </div>
+        <div class="card-body">
+          <!-- Barre de progression -->
+          {% if bulletin.jours_ouvrables > 0 %}
+          {% widthratio bulletin.jours_prestes bulletin.jours_ouvrables 100 as pct_prestes %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Taux de présence</span>
+              <span class="fw-semibold text-dark">{{ pct_prestes }}%</span>
+            </div>
+            <div class="progress" style="height:10px;border-radius:10px">
+              <div class="progress-bar bg-success" style="width:{{ pct_prestes }}%;border-radius:10px"></div>
+            </div>
+            <div class="small text-muted mt-1">
+              {{ bulletin.jours_prestes }} jour(s) sur {{ bulletin.jours_ouvrables }} ouvrables
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="row g-3">
+            <!-- Prestés -->
+            <div class="col-4">
+              <div class="p-3 rounded-3 text-center h-100 d-flex flex-column align-items-center justify-content-center gap-1"
+                   style="background:#f0fff4;border:1px solid #c3e6cb">
+                <div class="fw-bold text-success" style="font-size:2.2rem;line-height:1">{{ bulletin.jours_prestes }}</div>
+                <div class="small fw-semibold text-success">Prestés</div>
+                <div class="text-muted" style="font-size:10px">sur {{ bulletin.jours_ouvrables }}</div>
+              </div>
+            </div>
+            <!-- Congés -->
+            <div class="col-4">
+              <div class="p-3 rounded-3 text-center h-100 d-flex flex-column align-items-center justify-content-center gap-1"
+                   style="background:#f0f8ff;border:1px solid #b3d4ef">
+                <div class="fw-bold text-info" style="font-size:2.2rem;line-height:1">{{ bulletin.jours_conges }}</div>
+                <div class="small fw-semibold text-info">Congés</div>
+                <div class="text-muted" style="font-size:10px">payés</div>
+              </div>
+            </div>
+            <!-- Absences -->
+            <div class="col-4">
+              <div class="p-3 rounded-3 text-center h-100 d-flex flex-column align-items-center justify-content-center gap-1"
+                   style="background:#fff5f5;border:1px solid #f5c6cb">
+                <div class="fw-bold text-danger" style="font-size:2.2rem;line-height:1">{{ bulletin.jours_absences }}</div>
+                <div class="small fw-semibold text-danger">Absences</div>
+                <div class="text-muted" style="font-size:10px">non justifiées</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Récapitulatif financier -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-receipt text-primary me-2"></i>Fiche de calcul du salaire</h6>
+        </div>
+        <div class="card-body p-0">
+
+          <!-- Ligne : salaire base -->
+          <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom bg-light">
+            <div>
+              <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px;letter-spacing:.5px">
+                Salaire de base (référence contrat)
+              </div>
+              <div class="fw-semibold">{{ bulletin.salaire_base_ref|floatformat:2 }} <span class="text-muted small">{{ bulletin.devise.code|default:"" }}</span></div>
+            </div>
+            <i class="bi bi-file-earmark-text text-muted fs-4"></i>
+          </div>
+
+          <!-- Ligne : brut -->
+          <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
+            <div>
+              <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px;letter-spacing:.5px">
+                Salaire brut proratisé
+              </div>
+              <div class="text-muted small">
+                {{ bulletin.salaire_base_ref|floatformat:2 }} ÷ {{ bulletin.jours_ouvrables }} jours × {{ bulletin.jours_prestes }} prestés
+              </div>
+            </div>
+            <div class="fw-bold fs-5 text-dark">
+              {{ bulletin.salaire_brut|floatformat:2 }}
+              <span class="text-muted small fw-normal">{{ bulletin.devise.code|default:"" }}</span>
+            </div>
+          </div>
+
+          <!-- Section : Avantages -->
+          {% if lignes_avantages or bulletin.allocations > 0 %}
+          <div class="px-4 py-2 border-bottom" style="background:#f8fff9">
+            <div class="text-success fw-semibold small text-uppercase mb-2" style="font-size:10px;letter-spacing:.5px">
+              <i class="bi bi-plus-circle-fill me-1"></i>Avantages & Allocations
+            </div>
+            {% for l in lignes_avantages %}
+            <div class="d-flex justify-content-between align-items-center py-1">
+              <span class="small text-muted ms-2">
+                <i class="bi bi-dot"></i>{{ l.libelle }}
+              </span>
+              <span class="small fw-semibold text-success">+ {{ l.montant|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+            {% if bulletin.allocations > 0 %}
+            <div class="d-flex justify-content-between align-items-center pt-1 mt-1 border-top">
+              <span class="small fw-semibold text-success ms-2">Total avantages</span>
+              <span class="fw-bold text-success">+ {{ bulletin.allocations|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <!-- Section : Retenues diverses -->
+          {% if bulletin.retenues > 0 %}
+          <div class="px-4 py-2 border-bottom" style="background:#fff8f8">
+            <div class="text-danger fw-semibold small text-uppercase mb-2" style="font-size:10px;letter-spacing:.5px">
+              <i class="bi bi-dash-circle-fill me-1"></i>Retenues diverses
+            </div>
+            {% for l in lignes_retenues %}{% if not l.avance %}
+            <div class="d-flex justify-content-between align-items-center py-1">
+              <span class="small text-muted ms-2">
+                <i class="bi bi-dot"></i>{{ l.libelle }}
+              </span>
+              <span class="small fw-semibold text-danger">- {{ l.montant|floatformat:2 }}</span>
+            </div>
+            {% endif %}{% endfor %}
+            <div class="d-flex justify-content-between align-items-center pt-1 mt-1 border-top">
+              <span class="small fw-semibold text-danger ms-2">Total retenues</span>
+              <span class="fw-bold text-danger">- {{ bulletin.retenues|floatformat:2 }}</span>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Section : Retenues avances -->
+          {% if bulletin.retenues_avances > 0 %}
+          <div class="px-4 py-2 border-bottom" style="background:#fffdf0">
+            <div class="text-warning fw-semibold small text-uppercase mb-2" style="font-size:10px;letter-spacing:.5px">
+              <i class="bi bi-dash-circle-fill me-1"></i>Retenues sur avances salaire
+            </div>
+            {% for l in lignes_retenues %}{% if l.avance %}
+            <div class="d-flex justify-content-between align-items-center py-1">
+              <span class="small text-muted ms-2">
+                <i class="bi bi-dot"></i>{{ l.libelle }}
+                {% if l.avance %}
+                <a href="{% url 'rh:detail-avance' pk=l.avance.pk %}" class="ms-1 text-warning small"
+                   title="Voir l'avance">↗</a>
+                {% endif %}
+              </span>
+              <span class="small fw-semibold text-warning">- {{ l.montant|floatformat:2 }}</span>
+            </div>
+            {% endif %}{% endfor %}
+            <div class="d-flex justify-content-between align-items-center pt-1 mt-1 border-top">
+              <span class="small fw-semibold text-warning ms-2">Total retenues avances</span>
+              <span class="fw-bold text-warning">- {{ bulletin.retenues_avances|floatformat:2 }}</span>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- NET -->
+          <div class="d-flex align-items-center justify-content-between px-4 py-4"
+               style="background:linear-gradient(135deg,#4f52b2,#6366c8)">
+            <div>
+              <div class="text-white text-opacity-75 small text-uppercase fw-semibold" style="letter-spacing:.5px">
+                Salaire net à payer
+              </div>
+              <div class="text-white-50 small">
+                {{ bulletin.nom_mois }} {{ bulletin.periode_annee }}
+              </div>
+            </div>
+            <div class="text-white fw-bold" style="font-size:2rem;line-height:1">
+              {{ bulletin.salaire_net|floatformat:2 }}
+              <span class="fs-5 fw-normal ms-1 text-white-50">{{ bulletin.devise.code|default:"" }}</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Ajouter une ligne (brouillon uniquement) -->
+      {% if bulletin.statut == 'BROUILLON' %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle text-primary me-2"></i>Ajouter avantage / retenue</h6>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{% url 'rh:ajouter-ligne-bulletin' pk=bulletin.pk %}"
+                class="row g-3 align-items-end">
+            {% csrf_token %}
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Type</label>
+              <div class="d-flex gap-2">
+                <label class="type-btn flex-fill text-center border rounded-3 py-2 cursor-pointer"
+                       style="cursor:pointer" id="btnAvantage">
+                  <input type="radio" name="type" value="AVANTAGE" class="d-none" checked>
+                  <i class="bi bi-plus-circle text-success d-block fs-5"></i>
+                  <small class="text-success fw-semibold">Avantage</small>
+                </label>
+                <label class="type-btn flex-fill text-center border rounded-3 py-2"
+                       style="cursor:pointer" id="btnRetenue">
+                  <input type="radio" name="type" value="RETENUE" class="d-none">
+                  <i class="bi bi-dash-circle text-danger d-block fs-5"></i>
+                  <small class="text-danger fw-semibold">Retenue</small>
+                </label>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-semibold">Libellé</label>
+              <input type="text" name="libelle" class="form-control"
+                     placeholder="Ex : Prime de transport, INSS…" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Montant</label>
+              <div class="input-group">
+                <input type="number" name="montant" class="form-control" step="0.01" min="0.01"
+                       placeholder="0.00" required>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-plus-lg me-1"></i>Ajouter
+              </button>
+            </div>
+          </form>
+
+          <!-- Lignes existantes -->
+          {% if bulletin.lignes.all %}
+          <div class="mt-4">
+            <div class="text-muted small text-uppercase fw-semibold mb-2" style="font-size:10px;letter-spacing:.5px">
+              Lignes enregistrées
+            </div>
+            {% for l in bulletin.lignes.all %}
+            <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+              <div class="d-flex align-items-center gap-2">
+                {% if l.type == 'AVANTAGE' %}
+                <span class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center"
+                      style="width:28px;height:28px"><i class="bi bi-plus"></i></span>
+                {% else %}
+                <span class="rounded-circle bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center"
+                      style="width:28px;height:28px"><i class="bi bi-dash"></i></span>
+                {% endif %}
+                <div>
+                  <div class="small fw-semibold">{{ l.libelle }}</div>
+                  {% if l.avance %}
+                  <span class="badge bg-warning-subtle text-warning border" style="font-size:10px">
+                    <i class="bi bi-link-45deg me-1"></i>Avance {{ l.avance.numero }}
+                  </span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                <span class="fw-semibold {% if l.type == 'AVANTAGE' %}text-success{% else %}text-danger{% endif %}">
+                  {% if l.type == 'AVANTAGE' %}+{% else %}-{% endif %} {{ l.montant|floatformat:2 }}
+                  <span class="text-muted fw-normal small">{{ bulletin.devise.code|default:"" }}</span>
+                </span>
+                {% if not l.avance %}
+                <form method="post" action="{% url 'rh:supprimer-ligne-bulletin' pk=bulletin.pk ligne_pk=l.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-xs btn-outline-danger rounded-circle"
+                          style="width:28px;height:28px;padding:0"
+                          onclick="return confirm('Supprimer cette ligne ?')" title="Supprimer">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Actions workflow -->
+      {% if bulletin.statut == 'BROUILLON' and can_validate %}
+      <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #ffc107 !important">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center"
+                   style="width:44px;height:44px">
+                <i class="bi bi-check-circle text-warning fs-4"></i>
+              </div>
+              <div>
+                <div class="fw-bold">Valider ce bulletin</div>
+                <div class="text-muted small">Une fois validé, aucune modification n'est possible.</div>
+              </div>
+            </div>
+            <form method="post" action="{% url 'rh:valider-bulletin' pk=bulletin.pk %}"
+                  onsubmit="return confirm('Confirmer la validation du bulletin {{ bulletin.numero }} ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-warning px-4">
+                <i class="bi bi-check-circle me-1"></i>Valider
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if bulletin.statut == 'VALIDE' and can_validate %}
+      <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #198754 !important">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center"
+                   style="width:44px;height:44px">
+                <i class="bi bi-check2-all text-success fs-4"></i>
+              </div>
+              <div>
+                <div class="fw-bold">Confirmer le paiement</div>
+                <div class="text-muted small">
+                  Les avances déduites seront automatiquement marquées <strong>Remboursées</strong>.
+                </div>
+              </div>
+            </div>
+            <form method="post" action="{% url 'rh:payer-bulletin' pk=bulletin.pk %}"
+                  onsubmit="return confirm('Confirmer le paiement du bulletin {{ bulletin.numero }} ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-success px-4">
+                <i class="bi bi-check2-all me-1"></i>Marquer payé
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+    <div class="col-lg-4">
+      <div class="position-sticky" style="top:80px">
+
+        <!-- Synthèse financière -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-primary text-white py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-pie-chart-fill me-2"></i>Synthèse</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+              <span class="small text-muted">Salaire brut</span>
+              <span class="fw-semibold">{{ bulletin.salaire_brut|floatformat:2 }}
+                <span class="text-muted small">{{ bulletin.devise.code|default:"" }}</span>
+              </span>
+            </div>
+            {% if bulletin.allocations > 0 %}
+            <div class="px-4 py-2 border-bottom d-flex justify-content-between align-items-center">
+              <span class="small text-success"><i class="bi bi-plus me-1"></i>Avantages</span>
+              <span class="fw-semibold text-success">{{ bulletin.allocations|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            {% if bulletin.retenues > 0 %}
+            <div class="px-4 py-2 border-bottom d-flex justify-content-between align-items-center">
+              <span class="small text-danger"><i class="bi bi-dash me-1"></i>Retenues diverses</span>
+              <span class="fw-semibold text-danger">{{ bulletin.retenues|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            {% if bulletin.retenues_avances > 0 %}
+            <div class="px-4 py-2 border-bottom d-flex justify-content-between align-items-center">
+              <span class="small text-warning"><i class="bi bi-dash me-1"></i>Retenues avances</span>
+              <span class="fw-semibold text-warning">{{ bulletin.retenues_avances|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            <div class="px-4 py-3 d-flex justify-content-between align-items-center bg-primary bg-opacity-10 rounded-bottom">
+              <span class="fw-bold text-primary">Net à payer</span>
+              <span class="fw-bold text-primary fs-5">
+                {{ bulletin.salaire_net|floatformat:2 }}
+                <span class="small fw-normal text-muted">{{ bulletin.devise.code|default:"" }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Traçabilité -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold small text-uppercase text-muted">Traçabilité</h6>
+          </div>
+          <div class="card-body p-0">
+            <!-- Étape 1 : Création -->
+            <div class="d-flex align-items-start gap-3 px-3 py-3 border-bottom">
+              <div class="rounded-circle bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:32px;height:32px">
+                <i class="bi bi-file-earmark-plus" style="font-size:13px"></i>
+              </div>
+              <div class="small">
+                <div class="fw-semibold">Généré par {{ bulletin.cree_par }}</div>
+                <div class="text-muted">{{ bulletin.date_creation|date:"d/m/Y à H:i" }}</div>
+              </div>
+            </div>
+            <!-- Étape 2 : Validation -->
+            {% if bulletin.valide_par %}
+            <div class="d-flex align-items-start gap-3 px-3 py-3 border-bottom">
+              <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:32px;height:32px">
+                <i class="bi bi-check-circle" style="font-size:13px"></i>
+              </div>
+              <div class="small">
+                <div class="fw-semibold">Validé par {{ bulletin.valide_par }}</div>
+                <div class="text-muted">{{ bulletin.date_validation|date:"d/m/Y à H:i" }}</div>
+              </div>
+            </div>
+            {% else %}
+            <div class="d-flex align-items-start gap-3 px-3 py-3 border-bottom opacity-40">
+              <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:32px;height:32px">
+                <i class="bi bi-check-circle text-muted" style="font-size:13px"></i>
+              </div>
+              <div class="small text-muted">En attente de validation</div>
+            </div>
+            {% endif %}
+            <!-- Étape 3 : Paiement -->
+            {% if bulletin.paye_par %}
+            <div class="d-flex align-items-start gap-3 px-3 py-3">
+              <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:32px;height:32px">
+                <i class="bi bi-check2-all" style="font-size:13px"></i>
+              </div>
+              <div class="small">
+                <div class="fw-semibold">Payé par {{ bulletin.paye_par }}</div>
+                <div class="text-muted">{{ bulletin.date_paiement|date:"d/m/Y à H:i" }}</div>
+              </div>
+            </div>
+            {% else %}
+            <div class="d-flex align-items-start gap-3 px-3 py-3 opacity-40">
+              <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:32px;height:32px">
+                <i class="bi bi-check2-all text-muted" style="font-size:13px"></i>
+              </div>
+              <div class="small text-muted">En attente de paiement</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Contrat -->
+        {% if bulletin.contrat %}
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold small text-uppercase text-muted">Contrat de référence</h6>
+          </div>
+          <div class="card-body small">
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted">Poste</span>
+              <span class="fw-semibold">{{ bulletin.contrat.titre_poste }}</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted">Type</span>
+              <span>{{ bulletin.contrat.get_type_contrat_display }}</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted">Base</span>
+              <span class="fw-semibold">{{ bulletin.contrat.salaire_base|floatformat:2 }} {{ bulletin.devise.code|default:"" }}</span>
+            </div>
+            <div class="d-flex justify-content-between py-1">
+              <span class="text-muted">Jours ouvrables</span>
+              <span>{{ bulletin.jours_ouvrables }} j</span>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Liens rapides -->
+        <div class="d-flex flex-column gap-2">
+          <a href="{% url 'rh:detail-employe' pk=bulletin.employe.pk %}"
+             class="btn btn-outline-primary btn-sm w-100">
+            <i class="bi bi-person-badge me-1"></i>Fiche employé
+          </a>
+          <a href="{% url 'rh:tableau-presences' %}?annee={{ bulletin.periode_annee }}&mois={{ bulletin.periode_mois }}"
+             class="btn btn-outline-secondary btn-sm w-100" target="_blank">
+            <i class="bi bi-grid-3x3 me-1"></i>Présences {{ bulletin.nom_mois }}
+          </a>
+          <a href="{% url 'rh:liste-bulletins' %}?employe={{ bulletin.employe.pk }}"
+             class="btn btn-outline-secondary btn-sm w-100">
+            <i class="bi bi-files me-1"></i>Tous les bulletins de cet employé
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.type-btn { transition: all .15s; }
+.type-btn:has(input:checked) { border-color: currentColor !important; background: rgba(0,0,0,.04); }
+.opacity-40 { opacity: .4; }
+</style>
+
+<script>
+document.querySelectorAll('.type-btn').forEach(label => {
+  const radio = label.querySelector('input[type=radio]');
+  radio.addEventListener('change', () => {
+    document.querySelectorAll('.type-btn').forEach(l => l.classList.remove('border-primary','border-danger'));
+  });
+  label.addEventListener('click', () => {
+    radio.checked = true;
+  });
+});
+</script>
+{% endblock %}

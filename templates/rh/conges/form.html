@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-conges' %}" class="text-decoration-none">Congés</a></li>
+      <li class="breadcrumb-item active">Nouvelle demande</li>
+    </ol>
+  </nav>
+
+  <h4 class="fw-bold mb-4"><i class="bi bi-calendar2-plus text-primary me-2"></i>{{ titre }}</h4>
+
+  <form method="post" id="formConge">
+    {% csrf_token %}
+    <div class="row g-4">
+
+      <!-- Colonne principale -->
+      <div class="col-lg-8">
+
+        <!-- Employé -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-person-badge text-primary me-2"></i>Bénéficiaire</h6>
+          </div>
+          <div class="card-body">
+            <label class="form-label fw-semibold">Employé <span class="text-danger">*</span></label>
+            <select name="employe" id="selEmploye" class="form-select" required>
+              <option value="">— Sélectionner un employé —</option>
+              {% for emp in employes %}
+              <option value="{{ emp.pk }}"
+                data-nom="{{ emp.prenom }} {{ emp.nom }}"
+                data-poste="{{ emp.contrat_set.first.titre_poste|default:'' }}"
+                data-dept="{{ emp.contrat_set.first.departement.nom|default:'' }}"
+                {% if employe_initial and employe_initial.pk == emp.pk %}selected{% endif %}>
+                {{ emp.prenom }} {{ emp.nom }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Type de congé -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-tag text-primary me-2"></i>Type de congé</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              {% for code, lib in types_conge %}
+              <div class="col-6 col-md-4">
+                <div class="type-card border rounded-3 p-3 text-center cursor-pointer h-100 d-flex flex-column align-items-center justify-content-center gap-2"
+                     data-value="{{ code }}" style="cursor:pointer;transition:all .2s">
+                  {% if code == 'ANNUEL' %}
+                  <i class="bi bi-sun fs-3 text-primary"></i>
+                  {% elif code == 'MALADIE' %}
+                  <i class="bi bi-bandaid fs-3 text-warning"></i>
+                  {% elif code == 'MATERNITE' %}
+                  <i class="bi bi-heart fs-3 text-info"></i>
+                  {% elif code == 'SANS_SOLDE' %}
+                  <i class="bi bi-wallet2 fs-3 text-secondary"></i>
+                  {% else %}
+                  <i class="bi bi-three-dots fs-3 text-muted"></i>
+                  {% endif %}
+                  <div class="small fw-semibold">{{ lib }}</div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="type_conge" id="inputTypeConge" required>
+            <div class="invalid-feedback d-block" id="typeCongeError" style="display:none!important"></div>
+          </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-calendar-range text-primary me-2"></i>Période</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Date de début <span class="text-danger">*</span></label>
+                <input type="date" name="date_debut" id="dateDebut" class="form-control" required
+                       value="{{ request.POST.date_debut }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Date de fin <span class="text-danger">*</span></label>
+                <input type="date" name="date_fin" id="dateFin" class="form-control" required
+                       value="{{ request.POST.date_fin }}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motif -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-chat-text text-primary me-2"></i>Motif <span class="text-muted small">(facultatif)</span></h6>
+          </div>
+          <div class="card-body">
+            <textarea name="motif" class="form-control" rows="3"
+                      placeholder="Précisez le motif si nécessaire...">{{ request.POST.motif }}</textarea>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-send me-1"></i>Soumettre la demande
+          </button>
+          <a href="{% url 'rh:liste-conges' %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+
+      </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-4">
+        <div class="position-sticky" style="top:80px">
+
+          <!-- Prévisualisation -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-primary text-white py-3">
+              <h6 class="mb-0 fw-semibold"><i class="bi bi-eye me-2"></i>Récapitulatif</h6>
+            </div>
+            <div class="card-body">
+              <!-- Employé -->
+              <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold"
+                     style="width:48px;height:48px;font-size:16px" id="avatarInitiales">
+                  <i class="bi bi-person"></i>
+                </div>
+                <div>
+                  <div class="fw-semibold" id="previewNom">—</div>
+                  <div class="text-muted small" id="previewPoste">Sélectionner un employé</div>
+                </div>
+              </div>
+              <!-- Infos congé -->
+              <div class="small">
+                <div class="d-flex justify-content-between py-1">
+                  <span class="text-muted">Type :</span>
+                  <span id="previewType" class="fw-semibold">—</span>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                  <span class="text-muted">Du :</span>
+                  <span id="previewDebut" class="fw-semibold">—</span>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                  <span class="text-muted">Au :</span>
+                  <span id="previewFin" class="fw-semibold">—</span>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-top mt-2 pt-2">
+                  <span class="text-muted">Durée :</span>
+                  <span id="previewDuree" class="fw-bold text-primary fs-5">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Workflow -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h6 class="fw-semibold mb-3 small text-uppercase text-muted">Processus d'approbation</h6>
+              <div class="d-flex flex-column gap-2">
+                <div class="d-flex align-items-start gap-2">
+                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                       style="width:24px;height:24px;font-size:11px">1</div>
+                  <div class="small"><strong>Demande soumise</strong><br><span class="text-muted">Enregistrement de la demande</span></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                       style="width:24px;height:24px;font-size:11px">2</div>
+                  <div class="small"><strong>Validation Manager</strong><br><span class="text-muted">Approbation ou rejet</span></div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                       style="width:24px;height:24px;font-size:11px">3</div>
+                  <div class="small"><strong>Mise à jour présences</strong><br><span class="text-muted">Les jours sont marqués automatiquement</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<style>
+.type-card:hover { border-color: var(--bs-primary) !important; background: rgba(var(--bs-primary-rgb),.05); }
+.type-card.selected { border-color: var(--bs-primary) !important; background: rgba(var(--bs-primary-rgb),.1); }
+</style>
+
+<script>
+const typeCards = document.querySelectorAll('.type-card');
+const inputType = document.getElementById('inputTypeConge');
+const labelMap = {};
+{% for code, lib in types_conge %}
+labelMap['{{ code }}'] = '{{ lib }}';
+{% endfor %}
+
+typeCards.forEach(card => {
+  card.addEventListener('click', () => {
+    typeCards.forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    const val = card.dataset.value;
+    inputType.value = val;
+    document.getElementById('previewType').textContent = labelMap[val] || val;
+  });
+});
+
+// Employé
+document.getElementById('selEmploye').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  if (opt.value) {
+    const nom = opt.dataset.nom || opt.text;
+    const parts = nom.split(' ');
+    const initiales = parts.map(p => p[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('avatarInitiales').textContent = initiales;
+    document.getElementById('previewNom').textContent = nom;
+    document.getElementById('previewPoste').textContent = opt.dataset.poste || opt.dataset.dept || 'Employé';
+  } else {
+    document.getElementById('avatarInitiales').innerHTML = '<i class="bi bi-person"></i>';
+    document.getElementById('previewNom').textContent = '—';
+    document.getElementById('previewPoste').textContent = 'Sélectionner un employé';
+  }
+  recalcDuree();
+});
+
+// Dates
+function formatDate(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  return d.toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function recalcDuree() {
+  const d1 = document.getElementById('dateDebut').value;
+  const d2 = document.getElementById('dateFin').value;
+  document.getElementById('previewDebut').textContent = formatDate(d1);
+  document.getElementById('previewFin').textContent   = formatDate(d2);
+  if (d1 && d2) {
+    const diff = Math.round((new Date(d2) - new Date(d1)) / 86400000) + 1;
+    document.getElementById('previewDuree').textContent = diff > 0 ? diff + ' jour(s)' : '—';
+  } else {
+    document.getElementById('previewDuree').textContent = '—';
+  }
+}
+document.getElementById('dateDebut').addEventListener('change', recalcDuree);
+document.getElementById('dateFin').addEventListener('change', recalcDuree);
+
+// Pré-sélection employé initial
+window.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('selEmploye');
+  if (sel.value) sel.dispatchEvent(new Event('change'));
+  recalcDuree();
+});
+
+// Validation type avant submit
+document.getElementById('formConge').addEventListener('submit', function(e) {
+  if (!inputType.value) {
+    e.preventDefault();
+    document.getElementById('typeCongeError').textContent = "Veuillez sélectionner un type de congé.";
+    document.getElementById('typeCongeError').style.display = 'block';
+    document.querySelector('.type-card').closest('.card-body').scrollIntoView({behavior:'smooth'});
+  }
+});
+</script>
+{% endblock %}

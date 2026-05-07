@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load acces_tags %}
+{% block content %}
+<style>
+    .page-liste-proformas .ls-03 { letter-spacing: 0.04em; }
+    .page-liste-proformas .mono-piece { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+</style>
+<div class="content page-liste-proformas pb-5">
+    <nav class="mb-3" aria-label="Fil de navigation">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'facturation:liste-factures' %}" class="text-decoration-none">Vente — Factures</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Proformas</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+        <div class="d-flex gap-3 align-items-start flex-grow-1 min-w-0">
+            <div class="flex-shrink-0">
+                <span class="avatar avatar-lg bg-warning bg-opacity-15 text-warning rounded-3 d-flex align-items-center justify-content-center" style="width: 3rem; height: 3rem;">
+                    <i class="ti ti-file-description fs-3"></i>
+                </span>
+            </div>
+            <div class="min-w-0">
+                <h1 class="fs-4 fw-bold mb-1 lh-sm">Factures Proforma</h1>
+                <p class="text-muted small mb-0 lh-base" style="max-width: 40rem;">
+                    Offres soumises au manager pour approbation. Une fois approuvée, une proforma peut être convertie en facture brouillon.
+                </p>
+            </div>
+        </div>
+        <div class="d-flex flex-shrink-0">
+            <a href="{% url 'facturation:nouvelle-proforma' %}" class="btn btn-warning rounded-pill px-4 shadow-sm text-dark">
+                <i class="ti ti-file-plus me-1"></i>Nouvelle proforma
+            </a>
+        </div>
+    </div>
+
+    {% if peut_approuver %}
+    {% with en_attente=proformas|length %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-3 d-flex gap-2 align-items-center mb-4 py-3" role="status">
+        <i class="ti ti-bell-ringing fs-5 flex-shrink-0"></i>
+        <div class="small">
+            Vous avez les droits d'approbation. Les proformas <strong>En attente</strong> sont en attente de votre révision.
+        </div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <div class="card-header bg-white border-bottom py-3 px-4">
+            <div class="d-flex flex-column flex-xl-row gap-3 justify-content-between align-items-stretch align-items-xl-center mb-3">
+                <div>
+                    <span class="fw-bold text-muted small text-uppercase ls-03">Registre</span>
+                    <div class="small text-muted mt-1">Tri : date décroissante.</div>
+                </div>
+            </div>
+            <form method="get" class="row g-2 align-items-end" action="{% url 'facturation:liste-proformas' %}">
+                <div class="col-md-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-pro-q">Recherche</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-2"><i class="ti ti-search text-muted"></i></span>
+                        <input type="search" id="id-liste-pro-q" name="q" value="{{ filt_q }}" class="form-control border-start-0" placeholder="N° proforma, client, code…" autocomplete="off">
+                    </div>
+                </div>
+                <div class="col-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-pro-statut">Statut</label>
+                    <select id="id-liste-pro-statut" name="statut" class="form-select">
+                        <option value="">Tous</option>
+                        {% for val, label in statuts_choix %}
+                        <option value="{{ val }}" {% if filt_statut == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-pro-dde">Date du</label>
+                    <input type="date" id="id-liste-pro-dde" name="date_de" value="{{ filt_date_de }}" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-md-6 col-lg-4 col-xl">
+                    <label class="form-label small mb-0" for="id-liste-pro-da">Date au</label>
+                    <input type="date" id="id-liste-pro-da" name="date_a" value="{{ filt_date_a }}" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Filtrer</button>
+                    <a href="{% url 'facturation:liste-proformas' %}" class="btn btn-outline-secondary">Réinitialiser</a>
+                </div>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr class="small text-muted text-uppercase ls-03" style="font-size: .68rem;">
+                            <th class="ps-4">N° proforma</th>
+                            <th>Date</th>
+                            <th>Branche</th>
+                            <th>Client</th>
+                            <th class="d-none d-lg-table-cell">Vendeur</th>
+                            <th>Statut</th>
+                            <th class="text-end pe-2">Total TTC</th>
+                            <th class="d-none d-lg-table-cell">Valide jusqu'au</th>
+                            <th class="pe-4 w-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pf in proformas %}
+                        <tr>
+                            <td class="ps-4">
+                                <span class="fw-semibold mono-piece text-body">{{ pf.numero_proforma }}</span>
+                            </td>
+                            <td class="text-nowrap small">
+                                <span class="fw-medium">{{ pf.date_emission|date:"d/m/Y" }}</span>
+                                <span class="text-muted d-none d-md-inline">{{ pf.date_emission|date:"H:i" }}</span>
+                            </td>
+                            <td class="small fw-medium">{{ pf.branche.nom }}</td>
+                            <td>
+                                <div class="fw-medium">{{ pf.client.nom }}</div>
+                                <div class="small text-muted">{{ pf.client.code_client }}</div>
+                            </td>
+                            <td class="d-none d-lg-table-cell small text-muted">{% firstof pf.vendeur.get_full_name pf.vendeur.username %}</td>
+                            <td>
+                                {% if pf.statut == 'BROUILLON' %}
+                                <span class="badge rounded-pill bg-secondary">{{ pf.get_statut_display }}</span>
+                                {% elif pf.statut == 'EN_ATTENTE' %}
+                                <span class="badge rounded-pill bg-warning text-dark">{{ pf.get_statut_display }}</span>
+                                {% elif pf.statut == 'ACCEPTEE' %}
+                                <span class="badge rounded-pill bg-success">{{ pf.get_statut_display }}</span>
+                                {% elif pf.statut == 'EXPIREE' %}
+                                <span class="badge rounded-pill bg-secondary">{{ pf.get_statut_display }}</span>
+                                {% elif pf.statut == 'ANNULEE' %}
+                                <span class="badge rounded-pill bg-danger">{{ pf.get_statut_display }}</span>
+                                {% else %}
+                                <span class="badge rounded-pill bg-secondary">{{ pf.get_statut_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-2">
+                                <span class="fw-semibold">{{ pf.total_ttc }}</span>
+                                <span class="text-muted small ms-1">{{ pf.devise.symbole }}</span>
+                            </td>
+                            <td class="d-none d-lg-table-cell small text-muted">{{ pf.date_validite|date:"d/m/Y" }}</td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'facturation:detail-proforma' pf.pk %}" class="btn btn-sm btn-outline-warning rounded-pill px-3 text-dark">
+                                    Ouvrir
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5 px-4">
+                                <div class="d-inline-flex flex-column align-items-center gap-2 py-3">
+                                    <span class="rounded-circle bg-light p-4 text-muted"><i class="ti ti-inbox fs-1"></i></span>
+                                    <p class="mb-1 fw-semibold text-body">Aucune proforma pour l'instant</p>
+                                    <p class="small text-muted mb-3" style="max-width: 22rem;">
+                                        Créez une proforma pour soumettre une offre au manager.
+                                    </p>
+                                    <a href="{% url 'facturation:nouvelle-proforma' %}" class="btn btn-warning rounded-pill px-4 text-dark">
+                                        <i class="ti ti-file-plus me-1"></i>Nouvelle proforma
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

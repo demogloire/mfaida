@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Créances impayées</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Créances impayées</h1>
+
+  <!-- Tranches -->
+  <div class="row g-3 mb-4">
+    {% with t0=tranches.0_30 t31=tranches.31_60 t61=tranches.61_90 tplus=tranches.plus_90 %}
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #4caf50 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">0 – 30 jours</div>
+        <div class="fw-bold fs-4 text-success">{{ t0|length }}</div>
+        <div class="text-muted small">factures</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #ff9800 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">31 – 60 jours</div>
+        <div class="fw-bold fs-4 text-warning">{{ t31|length }}</div>
+        <div class="text-muted small">factures</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #ff5722 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">61 – 90 jours</div>
+        <div class="fw-bold fs-4 text-danger">{{ t61|length }}</div>
+        <div class="text-muted small">factures</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #c62828 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">+90 jours</div>
+        <div class="fw-bold fs-4 text-danger">{{ tplus|length }}</div>
+        <div class="text-muted small">factures</div>
+      </div>
+    </div>
+    {% endwith %}
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-semibold">Détail des factures impayées</h6>
+      <span class="badge bg-danger fs-6">Total dû : {{ total_du|floatformat:2 }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Facture</th><th>Client</th><th>PDV</th><th class="text-end">Total TTC</th>
+              <th class="text-end">Payé</th><th class="text-end">Solde dû</th><th>Date</th><th>Âge</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in qs %}
+            {% with age=today|timeuntil:f.date_facture %}
+            <tr>
+              <td><a href="{% url 'facturation:detail-facture' pk=f.pk %}" class="text-decoration-none fw-semibold">{{ f.numero_facture }}</a></td>
+              <td>{{ f.client.nom }}</td>
+              <td class="small text-muted">{{ f.point_vente.nom }}</td>
+              <td class="text-end">{{ f.total_ttc|floatformat:2 }}</td>
+              <td class="text-end text-success">{{ f.montant_paye|floatformat:2 }}</td>
+              <td class="text-end fw-bold text-danger">{{ f.reste_a_payer|floatformat:2 }}</td>
+              <td class="small text-muted">{{ f.date_facture|date:"d/m/Y" }}</td>
+              <td>
+                {% with jours=f.date_facture.date|timesince %}
+                {% if f.date_facture.date|timesince > "90 days" %}
+                <span class="badge bg-danger">+90j</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ f.date_facture|timesince }}</span>
+                {% endif %}
+                {% endwith %}
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-5">Aucune créance en cours</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

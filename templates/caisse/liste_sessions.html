@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'caisse:dashboard' %}" class="text-decoration-none">Caisse</a></li>
+      <li class="breadcrumb-item active">Sessions</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary flex-shrink-0" style="width:3rem;height:3rem;">
+        <i class="ti ti-list fs-3"></i>
+      </span>
+      <div>
+        <h1 class="fs-4 fw-bold mb-1">Sessions de caisse</h1>
+        <p class="text-muted small mb-0">Historique de toutes les sessions par point de vente.</p>
+      </div>
+    </div>
+    {% if peut_ouvrir %}
+    <a href="{% url 'caisse:ouvrir-session' %}" class="btn btn-success rounded-pill px-4 shadow-sm flex-shrink-0">
+      <i class="ti ti-plus me-1"></i>Ouvrir une session
+    </a>
+    {% endif %}
+  </div>
+
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-6 col-md-3">
+      <select name="statut" class="form-select">
+        <option value="">Tous statuts</option>
+        {% for code, label in statuts %}
+        <option value="{{ code }}" {% if filt_statut == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <select name="pdv" class="form-select">
+        <option value="">Tous PDV</option>
+        {% for p in pdvs %}
+        <option value="{{ p.pk }}" {% if filt_pdv == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <button type="submit" class="btn btn-secondary"><i class="ti ti-filter me-1"></i>Filtrer</button>
+      {% if filt_statut or filt_pdv %}
+      <a href="{% url 'caisse:liste-sessions' %}" class="btn btn-outline-secondary">Réinit.</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+            <th class="ps-4 py-3">Point de vente</th>
+            <th class="py-3">Ouverture</th>
+            <th class="py-3 d-none d-md-table-cell">Ouvert par</th>
+            <th class="py-3 text-end">Fond départ</th>
+            <th class="py-3 text-end">Encaissé</th>
+            <th class="py-3 text-end">Décaissé</th>
+            <th class="py-3 text-center">Statut</th>
+            <th class="pe-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sessions %}
+          <tr onclick="location.href='{% url 'caisse:detail-session' s.pk %}'" style="cursor:pointer;">
+            <td class="ps-4 fw-semibold">{{ s.point_vente.nom }}</td>
+            <td class="text-muted">{{ s.date_ouverture|date:"d/m/Y H:i" }}</td>
+            <td class="d-none d-md-table-cell text-muted">{{ s.ouvert_par.get_full_name|default:s.ouvert_par.username }}</td>
+            <td class="text-end">{{ s.fond_ouverture }} <small class="text-muted">{{ s.devise }}</small></td>
+            <td class="text-end text-success fw-semibold">{{ s.total_encaissements }}</td>
+            <td class="text-end text-danger fw-semibold">{{ s.total_decaissements }}</td>
+            <td class="text-center">
+              {% if s.statut == 'OUVERTE' %}<span class="badge bg-success">Ouverte</span>
+              {% elif s.statut == 'EN_ATTENTE_CLOTURE' %}<span class="badge bg-warning text-dark">En attente</span>
+              {% elif s.statut == 'CLOSE' %}<span class="badge bg-secondary">Clôturée</span>
+              {% else %}<span class="badge bg-danger">Rejetée</span>{% endif %}
+            </td>
+            <td class="pe-4">
+              <a href="{% url 'caisse:detail-session' s.pk %}" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation()">
+                <i class="ti ti-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-5">
+            <i class="ti ti-mood-empty fs-2 d-block mb-2 opacity-40"></i>Aucune session trouvée.
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

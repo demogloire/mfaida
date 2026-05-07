@@ -1,0 +1,14 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Inventaire valorisé{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Inventaire valorisé</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Valeur totale stock</div><div class="kpi-val text-success">{{ valeur_totale|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Nb références</div><div class="kpi-val">{{ items|length }}</div></div>
+</div>
+<table>
+  <tr><th>Produit</th><th>Catégorie</th><th>PDV</th><th class="text-right">Qté</th><th class="text-right">Coût unit.</th><th class="text-right">Valeur</th></tr>
+  {% for i in items %}<tr><td>{{ i.produit }}</td><td>{{ i.categorie }}</td><td>{{ i.pdv }}</td><td class="text-right">{{ i.qte|floatformat:0 }}</td><td class="text-right">{{ i.cout_u|floatformat:2 }}</td><td class="text-right">{{ i.valeur|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="6">Aucun stock</td></tr>{% endfor %}
+  {% if items %}<tr style="background:#e3f2fd;font-weight:bold"><td colspan="5">TOTAL</td><td class="text-right" style="color:#1565c0">{{ valeur_totale|floatformat:2 }}</td></tr>{% endif %}
+</table>
+{% endblock %}

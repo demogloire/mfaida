@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="Fil de navigation">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'facturation:liste-retours' %}" class="text-decoration-none">Ventes retournées</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'facturation:nouveau-retour' %}" class="text-decoration-none">Nouveau</a></li>
+      <li class="breadcrumb-item active">{{ facture.numero_facture }}</li>
+    </ol>
+  </nav>
+
+  <h1 class="fs-4 fw-bold mb-1">Créer un retour</h1>
+  <p class="text-muted small mb-4">
+    Facture <strong class="font-monospace">{{ facture.numero_facture }}</strong> —
+    <strong>{{ facture.client.nom }}</strong> —
+    {{ facture.date_facture|date:"d/m/Y" }}
+  </p>
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <form method="post" class="row g-4 align-items-start" id="formRetour">
+    {% csrf_token %}
+
+    <!-- ─── Sidebar paramètres ─── -->
+    <div class="col-12 col-md-4 order-md-2">
+      <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white fw-semibold small py-3">Paramètres du retour</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Point de vente <span class="text-danger">*</span></label>
+            <select name="point_vente" class="form-select form-select-sm" required>
+              {% for pv in points_vente %}
+              <option value="{{ pv.pk }}" {% if pv.pk == facture.point_vente_id %}selected{% endif %}>{{ pv.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Devise <span class="text-danger">*</span></label>
+            <select name="devise" class="form-select form-select-sm" required>
+              {% for dev in devises %}
+              <option value="{{ dev.pk }}" {% if devise_principale and dev.pk == devise_principale.pk %}selected{% endif %}>
+                {{ dev.code }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Motif du retour</label>
+            <textarea name="motif" rows="3" class="form-control form-control-sm"
+                      placeholder="Raison du retour client…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Récapitulatif total dynamique ─── -->
+      <div class="card shadow-sm border-0 border-start border-4 border-warning mb-3">
+        <div class="card-header bg-white fw-semibold small py-3">Récapitulatif</div>
+        <div class="card-body py-3">
+          <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">
+            <span>Sous-total HT</span>
+            <span id="recap-ht">0,00</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">
+            <span>TVA</span>
+            <span id="recap-tva">0,00</span>
+          </div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Total TTC</span>
+            <span id="recap-ttc" class="fw-bold fs-5 text-danger">0,00</span>
+          </div>
+          <div class="text-muted text-end small mt-1" id="recap-devise">
+            {% if devise_principale %}{{ devise_principale.code }}{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-warning w-100 fw-semibold py-2">
+        <i class="ti ti-arrow-back-up me-1"></i>Créer le retour
+      </button>
+    </div>
+
+    <!-- ─── Tableau des lignes ─── -->
+    <div class="col-12 col-md-8 order-md-1">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+          <span class="fw-semibold small">Lignes de la facture</span>
+          <span class="text-muted small ms-2">— saisir les quantités à retourner</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0 small" id="tableRetour">
+            <thead class="table-light">
+              <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+                <th class="ps-4">Produit</th>
+                <th class="text-center">Qté facturée</th>
+                <th class="text-center">Disponible</th>
+                <th class="text-center" style="width:130px;">Qté retournée</th>
+                <th class="text-end">P.U. HT</th>
+                <th class="text-end pe-4">S/Total HT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in lignes_data %}
+              <tr data-pu-ht="{{ item.ligne.prix_unitaire_ht }}"
+                  data-tva-unit="{% if item.ligne.quantite %}{{ item.ligne.tva_montant|floatformat:6 }}{% else %}0{% endif %}"
+                  data-qte-orig="{{ item.ligne.quantite|floatformat:6 }}">
+                <td class="ps-4 fw-medium">{{ item.ligne.produit.nom }}</td>
+                <td class="text-center text-muted">{{ item.ligne.quantite|floatformat:2 }}</td>
+                <td class="text-center {% if item.disponible == 0 %}text-muted{% endif %}">
+                  {{ item.disponible|floatformat:2 }}
+                </td>
+                <td class="text-center">
+                  {% if item.disponible > 0 %}
+                  <input type="number"
+                         name="qte_{{ item.ligne.pk }}"
+                         min="0" max="{{ item.disponible }}" step="0.01"
+                         value="0"
+                         class="form-control form-control-sm text-center qte-input"
+                         style="width:110px;">
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-end font-monospace">{{ item.ligne.prix_unitaire_ht|floatformat:2 }}</td>
+                <td class="text-end pe-4 font-monospace sous-total-ht">—</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light fw-semibold">
+              <tr>
+                <td colspan="5" class="text-end pe-3 py-2">Total HT</td>
+                <td class="text-end pe-4 font-monospace" id="foot-ht">—</td>
+              </tr>
+              <tr>
+                <td colspan="5" class="text-end pe-3 text-muted fw-normal">TVA</td>
+                <td class="text-end pe-4 font-monospace text-muted" id="foot-tva">—</td>
+              </tr>
+              <tr>
+                <td colspan="5" class="text-end pe-3 fs-6">Total TTC</td>
+                <td class="text-end pe-4 fs-6 text-danger font-monospace fw-bold" id="foot-ttc">—</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="alert alert-info small mt-3 mb-0 py-2">
+        <i class="ti ti-info-circle me-1"></i>
+        Laissez les quantités à <strong>0</strong> (ou vides) pour les articles non retournés.
+        Le total se met à jour automatiquement.
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  function fmt(n) {
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function recalculer() {
+    var totalHt  = 0;
+    var totalTva = 0;
+
+    document.querySelectorAll('#tableRetour tbody tr').forEach(function (row) {
+      var puHt     = parseFloat(row.dataset.puHt)    || 0;
+      var tvaUnit  = parseFloat(row.dataset.tvaUnit) || 0;   // TVA par unité
+      var qteOrig  = parseFloat(row.dataset.qteOrig) || 1;
+      var tvaParUnit = qteOrig > 0 ? tvaUnit / qteOrig : 0;
+
+      var inp  = row.querySelector('.qte-input');
+      var cell = row.querySelector('.sous-total-ht');
+
+      if (!inp) {
+        if (cell) cell.textContent = '—';
+        return;
+      }
+
+      var qte = parseFloat(inp.value) || 0;
+      var ht  = qte * puHt;
+      var tva = qte * tvaParUnit;
+
+      if (cell) cell.textContent = qte > 0 ? fmt(ht) : '—';
+      totalHt  += ht;
+      totalTva += tva;
+    });
+
+    var totalTtc = totalHt + totalTva;
+
+    // Pied de tableau
+    document.getElementById('foot-ht').textContent  = totalHt  > 0 ? fmt(totalHt)  : '—';
+    document.getElementById('foot-tva').textContent = totalTva > 0 ? fmt(totalTva) : '—';
+    document.getElementById('foot-ttc').textContent = totalTtc > 0 ? fmt(totalTtc) : '—';
+
+    // Sidebar récapitulatif
+    document.getElementById('recap-ht').textContent  = fmt(totalHt);
+    document.getElementById('recap-tva').textContent = fmt(totalTva);
+    document.getElementById('recap-ttc').textContent = fmt(totalTtc);
+  }
+
+  document.querySelectorAll('.qte-input').forEach(function (inp) {
+    inp.addEventListener('input', recalculer);
+    inp.addEventListener('change', recalculer);
+  });
+
+  recalculer();
+})();
+</script>
+{% endblock %}

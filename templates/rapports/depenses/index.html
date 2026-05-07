@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Dépenses</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="ti ti-receipt-2 text-danger me-2"></i>Rapport Dépenses</h1>
+  {% include 'rapports/_barre_outils.html' %}
+
+  <div class="mb-3">
+    <span class="badge bg-danger fs-6 px-3 py-2">Total dépenses validées : {{ total|floatformat:2 }}</span>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- Par type -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">Par type</h6>
+        </div>
+        <div class="card-body p-0">
+          {% for t in par_type %}
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+            <div>
+              <div class="small fw-semibold">{{ t.type_depense }}</div>
+              <div class="text-muted" style="font-size:10px">{{ t.nb }} dépense{{ t.nb|pluralize }}</div>
+            </div>
+            <span class="fw-bold text-danger">{{ t.total|floatformat:2 }}</span>
+          </div>
+          {% empty %}
+          <div class="text-center text-muted py-4 small">Aucune</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Par catégorie -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">Par catégorie</h6>
+        </div>
+        <div class="card-body p-0">
+          {% for c in par_categorie %}
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+              <span class="rounded-circle" style="width:10px;height:10px;background:{{ c.categorie__couleur|default:'#999' }};display:inline-block"></span>
+              <div>
+                <div class="small fw-semibold">{{ c.categorie__nom }}</div>
+                <div class="text-muted" style="font-size:10px">{{ c.nb }} dépense{{ c.nb|pluralize }}</div>
+              </div>
+            </div>
+            <span class="fw-bold text-danger">{{ c.total|floatformat:2 }}</span>
+          </div>
+          {% empty %}
+          <div class="text-center text-muted py-4 small">Aucune</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Par PDV -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">Par point de vente</h6>
+        </div>
+        <div class="card-body p-0">
+          {% for p in par_pdv %}
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+            <div>
+              <div class="small fw-semibold">{{ p.point_vente__nom }}</div>
+              <div class="text-muted" style="font-size:10px">{{ p.nb }} dépense{{ p.nb|pluralize }}</div>
+            </div>
+            <span class="fw-bold text-danger">{{ p.total|floatformat:2 }}</span>
+          </div>
+          {% empty %}
+          <div class="text-center text-muted py-4 small">Aucune</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Évolution mensuelle -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold">Évolution mensuelle</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light"><tr><th>Mois</th><th class="text-end">Total dépenses</th></tr></thead>
+          <tbody>
+            {% for m in mensuel %}
+            <tr>
+              <td class="fw-semibold">{{ m.mois|date:"M Y" }}</td>
+              <td class="text-end fw-bold text-danger">{{ m.total|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-4">Aucune donnée</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Détail -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold">Détail des dépenses (200 dernières)</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light"><tr><th>N°</th><th>PDV</th><th>Type</th><th>Motif</th><th class="text-end">Montant</th><th>Date</th></tr></thead>
+          <tbody>
+            {% for d in detail %}
+            <tr>
+              <td class="font-monospace small">{{ d.numero_depense }}</td>
+              <td class="small">{{ d.point_vente.nom }}</td>
+              <td class="small text-muted">{{ d.categorie.nom|default:d.get_type_depense_display }}</td>
+              <td class="small text-muted">{{ d.motif|truncatechars:40 }}</td>
+              <td class="text-end fw-semibold text-danger">{{ d.montant|floatformat:2 }}</td>
+              <td class="small text-muted">{{ d.date_depense|date:"d/m/Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Aucune dépense</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

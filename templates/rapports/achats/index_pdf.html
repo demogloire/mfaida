@@ -1,0 +1,21 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Rapport Achats{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Rapport Achats</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Commandes</div><div class="kpi-val">{{ synthese.nb_total }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Total TTC</div><div class="kpi-val">{{ synthese.total_ttc|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">En cours</div><div class="kpi-val text-warning">{{ en_cours|length }}</div></div>
+</div>
+<div class="section-title">Par fournisseur</div>
+<table>
+  <tr><th>Fournisseur</th><th class="text-right">Commandes</th><th class="text-right">Total TTC</th></tr>
+  {% for f in par_fournisseur %}<tr><td>{{ f.fournisseur__nom_societe }}</td><td class="text-right">{{ f.nb }}</td><td class="text-right">{{ f.total_ttc|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3">Aucun achat</td></tr>{% endfor %}
+</table>
+<div class="section-title">Bons de commande en cours</div>
+<table>
+  <tr><th>N° BC</th><th>Fournisseur</th><th>Statut</th><th>Livraison prévue</th><th class="text-right">Montant</th></tr>
+  {% for o in en_cours %}<tr><td>{{ o.numero_commande }}</td><td>{{ o.fournisseur.nom_societe }}</td><td>{{ o.get_statut_display }}</td><td>{{ o.date_livraison_prevue|date:"d/m/Y"|default:"—" }}</td><td class="text-right">{{ o.total_ttc|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="5">Aucune commande en cours</td></tr>{% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'stock:hub-stock' %}" class="text-decoration-none">Stock</a></li>
+      <li class="breadcrumb-item active">Produits en expiration</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-3 d-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger flex-shrink-0" style="width:3rem;height:3rem;">
+        <i class="ti ti-clock-exclamation fs-3"></i>
+      </span>
+      <div>
+        <h1 class="fs-4 fw-bold mb-1">Produits en expiration</h1>
+        <p class="text-muted small mb-0">
+          Lots dont les jours restants avant expiration sont inférieurs à la durée de vie définie par produit.
+          {% if lots %}
+          {% with nb_crit=lots|length %}
+          <span class="badge bg-danger ms-1">{{ nb_crit }} lot{{ nb_crit|pluralize }}</span>
+          {% endwith %}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-12 col-md-4">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="ti ti-search text-muted"></i></span>
+        <input type="search" name="q" value="{{ filt_q }}" class="form-control" placeholder="Rechercher un produit…">
+      </div>
+    </div>
+    {% if peut_depot and peut_pdv %}
+    <div class="col-6 col-md-2">
+      <select name="lieu_type" class="form-select">
+        <option value="">Tous les lieux</option>
+        <option value="depot" {% if filt_lieu == 'depot' %}selected{% endif %}>Dépôts uniquement</option>
+        <option value="pdv"   {% if filt_lieu == 'pdv'   %}selected{% endif %}>PDV uniquement</option>
+      </select>
+    </div>
+    {% endif %}
+    {% if peut_depot and depots %}
+    <div class="col-6 col-md-2">
+      <select name="depot" class="form-select">
+        <option value="">— Dépôt —</option>
+        {% for d in depots %}<option value="{{ d.pk }}" {% if filt_depot == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.nom }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    {% if peut_pdv and pdvs %}
+    <div class="col-6 col-md-2">
+      <select name="pdv" class="form-select">
+        <option value="">— Point de vente —</option>
+        {% for p in pdvs %}<option value="{{ p.pk }}" {% if filt_pdv == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nom }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-auto d-flex gap-2">
+      <button type="submit" class="btn btn-secondary"><i class="ti ti-filter me-1"></i>Filtrer</button>
+      {% if filt_q or filt_depot or filt_pdv or filt_lieu %}
+      <a href="{% url 'stock:produits-expiration' %}" class="btn btn-outline-secondary">Réinit.</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if lots %}
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+            <th class="ps-4 py-3">Produit</th>
+            <th class="py-3">Lot</th>
+            <th class="py-3">Emplacement</th>
+            <th class="py-3 text-end">Qté disponible</th>
+            <th class="py-3 text-center">Date d'expiration</th>
+            <th class="py-3 text-center">Jours restants</th>
+            <th class="py-3 text-center">Seuil alerte</th>
+            <th class="pe-4 py-3 text-center">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lot in lots %}
+          <tr class="{% if lot.critique %}table-danger{% elif lot.urgent %}table-warning{% endif %}">
+            <td class="ps-4">
+              <div class="fw-semibold">{{ lot.produit.nom }}</div>
+              <div class="text-muted" style="font-size:.75rem;">{{ lot.produit.sous_categorie.nom }}</div>
+            </td>
+            <td class="font-monospace text-muted">{{ lot.lot }}</td>
+            <td>
+              {% if lot.type_lieu == 'Dépôt' %}
+              <i class="ti ti-building-warehouse me-1 text-info"></i>
+              {% else %}
+              <i class="ti ti-store me-1 text-primary"></i>
+              {% endif %}
+              {{ lot.emplacement }}
+            </td>
+            <td class="text-end fw-semibold">{{ lot.quantite }} {{ lot.produit.unite_mesure }}</td>
+            <td class="text-center">
+              <span class="fw-medium {% if lot.critique %}text-danger{% elif lot.urgent %}text-warning{% endif %}">
+                {{ lot.expiration|date:"d/m/Y" }}
+              </span>
+            </td>
+            <td class="text-center">
+              {% if lot.critique %}
+              <span class="badge bg-danger">
+                {% if lot.jours_restants < 0 %}Expiré ({{ lot.jours_retard }} j){% else %}0 j{% endif %}
+              </span>
+              {% elif lot.urgent %}
+              <span class="badge bg-warning text-dark">{{ lot.jours_restants }} j</span>
+              {% else %}
+              <span class="badge bg-secondary bg-opacity-50 text-dark">{{ lot.jours_restants }} j</span>
+              {% endif %}
+            </td>
+            <td class="text-center text-muted">{{ lot.duree_alerte }} j</td>
+            <td class="pe-4 text-center">
+              {% if lot.critique %}
+              <span class="badge bg-danger"><i class="ti ti-x me-1"></i>Expiré</span>
+              {% elif lot.urgent %}
+              <span class="badge bg-warning text-dark"><i class="ti ti-alert-triangle me-1"></i>Urgent</span>
+              {% else %}
+              <span class="badge bg-orange text-white"><i class="ti ti-clock me-1"></i>À surveiller</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Légende -->
+  <div class="d-flex gap-3 flex-wrap mt-3 small text-muted">
+    <span><span class="badge bg-danger me-1">Expiré</span> Date dépassée</span>
+    <span><span class="badge bg-warning text-dark me-1">Urgent</span> Moins d'⅓ de la durée d'alerte</span>
+    <span><span class="badge bg-secondary bg-opacity-50 text-dark me-1">À surveiller</span> En dessous de la durée de vie du produit</span>
+  </div>
+
+  {% else %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <i class="ti ti-circle-check fs-1 text-success opacity-50 d-block mb-3"></i>
+      <h5 class="fw-semibold mb-1">Aucun lot en cours d'expiration</h5>
+      <p class="text-muted small mb-0">
+        {% if filt_q %}Aucun lot correspondant à « {{ filt_q }} » n'est proche de l'expiration.
+        {% else %}Tous les lots actifs sont dans leurs délais.{% endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

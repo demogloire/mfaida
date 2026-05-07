@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="Fil de navigation">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><span class="text-muted">Caisse</span></li>
+      <li class="breadcrumb-item active">Dépenses</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start flex-grow-1 min-w-0">
+      <span class="avatar avatar-lg bg-danger bg-opacity-10 text-danger rounded-3 d-flex align-items-center justify-content-center" style="width:3rem;height:3rem;">
+        <i class="ti ti-cash-off fs-3"></i>
+      </span>
+      <div class="min-w-0">
+        <h1 class="fs-4 fw-bold mb-1">Dépenses</h1>
+        <p class="text-muted small mb-0">Charges, remboursements et sorties de caisse enregistrées.</p>
+      </div>
+    </div>
+    <div class="d-flex flex-shrink-0">
+      <a href="{% url 'depenses:nouvelle-depense' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+        <i class="ti ti-plus me-1"></i>Nouvelle dépense
+      </a>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-12 col-md-4">
+      <input type="search" name="q" value="{{ filt_q }}" class="form-control" placeholder="N° dépense, motif, point de vente…">
+    </div>
+    <div class="col-6 col-md-2">
+      <select name="statut" class="form-select">
+        <option value="">Tous statuts</option>
+        {% for code, label in statuts_choix %}
+        <option value="{{ code }}" {% if filt_statut == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <select name="type_depense" class="form-select">
+        <option value="">Tous types</option>
+        {% for code, label in types_choix %}
+        <option value="{{ code }}" {% if filt_type == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <input type="date" name="date_de" value="{{ filt_date_de }}" class="form-control" title="Du">
+    </div>
+    <div class="col-6 col-md-2">
+      <input type="date" name="date_a" value="{{ filt_date_a }}" class="form-control" title="Au">
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button class="btn btn-secondary" type="submit"><i class="ti ti-filter me-1"></i>Filtrer</button>
+      {% if filt_q or filt_statut or filt_type or filt_date_de or filt_date_a %}
+      <a href="{% url 'depenses:liste-depenses' %}" class="btn btn-outline-secondary">Réinit.</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2" role="alert">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <div class="card shadow-sm border-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>N°</th>
+            <th>Type</th>
+            <th>Point de vente</th>
+            <th class="text-end">Montant</th>
+            <th>Devise</th>
+            <th>Statut</th>
+            <th>Date</th>
+            <th>Par</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dep in depenses %}
+          <tr class="cursor-pointer" onclick="location.href='{% url 'depenses:detail-depense' dep.pk %}'">
+            <td class="fw-semibold font-monospace">{{ dep.numero_depense }}</td>
+            <td>{{ dep.get_type_depense_display }}</td>
+            <td>{{ dep.point_vente.nom }}</td>
+            <td class="text-end">{{ dep.montant|floatformat:2 }}</td>
+            <td>{{ dep.devise.code }}</td>
+            <td>
+              {% if dep.statut == 'VALIDEE' %}
+              <span class="badge bg-success">Validée</span>
+              {% elif dep.statut == 'ANNULEE' %}
+              <span class="badge bg-secondary">Annulée</span>
+              {% else %}
+              <span class="badge bg-warning text-dark">Brouillon</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ dep.date_depense|date:"d/m/Y H:i" }}</td>
+            <td>{{ dep.enregistre_par.get_full_name|default:dep.enregistre_par.username }}</td>
+            <td class="text-end">
+              <a href="{% url 'depenses:detail-depense' dep.pk %}" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation()">
+                <i class="ti ti-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-5">
+              <i class="ti ti-mood-empty fs-2 d-block mb-2"></i>
+              Aucune dépense trouvée.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

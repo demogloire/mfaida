@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load acces_tags %}
+{% block content %}
+<div class="content pb-5">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+          style="width:3.2rem;height:3.2rem;background:linear-gradient(135deg,#1565c0,#1e88e5);color:#fff;">
+      <i class="ti ti-chart-bar fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-0">Rapports & Analyses</h1>
+      <p class="text-muted small mb-0">Tous vos indicateurs de performance, par module.</p>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Ventes & Facturation -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #2196f3 !important">
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:2.8rem;height:2.8rem;background:#e3f2fd;color:#1565c0">
+              <i class="ti ti-report-money fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0">Ventes & Facturation</h6>
+              <p class="text-muted small mb-0">CA, bénéfices, créances, retours</p>
+            </div>
+          </div>
+          <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+            <li><a href="{% url 'rapports:ventes' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Chiffre d'affaires</a></li>
+            <li><a href="{% url 'rapports:benefice' %}" class="text-decoration-none text-success fw-semibold"><i class="bi bi-arrow-right-short"></i>Bénéfice brut &amp; net</a></li>
+            <li><a href="{% url 'rapports:produits-vendus' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Produits vendus</a></li>
+            <li><a href="{% url 'rapports:creances' %}" class="text-decoration-none text-warning"><i class="bi bi-arrow-right-short"></i>Créances impayées</a></li>
+            <li><a href="{% url 'rapports:retours-vente' %}" class="text-decoration-none text-danger"><i class="bi bi-arrow-right-short"></i>Retours sur ventes</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Achats -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #ff9800 !important">
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:2.8rem;height:2.8rem;background:#fff3e0;color:#e65100">
+              <i class="ti ti-truck-delivery fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0">Achats</h6>
+              <p class="text-muted small mb-0">Fournisseurs, commandes, livraisons</p>
+            </div>
+          </div>
+          <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+            <li><a href="{% url 'rapports:achats' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Achats par fournisseur</a></li>
+            <li><a href="{% url 'rapports:achats' %}?statut=en_cours" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Bons de commande en cours</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stock -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #4caf50 !important">
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:2.8rem;height:2.8rem;background:#e8f5e9;color:#2e7d32">
+              <i class="ti ti-package fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0">Stock</h6>
+              <p class="text-muted small mb-0">Inventaire, mouvements, alertes</p>
+            </div>
+          </div>
+          <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+            <li><a href="{% url 'rapports:inventaire' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Inventaire valorisé</a></li>
+            <li><a href="{% url 'rapports:mouvements-stock' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Mouvements de stock</a></li>
+            <li><a href="{% url 'rapports:ruptures' %}" class="text-decoration-none text-danger"><i class="bi bi-arrow-right-short"></i>Ruptures &amp; faible stock</a></li>
+            <li><a href="{% url 'rapports:expirations' %}" class="text-decoration-none text-warning"><i class="bi bi-arrow-right-short"></i>Produits proches expiration</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- RH -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #9c27b0 !important">
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:2.8rem;height:2.8rem;background:#f3e5f5;color:#6a1b9a">
+              <i class="ti ti-users-group fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0">Ressources Humaines</h6>
+              <p class="text-muted small mb-0">Présences, salaires, avances</p>
+            </div>
+          </div>
+          <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+            <li><a href="{% url 'rapports:presences-rh' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Présences mensuelle</a></li>
+            <li><a href="{% url 'rapports:masse-salariale' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Masse salariale</a></li>
+            <li><a href="{% url 'rapports:avances-rh' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Avances sur salaire</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Caisse -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #ff5722 !important">
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:2.8rem;height:2.8rem;background:#fbe9e7;color:#bf360c">
+              <i class="ti ti-cash-register fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0">Caisse & Trésorerie</h6>
+              <p class="text-muted small mb-0">Sessions, transactions, flux</p>
+            </div>
+          </div>
+          <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+            <li><a href="{% url 'rapports:caisse' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Journal de caisse</a></li>
+            <li><a href="{% url 'rapports:caisse' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Synthèse des sessions</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dépenses -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #dc3545 !important">
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:2.8rem;height:2.8rem;background:#fde8ec;color:#c62828">
+              <i class="ti ti-receipt-2 fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0">Dépenses</h6>
+              <p class="text-muted small mb-0">Par type, par PDV, évolution</p>
+            </div>
+          </div>
+          <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+            <li><a href="{% url 'rapports:depenses' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Dépenses par type</a></li>
+            <li><a href="{% url 'rapports:depenses' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Dépenses par point de vente</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tiers -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #607d8b !important">
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:2.8rem;height:2.8rem;background:#eceff1;color:#37474f">
+              <i class="ti ti-address-book fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0">Clients & Fournisseurs</h6>
+              <p class="text-muted small mb-0">Top clients, créances, relevés</p>
+            </div>
+          </div>
+          <ul class="list-unstyled mb-0 small d-flex flex-column gap-1">
+            <li><a href="{% url 'rapports:clients' %}" class="text-decoration-none text-primary"><i class="bi bi-arrow-right-short"></i>Top clients</a></li>
+            <li><a href="{% url 'rapports:vieillissement' %}" class="text-decoration-none text-warning"><i class="bi bi-arrow-right-short"></i>Vieillissement des créances</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

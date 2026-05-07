@@ -49,9 +49,9 @@
                         <tr>
                             <th>Produit</th>
                             <th class="text-end" title="Moyenne pondérée lots actifs ; sinon prix d’achat produit">PU réf. HT</th>
-                            <th class="text-end">Physique</th>
-                            <th class="text-end text-warning">À l’écart</th>
-                            <th class="text-end fw-semibold">Disponible</th>
+                            <th class="text-end" title="Somme Stock (PDV)">Physique</th>
+                            <th class="text-end text-warning" title="Hors disponibilité (casse, contrôle…)">À l’écart</th>
+                            <th class="text-end fw-semibold" title="Physique − à l’écart">Disponible</th>
                             <th class="text-end text-warning">Valeur à l’écart HT</th>
                             <th class="text-end fw-semibold">Valeur disponible HT</th>
                         </tr>
@@ -60,13 +60,23 @@
                         {% for r in lignes_synthese %}
                         <tr class="{% if r.sous_seuil %}table-warning{% endif %}">
                             <td><a href="{% url 'stock:detail-produit-stock' r.produit.pk %}">{{ r.produit.libelle_ligne_achat }}</a></td>
+                            <td class="text-end">{{ r.prix_unitaire_ref|floatformat:2 }}</td>
                             <td class="text-end">{{ r.physique }}</td>
                             <td class="text-end">{{ r.a_ecart }}</td>
                             <td class="text-end">{{ r.disponible }}</td>
+                            <td class="text-end">{{ r.valeur_ecart|floatformat:2 }}</td>
+                            <td class="text-end">{{ r.valeur_disponible|floatformat:2 }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="4" class="text-center text-muted py-4">Aucune ligne agrégée pour ces filtres.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">Aucune ligne agrégée pour ces filtres.</td></tr>
                         {% endfor %}
+                        {% if lignes_synthese %}
+                        <tr class="table-light fw-semibold">
+                            <td colspan="5" class="text-end">Totaux valeur</td>
+                            <td class="text-end">{{ total_valeur_ecart|floatformat:2 }}</td>
+                            <td class="text-end">{{ total_valeur_disponible|floatformat:2 }}</td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

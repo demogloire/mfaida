@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .page-dept-form .section-title {
+    font-size: .68rem; letter-spacing: .08em; font-weight: 700;
+    text-transform: uppercase; color: #9ca3af;
+  }
+  .page-dept-form .field-icon { pointer-events: none; color: #9ca3af; }
+  .page-dept-form .aside-card { border-radius: .75rem; }
+  @media (min-width: 992px) {
+    .page-dept-form .aside-card { position: sticky; top: 5.5rem; }
+  }
+  .page-dept-form .required-dot::after { content: '*'; color: #ef4444; margin-left: 2px; font-size: .75rem; }
+  .page-dept-form .info-row { display: flex; align-items: center; gap: .5rem; padding: .45rem 0; border-bottom: 1px solid #f3f4f6; }
+  .page-dept-form .info-row:last-child { border-bottom: none; }
+  .page-dept-form .info-label { font-size: .72rem; color: #9ca3af; min-width: 6rem; }
+  .page-dept-form .info-value { font-size: .82rem; font-weight: 600; color: #374151; }
+  .page-dept-form .info-value.placeholder-val { color: #d1d5db; font-weight: 400; font-style: italic; }
+  .page-dept-form .dept-icon-preview {
+    width: 72px; height: 72px; border-radius: 16px;
+    background: linear-gradient(135deg, #4f52b2 0%, #7c7fe8 100%);
+    color: #fff; font-size: 1.5rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 15px rgba(79,82,178,.25);
+    transition: all .3s ease;
+  }
+  .page-dept-form .emp-option-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #eef0ff; color: #4f52b2;
+    font-size: .65rem; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+</style>
+
+<div class="content page-dept-form pb-5">
+
+  <!-- Breadcrumb -->
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-departements' %}" class="text-decoration-none">Départements</a></li>
+      <li class="breadcrumb-item active">{{ titre }}</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête -->
+  <div class="d-flex gap-3 align-items-start mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+          style="width:3rem;height:3rem;background:#eef0ff;color:#4f52b2;">
+      <i class="ti ti-{% if action == 'modifier' %}edit{% else %}building-plus{% endif %} fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-1">{{ titre }}</h1>
+      <p class="text-muted small mb-0">
+        {% if action == 'modifier' %}Modifiez les informations de cette unité organisationnelle.
+        {% else %}Créez une nouvelle unité organisationnelle et désignez son responsable.{% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2 mb-3">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <form method="post" id="form-dept">
+    {% csrf_token %}
+    <div class="row g-4 align-items-start">
+
+      <!-- ══ Colonne principale ══════════════════════════════════════════ -->
+      <div class="col-lg-7">
+
+        <!-- Identification -->
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+          <div class="card-body p-4">
+            <p class="section-title mb-3 pb-2 border-bottom">Identification</p>
+
+            {% if admin %}
+            <div class="mb-3">
+              <label class="form-label fw-medium">Branche</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-building"></i></span>
+                <select name="branche" class="form-select border-start-0 ps-0">
+                  <option value="">— Toutes branches —</option>
+                  {% for b in branches %}
+                  <option value="{{ b.pk }}" {% if departement and departement.branche_id == b.pk %}selected{% endif %}>{{ b.nom }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            {% endif %}
+
+            <div>
+              <label class="form-label fw-medium required-dot">Nom du département</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-tag"></i></span>
+                <input id="f-nom" type="text" name="nom" class="form-control border-start-0 ps-0"
+                       required value="{{ departement.nom|default:'' }}"
+                       placeholder="Ex : Finance, Logistique, Commercial, RH…"
+                       autocomplete="off">
+              </div>
+              <div class="form-text">Choisissez un nom court et évocateur.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Responsable -->
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+          <div class="card-body p-4">
+            <p class="section-title mb-3 pb-2 border-bottom">Responsable</p>
+
+            {% if employes %}
+            <div>
+              <label class="form-label fw-medium">Chef de département</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 field-icon"><i class="ti ti-user-star"></i></span>
+                <select id="f-responsable" name="responsable" class="form-select border-start-0 ps-0">
+                  <option value="">— Aucun responsable désigné —</option>
+                  {% for emp in employes %}
+                  <option value="{{ emp.pk }}"
+                          data-initiales="{{ emp.prenom|first|upper }}{{ emp.nom|first|upper }}"
+                          {% if departement and departement.responsable_id == emp.pk %}selected{% endif %}>
+                    {{ emp.nom }} {{ emp.prenom }} — {{ emp.matricule }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-text">L'employé qui dirige ce département. Modifiable à tout moment.</div>
+            </div>
+            {% else %}
+            <div class="p-3 rounded-2 d-flex align-items-center gap-2 small" style="background:#f8f9fa;border:1px solid #e5e7eb;">
+              <i class="ti ti-users-off text-muted flex-shrink-0 fs-5"></i>
+              <span class="text-muted">
+                Aucun employé actif disponible.
+                <a href="{% url 'rh:creer-employe' %}" class="fw-medium">Créer un employé d'abord</a>
+              </span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 justify-content-end">
+          <a href="{% url 'rh:liste-departements' %}" class="btn btn-outline-secondary px-4">
+            <i class="ti ti-x me-1"></i>Annuler
+          </a>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="ti ti-{% if action == 'modifier' %}device-floppy{% else %}building-plus{% endif %} me-1"></i>
+            {% if action == 'modifier' %}Enregistrer{% else %}Créer le département{% endif %}
+          </button>
+        </div>
+
+      </div><!-- /col-lg-7 -->
+
+      <!-- ══ Panneau latéral ════════════════════════════════════════════ -->
+      <div class="col-lg-5">
+        <div class="aside-card card border-0 shadow-sm">
+          <div class="card-body p-4">
+
+            <!-- Aperçu visuel -->
+            <div class="text-center mb-4">
+              <div class="dept-icon-preview mx-auto mb-3">
+                <i class="ti ti-building"></i>
+              </div>
+              <div id="aside-nom" class="fw-bold" style="font-size:1.05rem;">
+                {% if departement %}{{ departement.nom }}{% else %}<span class="text-muted fw-normal" style="font-size:.9rem;">Nouveau département</span>{% endif %}
+              </div>
+            </div>
+
+            <p class="section-title mb-3 pb-2 border-bottom">Récapitulatif</p>
+
+            <div class="mb-4">
+              <div class="info-row">
+                <span class="info-label">Nom</span>
+                <span id="aside-nom-val" class="info-value {% if not departement %}placeholder-val{% endif %}">
+                  {{ departement.nom|default:'—' }}
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Responsable</span>
+                <div id="aside-responsable" class="d-flex align-items-center gap-2">
+                  <span class="info-value placeholder-val">Aucun</span>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+            <div class="rounded-2 p-3" style="background:#f8f9fa;">
+              <div class="small fw-semibold mb-2">
+                <i class="ti ti-lightbulb me-1 text-warning"></i>Exemples de départements
+              </div>
+              <div class="d-flex flex-wrap gap-1">
+                {% for name in exemples_departements %}
+                <button type="button" class="btn btn-xs border rounded-pill px-2 py-0 small text-muted"
+                        style="font-size:.72rem;"
+                        onclick="document.getElementById('f-nom').value='{{ name }}'; updateAside();">
+                  {{ name }}
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div><!-- /col-lg-5 -->
+
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const nomInput = document.getElementById('f-nom');
+  const respSel  = document.getElementById('f-responsable');
+
+  function setInfo (id, val, placeholder) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const empty = !val || val === '—' || val === '';
+    if (id === 'aside-responsable') {
+      if (empty) {
+        el.innerHTML = '<span class="info-value placeholder-val">Aucun</span>';
+      } else {
+        const opt = respSel?.options[respSel.selectedIndex];
+        const initiales = opt?.dataset.initiales || '?';
+        el.innerHTML = `
+          <span class="emp-option-avatar">${initiales}</span>
+          <span class="info-value">${val}</span>`;
+      }
+      return;
+    }
+    el.textContent = empty ? (placeholder || '—') : val;
+    el.classList.toggle('placeholder-val', empty);
+  }
+
+  window.updateAside = function () {
+    const nom = nomInput?.value.trim() || '';
+
+    // Titre en haut du panel
+    const titreEl = document.getElementById('aside-nom');
+    if (titreEl) {
+      titreEl.innerHTML = nom
+        ? `<span class="fw-bold">${nom}</span>`
+        : `<span class="text-muted fw-normal" style="font-size:.9rem;">Nouveau département</span>`;
+    }
+    setInfo('aside-nom-val', nom);
+
+    // Responsable
+    if (respSel) {
+      const respText = respSel.value
+        ? respSel.options[respSel.selectedIndex].text.split('—')[0].trim()
+        : '';
+      setInfo('aside-responsable', respText);
+    }
+  };
+
+  nomInput?.addEventListener('input', updateAside);
+  respSel?.addEventListener('change', updateAside);
+
+  updateAside();
+})();
+</script>
+{% endblock %}

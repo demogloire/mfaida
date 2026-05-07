@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rapports:ventes' %}" class="text-decoration-none">Ventes</a></li>
+      <li class="breadcrumb-item active">Bénéfice</li>
+    </ol>
+  </nav>
+
+  <h1 class="fs-4 fw-bold mb-4"><i class="bi bi-graph-up-arrow text-success me-2"></i>Bénéfice brut &amp; net</h1>
+
+  {% include 'rapports/_barre_outils.html' %}
+
+  <!-- Bloc résultat principal -->
+  <div class="row g-3 mb-4">
+    <!-- CA -->
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px">Chiffre d'affaires HT</div>
+        <div class="fw-bold fs-4 text-primary">{{ ca_total|floatformat:2 }}</div>
+      </div>
+    </div>
+    <!-- Coût -->
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center">
+        <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px">Coût des ventes</div>
+        <div class="fw-bold fs-4 text-danger">{{ cout_total|floatformat:2 }}</div>
+      </div>
+    </div>
+    <!-- Bénéfice brut -->
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #4caf50 !important">
+        <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px">Bénéfice brut</div>
+        <div class="fw-bold fs-3 {% if benefice_brut >= 0 %}text-success{% else %}text-danger{% endif %}">
+          {{ benefice_brut|floatformat:2 }}
+        </div>
+        <div class="text-muted small">Marge : {{ marge_brute|floatformat:1 }}%</div>
+      </div>
+    </div>
+    <!-- Bénéfice net -->
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #1565c0 !important">
+        <div class="text-muted small text-uppercase fw-semibold" style="font-size:10px">Bénéfice net</div>
+        <div class="fw-bold fs-3 {% if benefice_net >= 0 %}text-primary{% else %}text-danger{% endif %}">
+          {{ benefice_net|floatformat:2 }}
+        </div>
+        <div class="text-muted small">Marge nette : {{ marge_nette|floatformat:1 }}%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- Cascade de calcul -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-calculator text-primary me-2"></i>Détail du calcul</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between">
+            <span class="small text-muted">Chiffre d'affaires HT</span>
+            <span class="fw-semibold">{{ ca_total|floatformat:2 }}</span>
+          </div>
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between bg-danger-subtle">
+            <span class="small text-danger"><i class="bi bi-dash me-1"></i>Coût des marchandises vendues</span>
+            <span class="fw-semibold text-danger">- {{ cout_total|floatformat:2 }}</span>
+          </div>
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between bg-success-subtle">
+            <span class="fw-bold text-success">= Bénéfice brut</span>
+            <span class="fw-bold text-success">{{ benefice_brut|floatformat:2 }}</span>
+          </div>
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between">
+            <span class="small text-muted"><i class="bi bi-dash me-1"></i>Dépenses opérationnelles</span>
+            <span class="fw-semibold text-danger">- {{ depenses_total|floatformat:2 }}</span>
+          </div>
+          <div class="px-4 py-3 border-bottom d-flex justify-content-between">
+            <span class="small text-muted"><i class="bi bi-dash me-1"></i>Masse salariale (bulletins payés)</span>
+            <span class="fw-semibold text-danger">- {{ bulletins|floatformat:2 }}</span>
+          </div>
+          <div class="px-4 py-3 d-flex justify-content-between"
+               style="background:linear-gradient(135deg,#1565c0,#1e88e5)">
+            <span class="fw-bold text-white">= Bénéfice net</span>
+            <span class="fw-bold text-white fs-5">{{ benefice_net|floatformat:2 }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Par PDV -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-shop text-primary me-2"></i>Bénéfice brut par point de vente</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Point de vente</th>
+                  <th class="text-end">CA HT</th>
+                  <th class="text-end">Coût</th>
+                  <th class="text-end">Bénéfice brut</th>
+                  <th class="text-end">Marge</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in par_pdv %}
+                <tr>
+                  <td class="fw-semibold">{{ p.nom }}</td>
+                  <td class="text-end">{{ p.ca|floatformat:2 }}</td>
+                  <td class="text-end text-muted">{{ p.cout|floatformat:2 }}</td>
+                  <td class="text-end fw-bold {% if p.brut >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ p.brut|floatformat:2 }}
+                  </td>
+                  <td class="text-end">
+                    <span class="badge {% if p.marge >= 20 %}bg-success{% elif p.marge >= 0 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                      {{ p.marge|floatformat:1 }}%
+                    </span>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Aucune donnée</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'caisse:dashboard' %}" class="text-decoration-none">Caisse</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'caisse:liste-clients' %}" class="text-decoration-none">Clients</a></li>
+      <li class="breadcrumb-item active">{{ client.nom }}</li>
+    </ol>
+  </nav>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">{{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+  {% endfor %}{% endif %}
+
+  <!-- En-tête client -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-column flex-md-row gap-4 align-items-md-start">
+        <!-- Avatar + infos -->
+        <div class="d-flex gap-3 align-items-start flex-grow-1">
+          <span class="rounded-3 d-flex align-items-center justify-content-center fw-bold fs-3 flex-shrink-0
+                       {% if total_dette > 0 %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %}"
+                style="width:4rem;height:4rem;">
+            {{ client.nom|first|upper }}
+          </span>
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <h1 class="fs-4 fw-bold mb-0">{{ client.nom }}</h1>
+              {% if client.est_client_passager %}<span class="badge bg-secondary">Passager</span>{% endif %}
+              <span class="badge bg-light text-dark border">{{ client.get_type_client_display }}</span>
+            </div>
+            <div class="d-flex flex-wrap gap-3 text-muted small">
+              <span><i class="ti ti-id me-1"></i>{{ client.code_client }}</span>
+              {% if client.telephone %}<span><i class="ti ti-phone me-1"></i>{{ client.telephone }}</span>{% endif %}
+              {% if client.email %}<span><i class="ti ti-mail me-1"></i>{{ client.email }}</span>{% endif %}
+              {% if client.adresse %}<span><i class="ti ti-map-pin me-1"></i>{{ client.adresse }}</span>{% endif %}
+            </div>
+            {% if client.limite_credit %}
+            <div class="mt-1 small text-muted">Limite crédit : <strong>{{ client.limite_credit }}</strong></div>
+            {% endif %}
+          </div>
+        </div>
+        <!-- Bouton nouvelle facture rapide -->
+        <a href="{% url 'facturation:nouvelle-facture' %}" class="btn btn-success rounded-pill px-4 flex-shrink-0">
+          <i class="ti ti-plus me-1"></i>Nouvelle facture
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="text-muted small mb-1">Factures</div>
+        <div class="fw-bold fs-3">{{ nb_factures }}</div>
+        {% if nb_avec_dette %}<div class="small text-danger">{{ nb_avec_dette }} avec dette</div>{% endif %}
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="text-muted small mb-1">Total facturé</div>
+        <div class="fw-bold fs-5">{{ total_facture }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3 border-success border-2">
+        <div class="text-muted small mb-1">Total encaissé</div>
+        <div class="fw-bold fs-5 text-success">{{ total_paye }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3 {% if total_dette > 0 %}border-danger border-2{% endif %}">
+        <div class="text-muted small mb-1">Solde dû</div>
+        <div class="fw-bold fs-5 {% if total_dette > 0 %}text-danger{% else %}text-success{% endif %}">
+          {% if total_dette > 0 %}<i class="ti ti-alert-circle me-1"></i>{% endif %}{{ total_dette }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerte dette -->
+  {% if total_dette > 0 %}
+  <div class="alert alert-danger d-flex align-items-center gap-2 mb-4 shadow-sm">
+    <i class="ti ti-receipt-off fs-4 flex-shrink-0"></i>
+    <div>
+      <strong>Ce client a une dette de {{ total_dette }}.</strong>
+      Retrouvez les factures impayées ci-dessous pour les liquider.
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Filtres -->
+  <form method="get" class="d-flex flex-wrap gap-2 mb-3 align-items-end">
+    <div>
+      <select name="pdv" class="form-select form-select-sm">
+        <option value="">Tous PDV</option>
+        {% for p in pdvs %}<option value="{{ p.pk }}" {% if filt_pdv == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nom }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <select name="statut" class="form-select form-select-sm">
+        <option value="">Tous statuts</option>
+        {% for code, label in statuts_facture %}<option value="{{ code }}" {% if filt_statut == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-sm btn-secondary"><i class="ti ti-filter me-1"></i>Filtrer</button>
+    {% if filt_pdv or filt_statut %}
+    <a href="{% url 'caisse:compte-client' client.pk %}" class="btn btn-sm btn-outline-secondary">Réinit.</a>
+    {% endif %}
+  </form>
+
+  <!-- ── Factures ────────────────────────────────────────────────────────── -->
+  <h6 class="fw-semibold text-uppercase text-muted mb-2" style="letter-spacing:.06em;font-size:.75rem;">
+    <i class="ti ti-file-invoice me-1"></i>Factures ({{ factures|length }})
+  </h6>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+            <th class="ps-4 py-3">N°</th>
+            <th class="py-3">Date</th>
+            <th class="py-3 d-none d-md-table-cell">PDV</th>
+            <th class="py-3 d-none d-md-table-cell">Paiement</th>
+            <th class="py-3 text-end">Total TTC</th>
+            <th class="py-3 text-end">Payé</th>
+            <th class="py-3 text-end text-danger">Reste</th>
+            <th class="py-3 text-center">Statut</th>
+            <th class="pe-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in factures %}
+          <tr onclick="location.href='{% url 'facturation:detail-facture' f.pk %}'" style="cursor:pointer;"
+              class="{% if f.reste_a_payer > 0 %}table-danger bg-opacity-25{% endif %}">
+            <td class="ps-4 font-monospace fw-semibold small">{{ f.numero_facture }}</td>
+            <td class="text-muted">{{ f.date_facture|date:"d/m/Y H:i" }}</td>
+            <td class="text-muted d-none d-md-table-cell">{{ f.point_vente.nom }}</td>
+            <td class="text-muted d-none d-md-table-cell">{{ f.get_mode_paiement_display }}</td>
+            <td class="text-end fw-semibold">{{ f.total_ttc }} <small class="text-muted">{{ f.devise.symbole }}</small></td>
+            <td class="text-end text-success">{{ f.montant_paye }}</td>
+            <td class="text-end fw-bold {% if f.reste_a_payer > 0 %}text-danger{% else %}text-muted{% endif %}">
+              {% if f.reste_a_payer > 0 %}{{ f.reste_a_payer }}{% else %}—{% endif %}
+            </td>
+            <td class="text-center">
+              {% if f.statut == 'VALIDEE' %}<span class="badge bg-success">Validée</span>
+              {% elif f.statut == 'BROUILLON' %}<span class="badge bg-secondary">Brouillon</span>
+              {% elif f.statut == 'EN_CAISSE' %}<span class="badge bg-warning text-dark">En caisse</span>
+              {% else %}<span class="badge bg-danger">Annulée</span>{% endif %}
+            </td>
+            <td class="pe-4">
+              <a href="{% url 'facturation:detail-facture' f.pk %}" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="event.stopPropagation()">
+                {% if f.reste_a_payer > 0 %}<i class="ti ti-cash me-1 text-danger"></i>Liquider{% else %}<i class="ti ti-eye me-1"></i>Voir{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9" class="text-center text-muted py-4">Aucune facture.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Retours & Remboursements ───────────────────────────────────────── -->
+  {% if retours %}
+  <h6 class="fw-semibold text-uppercase text-muted mb-2" style="letter-spacing:.06em;font-size:.75rem;">
+    <i class="ti ti-arrow-back-up me-1"></i>Retours & Remboursements ({{ retours|length }})
+  </h6>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+            <th class="ps-4 py-3">N°</th>
+            <th class="py-3">Date</th>
+            <th class="py-3">Facture origine</th>
+            <th class="py-3 d-none d-md-table-cell">Motif</th>
+            <th class="py-3 text-end">Montant</th>
+            <th class="py-3 text-center">Statut</th>
+            <th class="pe-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in retours %}
+          <tr onclick="location.href='{% url 'facturation:detail-retour' r.pk %}'" style="cursor:pointer;">
+            <td class="ps-4 font-monospace small">{{ r.numero_retour }}</td>
+            <td class="text-muted">{{ r.date_retour|date:"d/m/Y" }}</td>
+            <td>
+              <a href="{% url 'facturation:detail-facture' r.facture_origine.pk %}" class="text-decoration-none small" onclick="event.stopPropagation()">
+                {{ r.facture_origine.numero_facture }}
+              </a>
+            </td>
+            <td class="text-muted d-none d-md-table-cell">{{ r.motif|truncatechars:40 }}</td>
+            <td class="text-end fw-semibold text-warning">{{ r.total_ttc }} <small class="text-muted">{{ r.devise.symbole }}</small></td>
+            <td class="text-center">
+              {% if r.statut == 'APPROUVE' %}<span class="badge bg-success">Remboursé</span>
+              {% elif r.statut == 'EN_ATTENTE' %}<span class="badge bg-warning text-dark">En attente</span>
+              {% elif r.statut == 'BROUILLON' %}<span class="badge bg-secondary">Brouillon</span>
+              {% elif r.statut == 'REJETE' %}<span class="badge bg-danger">Rejeté</span>
+              {% else %}<span class="badge bg-secondary">Annulé</span>{% endif %}
+            </td>
+            <td class="pe-4">
+              <a href="{% url 'facturation:detail-retour' r.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="event.stopPropagation()">
+                <i class="ti ti-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Récapitulatif remboursements -->
+  {% if total_rembourse > 0 %}
+  <div class="alert alert-warning small d-flex gap-2 align-items-center">
+    <i class="ti ti-coins fs-5 flex-shrink-0"></i>
+    <div>Total remboursé à ce client : <strong>{{ total_rembourse }}</strong> ({{ nb_retours }} retour{{ nb_retours|pluralize }})</div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock content %}

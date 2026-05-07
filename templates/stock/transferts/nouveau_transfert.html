@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'stock:liste-transferts' %}" class="text-decoration-none">Transferts</a></li>
+      <li class="breadcrumb-item active">Nouveau</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex gap-3 align-items-start mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary flex-shrink-0" style="width:3rem;height:3rem;">
+      <i class="ti ti-transfer fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-1">Nouveau transfert de stock</h1>
+      <p class="text-muted small mb-0">Déplacez des marchandises entre emplacements. Les lignes de produits seront ajoutées après création.</p>
+    </div>
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <form method="post" class="row g-4 align-items-start" id="formTransfert">
+    {% csrf_token %}
+    <div class="col-12 col-lg-8">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-3 px-4 border-bottom">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-arrows-exchange me-1"></i>Type de transfert
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            {% for code, label in types_avec_perm %}
+            <div class="col-12 col-sm-6">
+              <label class="d-flex align-items-center gap-3 p-3 border rounded-3 cursor-pointer type-card {% if forloop.first %}border-primary bg-primary bg-opacity-5{% endif %}"
+                     style="cursor:pointer;" for="type_{{ code }}">
+                <input type="radio" name="type_transfert" id="type_{{ code }}" value="{{ code }}"
+                       class="form-check-input flex-shrink-0 mt-0" {% if forloop.first %}checked{% endif %}>
+                <div>
+                  <div class="fw-semibold small">
+                    {% if code == 'DEPOT_PDV' %}<i class="ti ti-building me-1 text-primary"></i>
+                    {% elif code == 'PDV_DEPOT' %}<i class="ti ti-arrow-back-up me-1 text-warning"></i>
+                    {% elif code == 'DEPOT_DEPOT' %}<i class="ti ti-building-warehouse me-1 text-info"></i>
+                    {% else %}<i class="ti ti-store me-1 text-secondary"></i>{% endif %}
+                    {{ label }}
+                  </div>
+                </div>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-3 px-4 border-bottom">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-map-pin me-1"></i>Source → Destination
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3 mb-3">
+            <!-- Source -->
+            <div class="col-12 col-md-6" id="bloc-src-depot">
+              <label class="form-label small fw-semibold">Dépôt source <span class="text-danger">*</span></label>
+              <select name="source_depot" class="form-select" id="sel-src-depot">
+                <option value="">— Sélectionnez —</option>
+                {% for d in depots %}
+                <option value="{{ d.pk }}">{{ d.nom }} ({{ d.branche.nom }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6 d-none" id="bloc-src-pdv">
+              <label class="form-label small fw-semibold">Point de vente source <span class="text-danger">*</span></label>
+              <select name="source_pdv" class="form-select" id="sel-src-pdv">
+                <option value="">— Sélectionnez —</option>
+                {% for p in pdvs %}
+                <option value="{{ p.pk }}">{{ p.nom }} ({{ p.branche.nom }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <!-- Destination -->
+            <div class="col-12 col-md-6" id="bloc-dst-depot">
+              <label class="form-label small fw-semibold">Dépôt destination <span class="text-danger">*</span></label>
+              <select name="dest_depot" class="form-select" id="sel-dst-depot">
+                <option value="">— Sélectionnez —</option>
+                {% for d in depots %}
+                <option value="{{ d.pk }}">{{ d.nom }} ({{ d.branche.nom }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6 d-none" id="bloc-dst-pdv">
+              <label class="form-label small fw-semibold">Point de vente destination <span class="text-danger">*</span></label>
+              <select name="dest_pdv" class="form-select" id="sel-dst-pdv">
+                <option value="">— Sélectionnez —</option>
+                {% for p in pdvs %}
+                <option value="{{ p.pk }}">{{ p.nom }} ({{ p.branche.nom }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="form-label small fw-semibold">Motif</label>
+            <textarea name="motif" rows="3" class="form-control" placeholder="Raison du transfert…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 justify-content-end">
+        <a href="{% url 'stock:liste-transferts' %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="submit" class="btn btn-primary px-5 fw-semibold">
+          <i class="ti ti-arrow-right me-1"></i>Créer et ajouter les articles
+        </button>
+      </div>
+    </div>
+
+    <!-- Sidebar aide -->
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 px-4 border-bottom">
+          <span class="fw-semibold small text-uppercase text-muted" style="letter-spacing:.06em;">
+            <i class="ti ti-info-circle me-1"></i>Workflow
+          </span>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex gap-2 py-3">
+              <span class="badge bg-warning text-dark flex-shrink-0 mt-1" style="font-size:.6rem;">1</span>
+              <div><div class="fw-semibold">Créer le transfert</div>
+              <div class="text-muted">Choisissez le type et les emplacements.</div></div>
+            </li>
+            <li class="list-group-item d-flex gap-2 py-3">
+              <span class="badge bg-info text-dark flex-shrink-0 mt-1" style="font-size:.6rem;">2</span>
+              <div><div class="fw-semibold">Ajouter les articles</div>
+              <div class="text-muted">Sélectionnez les lots et quantités à transférer.</div></div>
+            </li>
+            <li class="list-group-item d-flex gap-2 py-3">
+              <span class="badge bg-success flex-shrink-0 mt-1" style="font-size:.6rem;">3</span>
+              <div><div class="fw-semibold">Valider</div>
+              <div class="text-muted">Le stock est déplacé et les mouvements enregistrés.</div></div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const config = {
+    'DEPOT_PDV':   { srcDepot: true,  srcPdv: false, dstDepot: false, dstPdv: true  },
+    'PDV_DEPOT':   { srcDepot: false, srcPdv: true,  dstDepot: true,  dstPdv: false },
+    'DEPOT_DEPOT': { srcDepot: true,  srcPdv: false, dstDepot: true,  dstPdv: false },
+    'PDV_PDV':     { srcDepot: false, srcPdv: true,  dstDepot: false, dstPdv: true  },
+  };
+
+  function toggle(id, visible) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('d-none', !visible);
+    el.querySelectorAll('select').forEach(s => s.disabled = !visible);
+  }
+
+  function applyType(type) {
+    const c = config[type] || {};
+    toggle('bloc-src-depot', !!c.srcDepot);
+    toggle('bloc-src-pdv',   !!c.srcPdv);
+    toggle('bloc-dst-depot', !!c.dstDepot);
+    toggle('bloc-dst-pdv',   !!c.dstPdv);
+  }
+
+  // Exclure la même entité dans la destination (pour DEPOT_DEPOT et PDV_PDV)
+  function syncExclusion() {
+    const type = (document.querySelector('input[name="type_transfert"]:checked') || {}).value;
+
+    if (type === 'DEPOT_DEPOT') {
+      const srcVal = document.getElementById('sel-src-depot').value;
+      Array.from(document.getElementById('sel-dst-depot').options).forEach(function (opt) {
+        opt.disabled = opt.value !== '' && opt.value === srcVal;
+      });
+    }
+    if (type === 'PDV_PDV') {
+      const srcVal = document.getElementById('sel-src-pdv').value;
+      Array.from(document.getElementById('sel-dst-pdv').options).forEach(function (opt) {
+        opt.disabled = opt.value !== '' && opt.value === srcVal;
+      });
+    }
+  }
+
+  document.getElementById('sel-src-depot').addEventListener('change', syncExclusion);
+  document.getElementById('sel-src-pdv').addEventListener('change', syncExclusion);
+
+  document.querySelectorAll('input[name="type_transfert"]').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      applyType(this.value);
+      syncExclusion();
+    });
+    inp.closest('.type-card')?.addEventListener('click', function () {
+      document.querySelectorAll('.type-card').forEach(c => c.classList.remove('border-primary', 'bg-primary', 'bg-opacity-5'));
+      this.classList.add('border-primary', 'bg-primary', 'bg-opacity-5');
+    });
+  });
+
+  // Init
+  const checked = document.querySelector('input[name="type_transfert"]:checked');
+  if (checked) applyType(checked.value);
+})();
+</script>
+{% endblock %}

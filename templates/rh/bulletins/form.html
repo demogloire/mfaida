@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-bulletins' %}" class="text-decoration-none">Bulletins</a></li>
+      <li class="breadcrumb-item active">Nouveau bulletin</li>
+    </ol>
+  </nav>
+
+  <h4 class="fw-bold mb-4"><i class="bi bi-file-earmark-plus text-primary me-2"></i>Générer un bulletin de paie</h4>
+
+  <form method="post" id="formBulletin">
+    {% csrf_token %}
+    <div class="row g-4">
+
+      <!-- Formulaire -->
+      <div class="col-lg-7">
+
+        <!-- Employé -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-person-badge text-primary me-2"></i>Employé</h6>
+          </div>
+          <div class="card-body">
+            <select name="employe" id="selEmploye" class="form-select" required>
+              <option value="">— Sélectionner un employé —</option>
+              {% for emp in employes %}
+              <option value="{{ emp.pk }}"
+                data-nom="{{ emp.prenom }} {{ emp.nom }}"
+                data-poste="{{ emp.contrat_set.first.titre_poste|default:'' }}"
+                data-salaire="{{ emp.contrat_set.first.salaire_base|default:0 }}"
+                data-devise="{{ emp.contrat_set.first.devise.code|default:'' }}">
+                {{ emp.prenom }} {{ emp.nom }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Période -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-calendar3 text-primary me-2"></i>Période</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Mois <span class="text-danger">*</span></label>
+                <select name="mois" id="selMois" class="form-select" required>
+                  {% for num, nom in mois_choices %}
+                  <option value="{{ num }}" {% if num == mois_defaut %}selected{% endif %}>{{ nom }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Année <span class="text-danger">*</span></label>
+                <select name="annee" id="selAnnee" class="form-select" required>
+                  {% for a in annees %}
+                  <option value="{{ a }}" {% if a == annee_defaut %}selected{% endif %}>{{ a }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paramètres de calcul -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-sliders text-primary me-2"></i>Paramètres de calcul</h6>
+          </div>
+          <div class="card-body">
+            <label class="form-label fw-semibold">Jours ouvrables du mois (base de calcul)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="bi bi-calendar-week text-muted"></i></span>
+              <input type="number" name="jours_ouvrables" class="form-control" value="26" min="1" max="31" required>
+              <span class="input-group-text bg-light text-muted small">jours</span>
+            </div>
+            <div class="form-text">
+              <i class="bi bi-info-circle me-1"></i>
+              Le salaire brut est proratisé : (salaire_base ÷ jours_ouvrables) × jours_prestés.
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-info border-0 small">
+          <i class="bi bi-magic me-2"></i>
+          <strong>Génération automatique</strong> — Le bulletin sera calculé à partir des présences enregistrées
+          pour le mois sélectionné. Les avances sur salaire décaissées et non encore remboursées
+          seront automatiquement déduites.
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-gear me-1"></i>Générer le bulletin
+          </button>
+          <a href="{% url 'rh:liste-bulletins' %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+
+      </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-5">
+        <div class="position-sticky" style="top:80px">
+
+          <!-- Aperçu employé -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-primary text-white py-3">
+              <h6 class="mb-0 fw-semibold"><i class="bi bi-person-circle me-2"></i>Aperçu</h6>
+            </div>
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                <div class="rounded-circle bg-primary bg-opacity-10 text-primary fw-bold d-flex align-items-center justify-content-center"
+                     style="width:48px;height:48px;font-size:16px" id="previewInitiales">
+                  <i class="bi bi-person"></i>
+                </div>
+                <div>
+                  <div class="fw-bold" id="previewNom">—</div>
+                  <div class="text-muted small" id="previewPoste">Sélectionner un employé</div>
+                </div>
+              </div>
+              <div class="small">
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                  <span class="text-muted">Salaire de base :</span>
+                  <span class="fw-semibold" id="previewSalaire">—</span>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                  <span class="text-muted">Période :</span>
+                  <span class="fw-semibold" id="previewPeriode">—</span>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                  <span class="text-muted">Devise :</span>
+                  <span id="previewDevise">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comment ça marche -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h6 class="fw-semibold mb-3 small text-uppercase text-muted">Composantes du bulletin</h6>
+              <div class="d-flex flex-column gap-2 small">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-plus-circle text-success mt-1"></i>
+                  <div><strong>Salaire brut</strong> — proratisé selon les jours prestés</div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-plus-circle text-success mt-1"></i>
+                  <div><strong>Avantages</strong> — prime, transport, logement (à ajouter manuellement)</div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-dash-circle text-danger mt-1"></i>
+                  <div><strong>Retenues diverses</strong> — INSS, impôts (à ajouter manuellement)</div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-dash-circle text-danger mt-1"></i>
+                  <div><strong>Retenues avances</strong> — déduites automatiquement</div>
+                </div>
+                <div class="border-top pt-2 mt-1 d-flex align-items-start gap-2">
+                  <i class="bi bi-equals text-primary mt-1 fw-bold"></i>
+                  <div><strong>Salaire net à payer</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </form>
+
+</div>
+
+<script>
+const moisNoms = ['','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+function updatePreview() {
+  const emp  = document.getElementById('selEmploye');
+  const mois = document.getElementById('selMois');
+  const ann  = document.getElementById('selAnnee');
+  const opt  = emp.options[emp.selectedIndex];
+  if (opt && opt.value) {
+    const parts = opt.dataset.nom.split(' ');
+    document.getElementById('previewInitiales').textContent = parts.map(p=>p[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('previewNom').textContent    = opt.dataset.nom;
+    document.getElementById('previewPoste').textContent  = opt.dataset.poste || 'Employé';
+    document.getElementById('previewSalaire').textContent= parseFloat(opt.dataset.salaire||0).toLocaleString('fr-FR') + ' ' + (opt.dataset.devise||'');
+    document.getElementById('previewDevise').textContent = opt.dataset.devise || '—';
+  } else {
+    document.getElementById('previewInitiales').innerHTML = '<i class="bi bi-person"></i>';
+    document.getElementById('previewNom').textContent    = '—';
+    document.getElementById('previewPoste').textContent  = 'Sélectionner un employé';
+    document.getElementById('previewSalaire').textContent= '—';
+    document.getElementById('previewDevise').textContent = '—';
+  }
+  document.getElementById('previewPeriode').textContent =
+    moisNoms[parseInt(mois.value)] + ' ' + ann.value;
+}
+document.getElementById('selEmploye').addEventListener('change', updatePreview);
+document.getElementById('selMois').addEventListener('change', updatePreview);
+document.getElementById('selAnnee').addEventListener('change', updatePreview);
+window.addEventListener('DOMContentLoaded', updatePreview);
+</script>
+{% endblock %}

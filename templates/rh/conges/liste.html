@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item active">Congés</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">
+        <i class="bi bi-calendar2-week text-primary me-2"></i>Gestion des Congés
+      </h4>
+      <p class="text-muted small mb-0">Demandes de congés, suivi et approbations</p>
+    </div>
+    <a href="{% url 'rh:nouvelle-conge' %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> Nouvelle demande
+    </a>
+  </div>
+
+  <!-- Statistiques -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-3 bg-warning bg-opacity-10 p-3">
+            <i class="bi bi-hourglass-split text-warning fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-4 fw-bold">{{ nb_demandes }}</div>
+            <div class="small text-muted">En attente</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-3 bg-success bg-opacity-10 p-3">
+            <i class="bi bi-check-circle text-success fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-4 fw-bold">{{ nb_approuves }}</div>
+            <div class="small text-muted">En cours</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-3 bg-primary bg-opacity-10 p-3">
+            <i class="bi bi-people text-primary fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-4 fw-bold">{{ conges.count }}</div>
+            <div class="small text-muted">Total filtrés</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3 cursor-pointer" onclick="window.location='{% url 'rh:tableau-presences' %}'">
+          <div class="rounded-3 bg-info bg-opacity-10 p-3">
+            <i class="bi bi-grid-3x3 text-info fs-4"></i>
+          </div>
+          <div>
+            <div class="fw-semibold">Présences</div>
+            <div class="small text-muted">Tableau mensuel →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Rechercher</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" value="{{ q }}" class="form-control border-start-0" placeholder="Nom de l'employé...">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Statut</label>
+          <select name="statut" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            {% for code, lib in statuts %}
+            <option value="{{ code }}" {% if code == statut %}selected{% endif %}>{{ lib }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Type de congé</label>
+          <select name="type_conge" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            {% for code, lib in types_conge %}
+            <option value="{{ code }}" {% if code == type_conge %}selected{% endif %}>{{ lib }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Mois</label>
+          <input type="month" name="mois" value="{{ mois }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm flex-fill">
+            <i class="bi bi-funnel me-1"></i>Filtrer
+          </button>
+          <a href="{% url 'rh:liste-conges' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-x-lg"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tableau -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      {% if conges %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4">Employé</th>
+              <th>Type</th>
+              <th>Période</th>
+              <th class="text-center">Durée</th>
+              <th>Statut</th>
+              <th>Demandé par</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for conge in conges %}
+            <tr>
+              <td class="ps-4">
+                <div class="d-flex align-items-center gap-2">
+                  {% if conge.employe.photo %}
+                  <img src="{{ conge.employe.photo.url }}" class="rounded-circle" width="32" height="32" style="object-fit:cover">
+                  {% else %}
+                  <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold"
+                       style="width:32px;height:32px;font-size:12px">
+                    {{ conge.employe.prenom|slice:":1" }}{{ conge.employe.nom|slice:":1" }}
+                  </div>
+                  {% endif %}
+                  <div>
+                    <div class="fw-semibold small">{{ conge.employe.prenom }} {{ conge.employe.nom }}</div>
+                    {% with c=conge.employe.contrat_set.filter.est_actuel|first %}
+                    {% endwith %}
+                    <div class="text-muted" style="font-size:11px">
+                      {{ conge.employe.contrat_set.first.titre_poste|default:"-" }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge rounded-pill
+                  {% if conge.type_conge == 'ANNUEL' %}bg-primary
+                  {% elif conge.type_conge == 'MALADIE' %}bg-warning text-dark
+                  {% elif conge.type_conge == 'MATERNITE' %}bg-info text-dark
+                  {% elif conge.type_conge == 'SANS_SOLDE' %}bg-secondary
+                  {% else %}bg-light text-dark{% endif %}">
+                  {{ conge.get_type_conge_display }}
+                </span>
+              </td>
+              <td>
+                <div class="small">
+                  <span class="text-muted">du</span> <strong>{{ conge.date_debut|date:"d/m/Y" }}</strong>
+                  <span class="text-muted">au</span> <strong>{{ conge.date_fin|date:"d/m/Y" }}</strong>
+                </div>
+              </td>
+              <td class="text-center">
+                <span class="fw-semibold">{{ conge.nb_jours }}</span>
+                <span class="text-muted small">j</span>
+              </td>
+              <td>
+                {% if conge.statut == 'DEMANDE' %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>En attente</span>
+                {% elif conge.statut == 'APPROUVEE' %}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approuvé</span>
+                {% elif conge.statut == 'REJETEE' %}
+                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejeté</span>
+                {% elif conge.statut == 'ANNULEE' %}
+                <span class="badge bg-secondary"><i class="bi bi-slash-circle me-1"></i>Annulé</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="small text-muted">{{ conge.demande_par }}</div>
+                <div style="font-size:11px" class="text-muted">{{ conge.date_demande|date:"d/m/Y" }}</div>
+              </td>
+              <td class="text-end pe-3">
+                <a href="{% url 'rh:detail-conge' pk=conge.pk %}" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-eye me-1"></i>Voir
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-calendar2-x display-4 text-muted opacity-50"></i>
+        <p class="text-muted mt-3 mb-0">Aucune demande de congé trouvée.</p>
+        <a href="{% url 'rh:nouvelle-conge' %}" class="btn btn-primary btn-sm mt-3">
+          <i class="bi bi-plus-lg me-1"></i>Créer une demande
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

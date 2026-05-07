@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-employes' %}" class="text-decoration-none">Employés</a></li>
+      <li class="breadcrumb-item active">{{ employe.matricule }}</li>
+    </ol>
+  </nav>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="row g-4">
+
+    <!-- Colonne gauche : fiche employé -->
+    <div class="col-lg-4">
+
+      <!-- Carte identité -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body text-center py-4">
+          {% if employe.photo %}
+          <img src="{{ employe.photo.url }}" class="rounded-circle mb-3"
+               style="width:80px;height:80px;object-fit:cover;border:3px solid #eef0ff;" alt="">
+          {% else %}
+          <span class="rounded-circle d-inline-flex align-items-center justify-content-center fw-bold mb-3"
+                style="width:80px;height:80px;font-size:1.8rem;background:#eef0ff;color:#4f52b2;">
+            {{ employe.prenom|first|upper }}{{ employe.nom|first|upper }}
+          </span>
+          {% endif %}
+          <h5 class="fw-bold mb-0">{{ employe.nom }} {{ employe.prenom }}</h5>
+          {% if employe.postnom %}<div class="text-muted small">{{ employe.postnom }}</div>{% endif %}
+          <div class="mt-2">
+            <code class="bg-light px-2 py-1 rounded small text-muted">{{ employe.matricule }}</code>
+          </div>
+          {% if contrat_actuel %}
+          <div class="mt-2 small text-muted">{{ contrat_actuel.titre_poste }} — {{ contrat_actuel.departement.nom }}</div>
+          {% endif %}
+          <div class="mt-2">
+            {% if employe.est_actif %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Inactif</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-footer bg-white border-top pb-3 px-3">
+          <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <a href="{% url 'rh:modifier-employe' employe.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="ti ti-edit me-1"></i>Modifier
+            </a>
+            <a href="{% url 'rh:imprimer-employe' employe.pk %}" target="_blank"
+               class="btn btn-sm btn-outline-secondary">
+              <i class="ti ti-printer me-1"></i>Imprimer
+            </a>
+            <form method="post" action="{% url 'rh:toggle-statut-employe' employe.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm {% if employe.est_actif %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                      onclick="return confirm('{% if employe.est_actif %}Désactiver cet employé ?{% else %}Réactiver cet employé ?{% endif %}')">
+                {% if employe.est_actif %}<i class="ti ti-user-off me-1"></i>Désactiver
+                {% else %}<i class="ti ti-user-check me-1"></i>Réactiver{% endif %}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations personnelles -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-2 px-3">
+          <h6 class="fw-bold mb-0 small">Informations personnelles</h6>
+        </div>
+        <div class="card-body p-0">
+          <dl class="row small mb-0 px-3 py-2">
+            <dt class="col-5 text-muted py-1">Sexe</dt>
+            <dd class="col-7 py-1">{{ employe.get_sexe_display }}</dd>
+            <dt class="col-5 text-muted py-1">État civil</dt>
+            <dd class="col-7 py-1">{{ employe.get_etat_civil_display }}</dd>
+            <dt class="col-5 text-muted py-1">Naissance</dt>
+            <dd class="col-7 py-1">{{ employe.date_naissance|date:"d/m/Y" }}</dd>
+            <dt class="col-5 text-muted py-1">Téléphone</dt>
+            <dd class="col-7 py-1">{{ employe.telephone }}</dd>
+            <dt class="col-5 text-muted py-1">Enfants</dt>
+            <dd class="col-7 py-1">{{ employe.nombre_enfants }}</dd>
+            <dt class="col-5 text-muted py-1">Adresse</dt>
+            <dd class="col-7 py-1">{{ employe.adresse|default:"—" }}</dd>
+            <dt class="col-5 text-muted py-1">Branche</dt>
+            <dd class="col-7 py-1">{{ employe.branche.nom }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne droite -->
+    <div class="col-lg-8">
+
+      <!-- Contrats -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between">
+          <h6 class="fw-bold mb-0 small">Contrats</h6>
+          <a href="{% url 'rh:nouveau-contrat' employe.pk %}" class="btn btn-xs btn-outline-primary">
+            <i class="ti ti-plus me-1"></i>Ajouter
+          </a>
+        </div>
+        {% if contrats %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+              <tr>
+                <th>Type</th>
+                <th>Poste</th>
+                <th>Département</th>
+                <th>Début</th>
+                <th>Fin</th>
+                <th class="text-end">Salaire</th>
+                <th class="text-center">Actuel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in contrats %}
+              <tr {% if c.est_actuel %}class="table-primary"{% endif %}>
+                <td><span class="badge bg-secondary-subtle text-secondary border">{{ c.get_type_contrat_display }}</span></td>
+                <td class="fw-semibold">{{ c.titre_poste }}</td>
+                <td>{{ c.departement.nom }}</td>
+                <td class="text-nowrap">{{ c.date_debut|date:"d/m/Y" }}</td>
+                <td class="text-nowrap">{{ c.date_fin|date:"d/m/Y"|default:"—" }}</td>
+                <td class="text-end text-nowrap">
+                  {{ c.salaire_base|floatformat:2 }} <span class="text-muted">{{ c.devise.code }}</span>
+                </td>
+                <td class="text-center">
+                  {% if c.est_actuel %}<i class="ti ti-circle-check text-success fs-5"></i>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="card-body text-center py-4 text-muted small">
+          Aucun contrat enregistré.
+          <a href="{% url 'rh:nouveau-contrat' employe.pk %}" class="ms-1">Ajouter un contrat</a>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Avances récentes -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between">
+          <h6 class="fw-bold mb-0 small">Avances sur salaire <span class="text-muted fw-normal">(10 dernières)</span></h6>
+          <a href="{% url 'rh:nouvelle-avance' %}" class="btn btn-xs btn-outline-warning">
+            <i class="ti ti-plus me-1"></i>Nouvelle avance
+          </a>
+        </div>
+        {% if avances %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+              <tr>
+                <th>Numéro</th>
+                <th>Date</th>
+                <th class="text-end">Montant</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for av in avances %}
+              <tr>
+                <td><a href="{% url 'rh:detail-avance' av.pk %}" class="text-decoration-none fw-mono">{{ av.numero }}</a></td>
+                <td class="text-muted text-nowrap">{{ av.date_demande|date:"d/m/Y" }}</td>
+                <td class="text-end text-nowrap">
+                  {{ av.montant|floatformat:2 }} <span class="text-muted">{{ av.devise.code }}</span>
+                </td>
+                <td>
+                  {% if av.statut == 'DEMANDE' %}<span class="badge bg-secondary-subtle text-secondary border">Demandée</span>
+                  {% elif av.statut == 'APPROUVEE' %}<span class="badge bg-warning-subtle text-warning border">Approuvée</span>
+                  {% elif av.statut == 'DECAISSEE' %}<span class="badge bg-primary-subtle text-primary border">Décaissée</span>
+                  {% elif av.statut == 'REMBOURSEE' %}<span class="badge bg-success-subtle text-success border">Remboursée</span>
+                  {% elif av.statut == 'REJETEE' %}<span class="badge bg-danger-subtle text-danger border">Rejetée</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="card-body text-center py-3 text-muted small">Aucune avance enregistrée.</div>
+        {% endif %}
+      </div>
+
+      <!-- Congés récents -->
+      <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between">
+          <h6 class="fw-bold mb-0 small">Congés <span class="text-muted fw-normal">(10 derniers)</span></h6>
+          <a href="{% url 'rh:nouvelle-conge-employe' employe_pk=employe.pk %}" class="btn btn-xs btn-outline-info">
+            <i class="ti ti-plus me-1"></i>Nouveau congé
+          </a>
+        </div>
+        {% if conges %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+              <tr>
+                <th>Type</th>
+                <th>Période</th>
+                <th class="text-center">Jours</th>
+                <th>Statut</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in conges %}
+              <tr>
+                <td>{{ c.get_type_conge_display }}</td>
+                <td class="text-muted text-nowrap">{{ c.date_debut|date:"d/m" }} → {{ c.date_fin|date:"d/m/Y" }}</td>
+                <td class="text-center">{{ c.nb_jours }}</td>
+                <td>
+                  {% if c.statut == 'DEMANDE' %}<span class="badge bg-warning-subtle text-warning border">En attente</span>
+                  {% elif c.statut == 'APPROUVEE' %}<span class="badge bg-success-subtle text-success border">Approuvé</span>
+                  {% elif c.statut == 'REJETEE' %}<span class="badge bg-danger-subtle text-danger border">Rejeté</span>
+                  {% elif c.statut == 'ANNULEE' %}<span class="badge bg-secondary-subtle text-secondary border">Annulé</span>
+                  {% endif %}
+                </td>
+                <td><a href="{% url 'rh:detail-conge' pk=c.pk %}" class="btn btn-xs btn-outline-secondary">Voir</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="card-body text-center py-3 text-muted small">Aucun congé enregistré.</div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

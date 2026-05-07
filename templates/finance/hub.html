@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <!-- En-tête -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+          style="width:3.2rem;height:3.2rem;background:linear-gradient(135deg,#1a237e,#3949ab);color:#fff;">
+      <i class="ti ti-calculator fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-0">Comptabilité & Finance</h1>
+      <p class="text-muted small mb-0">Dépenses, trésorerie, journaux, bilans et rapports financiers.</p>
+    </div>
+  </div>
+
+  <!-- ── Section : Modules disponibles ─────────────────────────────────── -->
+  <h6 class="text-uppercase text-muted fw-semibold small mb-3" style="letter-spacing:.06em">
+    <i class="bi bi-check-circle-fill text-success me-2"></i>Disponibles
+  </h6>
+
+  <div class="row g-3 mb-5">
+
+    <!-- Dépenses -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'depenses:liste-depenses' %}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 module-card" style="border-top:3px solid #dc3545 !important;transition:transform .15s,box-shadow .15s">
+          <div class="card-body d-flex flex-column gap-3 p-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:3rem;height:3rem;background:#fde8ec;color:#dc3545;">
+                <i class="ti ti-receipt-2 fs-3"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0">Dépenses</h6>
+                <p class="text-muted small mb-0">Charges, frais, achats non-stock</p>
+              </div>
+            </div>
+            {% if nb_depenses_attente > 0 %}
+            <div class="alert alert-warning py-1 px-2 small mb-0 rounded-2">
+              <i class="ti ti-clock-hour-4 me-1"></i>
+              <strong>{{ nb_depenses_attente }}</strong> dépense{{ nb_depenses_attente|pluralize }} en attente
+            </div>
+            {% endif %}
+            <div class="mt-auto d-flex justify-content-between align-items-center">
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="bi bi-check-circle me-1"></i>Disponible
+              </span>
+              <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Caisse / Trésorerie -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'caisse:dashboard' %}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 module-card" style="border-top:3px solid #ff9800 !important;transition:transform .15s,box-shadow .15s">
+          <div class="card-body d-flex flex-column gap-3 p-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:3rem;height:3rem;background:#fff3e0;color:#ff9800;">
+                <i class="ti ti-cash-register fs-3"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0">Caisse & Trésorerie</h6>
+                <p class="text-muted small mb-0">Sessions, transactions, encaissements</p>
+              </div>
+            </div>
+            <div class="mt-auto d-flex justify-content-between align-items-center">
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="bi bi-check-circle me-1"></i>Disponible
+              </span>
+              <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Facturation -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'facturation:liste-factures' %}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 module-card" style="border-top:3px solid #2196f3 !important;transition:transform .15s,box-shadow .15s">
+          <div class="card-body d-flex flex-column gap-3 p-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:3rem;height:3rem;background:#e3f2fd;color:#2196f3;">
+                <i class="ti ti-file-invoice fs-3"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0">Facturation</h6>
+                <p class="text-muted small mb-0">Factures clients, avoirs, proformas</p>
+              </div>
+            </div>
+            <div class="mt-auto d-flex justify-content-between align-items-center">
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="bi bi-check-circle me-1"></i>Disponible
+              </span>
+              <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Salaires / Bulletins -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'rh:liste-bulletins' %}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 module-card" style="border-top:3px solid #198754 !important;transition:transform .15s,box-shadow .15s">
+          <div class="card-body d-flex flex-column gap-3 p-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:3rem;height:3rem;background:#e8f5e9;color:#198754;">
+                <i class="ti ti-file-text fs-3"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0">Bulletins de paie</h6>
+                <p class="text-muted small mb-0">Salaires, retenues, avances</p>
+              </div>
+            </div>
+            <div class="mt-auto d-flex justify-content-between align-items-center">
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="bi bi-check-circle me-1"></i>Disponible
+              </span>
+              <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- ── Section : À venir ──────────────────────────────────────────────── -->
+  <h6 class="text-uppercase text-muted fw-semibold small mb-3" style="letter-spacing:.06em">
+    <i class="bi bi-hourglass-split text-warning me-2"></i>En développement — À venir
+  </h6>
+
+  <div class="row g-3">
+
+    {% for module in modules_avenir %}
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 h-100 position-relative overflow-hidden"
+           style="background:#f8f9fa;border:1.5px dashed #dee2e6 !important;opacity:.85">
+        <!-- Ruban "À venir" -->
+        <div class="position-absolute top-0 end-0 mt-2 me-2">
+          <span class="badge bg-warning text-dark" style="font-size:10px">
+            <i class="bi bi-hourglass-split me-1"></i>À venir
+          </span>
+        </div>
+        <div class="card-body d-flex flex-column gap-3 p-4">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:3rem;height:3rem;background:{{ module.bg }};color:{{ module.color }};">
+              <i class="{{ module.icone }} fs-3"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-0 text-muted">{{ module.titre }}</h6>
+              <p class="text-muted small mb-0">{{ module.description }}</p>
+            </div>
+          </div>
+          {% if module.fonctionnalites %}
+          <ul class="list-unstyled mb-0 small text-muted">
+            {% for f in module.fonctionnalites %}
+            <li class="d-flex align-items-center gap-2 py-1">
+              <i class="bi bi-dot fs-5 text-muted"></i>{{ f }}
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          <div class="mt-auto">
+            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+              Planifié
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+</div>
+
+<style>
+.module-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.1) !important;
+}
+</style>
+{% endblock %}

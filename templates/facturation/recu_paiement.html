@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Reçu {{ paiement.numero }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #f4f5f7; color: #111; }
+        .toolbar {
+            padding: .75rem 1rem; background: #1e293b; color: #fff;
+            display: flex; gap: .5rem; flex-wrap: wrap;
+            justify-content: center; align-items: center;
+        }
+        .toolbar button, .toolbar a {
+            font: inherit; cursor: pointer; padding: .45rem 1rem;
+            border-radius: 999px; border: 0; text-decoration: none; font-size: .875rem;
+        }
+        .btn-print { background: #f97316; color: #fff; }
+        .btn-close  { background: #334155; color: #fff; }
+        .ticket-wrap { max-width: 80mm; margin: .75rem auto; padding: .5rem .75rem .75rem; }
+        .ticket {
+            background: #fff; padding: .6rem .5rem .75rem; border-radius: 4px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.06);
+            font-family: Consolas,"Courier New",ui-monospace,monospace;
+            font-size: 11px; line-height: 1.45;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            html, body { background: #fff !important; }
+            .ticket-wrap { margin: 0; padding: 0; max-width: 100%; }
+            .ticket { box-shadow: none; border-radius: 0; }
+        }
+        .sep  { border: none; border-top: 1px dashed #555; margin: 4px 0; }
+        .sep2 { border: none; border-top: 2px solid #222; margin: 4px 0; }
+        .c  { text-align: center; }
+        .r  { text-align: right; }
+        .b  { font-weight: bold; }
+        .row { display: flex; justify-content: space-between; gap: 4px; }
+        .badge-recu {
+            display: block; text-align: center; background: #f97316;
+            color: #fff; font-weight: bold; letter-spacing: .08em;
+            padding: 3px 0; border-radius: 2px; margin: 6px 0 4px;
+        }
+        .badge-solde-ok {
+            display: block; text-align: center; background: #16a34a;
+            color: #fff; font-weight: bold; padding: 3px 0;
+            border-radius: 2px; margin: 4px 0;
+        }
+        .badge-solde-reste {
+            display: block; text-align: center; background: #f97316;
+            color: #fff; font-weight: bold; padding: 3px 0;
+            border-radius: 2px; margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+    <button class="btn-print" onclick="window.print()">🖨 Imprimer</button>
+    <a class="btn-close" href="{% url 'facturation:detail-facture' facture.pk %}">✕ Fermer</a>
+</div>
+
+<div class="ticket-wrap">
+  <div class="ticket">
+
+    <!-- En-tête entreprise -->
+    {% if entreprise %}
+    <div class="c b" style="font-size:13px;">{{ entreprise.nom }}</div>
+    {% if entreprise.adresse %}<div class="c">{{ entreprise.adresse }}</div>{% endif %}
+    {% if entreprise.telephone %}<div class="c">Tél : {{ entreprise.telephone }}</div>{% endif %}
+    {% endif %}
+
+    <hr class="sep2">
+    <div class="badge-recu">REÇU DE PAIEMENT</div>
+    <hr class="sep">
+
+    <!-- Référence -->
+    <div class="row"><span>Reçu N°</span><span class="b">{{ paiement.numero }}</span></div>
+    <div class="row"><span>Date</span><span>{{ paiement.date_paiement|date:"d/m/Y H:i" }}</span></div>
+    <div class="row"><span>Caissier</span><span>{{ paiement.effectue_par.get_full_name|default:paiement.effectue_par.username }}</span></div>
+
+    <hr class="sep">
+
+    <!-- Client -->
+    <div class="row"><span>Client</span><span class="b">{{ facture.client.nom }}</span></div>
+    {% if facture.client.telephone %}<div class="row"><span>Tél</span><span>{{ facture.client.telephone }}</span></div>{% endif %}
+
+    <hr class="sep">
+
+    <!-- Facture d'origine -->
+    <div class="row"><span>Facture N°</span><span class="b">{{ facture.numero_facture }}</span></div>
+    <div class="row"><span>Date facture</span><span>{{ facture.date_facture|date:"d/m/Y" }}</span></div>
+    <div class="row"><span>Total TTC</span><span>{{ facture.total_ttc }} {{ facture.devise.symbole }}</span></div>
+
+    <hr class="sep">
+
+    <!-- Paiement -->
+    <div class="row b" style="font-size:13px;">
+        <span>MONTANT REÇU</span>
+        <span>{{ paiement.montant }} {{ facture.devise.symbole }}</span>
+    </div>
+    <div class="row"><span>Mode</span><span>{{ paiement.get_mode_paiement_display }}</span></div>
+    {% if paiement.notes %}<div class="row"><span>Note</span><span>{{ paiement.notes }}</span></div>{% endif %}
+
+    <hr class="sep">
+
+    <!-- Solde après paiement -->
+    <div class="row"><span>Déjà payé</span><span>{{ facture.montant_paye }} {{ facture.devise.symbole }}</span></div>
+    {% if facture.reste_a_payer > 0 %}
+    <div class="badge-solde-reste">RESTE DÛ : {{ facture.reste_a_payer }} {{ facture.devise.symbole }}</div>
+    {% else %}
+    <div class="badge-solde-ok">✔ FACTURE ENTIÈREMENT RÉGLÉE</div>
+    {% endif %}
+
+    <hr class="sep2">
+    <div class="c" style="font-size:9px;">{{ facture.point_vente.nom }}</div>
+    <div class="c" style="font-size:9px;">Merci pour votre confiance</div>
+
+  </div>
+</div>
+
+</body>
+</html>

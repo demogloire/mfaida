@@ -1,0 +1,75 @@
+{% comment %}
+  Barre d'outils partagée : filtre branche (admins) + période + bouton PDF.
+  Requiert les variables : debut, fin, branches_dispo, branche_choisie, can_export_pdf
+{% endcomment %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+
+      {% comment %}Conserver tous les autres params GET{% endcomment %}
+      {% for key, val in request.GET.items %}
+        {% if key != 'debut' and key != 'fin' and key != 'branche_id' and key != 'format' %}
+          <input type="hidden" name="{{ key }}" value="{{ val }}">
+        {% endif %}
+      {% endfor %}
+
+      {% if est_admin and branches_dispo %}
+      <div class="col-sm-auto">
+        <label class="form-label small fw-semibold mb-1"><i class="bi bi-diagram-3 me-1"></i>Branche</label>
+        <select name="branche_id" class="form-select form-select-sm">
+          <option value="">Toutes les branches</option>
+          {% for b in branches_dispo %}
+          <option value="{{ b.pk }}" {% if branche_choisie and branche_choisie.pk == b.pk %}selected{% endif %}>
+            {{ b.nom }} — {{ b.ville }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if debut is not None and fin is not None %}
+      <div class="col-sm-auto">
+        <label class="form-label small fw-semibold mb-1">Du</label>
+        <input type="date" name="debut" value="{{ debut|date:'Y-m-d' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-sm-auto">
+        <label class="form-label small fw-semibold mb-1">Au</label>
+        <input type="date" name="fin" value="{{ fin|date:'Y-m-d' }}" class="form-control form-control-sm">
+      </div>
+      {% endif %}
+
+      <div class="col-sm-auto d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-funnel me-1"></i>Filtrer
+        </button>
+        <a href="?" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-lg"></i>
+        </a>
+      </div>
+
+      {% if can_export_pdf %}
+      <div class="col-sm-auto ms-auto">
+        <a href="?{% for key, val in request.GET.items %}{% if key != 'format' %}{{ key }}={{ val }}&{% endif %}{% endfor %}format=pdf"
+           target="_blank" class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+        </a>
+      </div>
+      {% endif %}
+
+    </form>
+
+    {% if branche_choisie %}
+    <div class="mt-2">
+      <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+        <i class="bi bi-diagram-3 me-1"></i>{{ branche_choisie.nom }} — {{ branche_choisie.ville }}
+      </span>
+    </div>
+    {% elif est_admin %}
+    <div class="mt-2">
+      <span class="badge bg-secondary-subtle text-secondary border">
+        <i class="bi bi-building me-1"></i>Toutes les branches
+      </span>
+    </div>
+    {% endif %}
+  </div>
+</div>

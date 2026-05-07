@@ -49,18 +49,35 @@ def _est_admin(user):
     return getattr(user, 'admin', False) or getattr(user, 'is_superuser', False)
 
 
-def _pdv_ids_par_depot_json(entreprise, admin):
+def _pdv_ids_par_depot_json(entreprise, admin, user=None):
     """
     Pour chaque dépôt, liste des PK de points de vente actifs dont depot_source = ce dépôt
     (ordre alphabétique sur le nom du PDV — le premier est présélectionné côté client).
+    Non-admins : seuls les dépôts et PDV visibles via AccesDepot / AccesPointVente (peut_voir).
     """
-    from entreprise.models import PointVente, Branche
+    from entreprise.models import Branche, PointVente
+
     if admin:
         branches = Branche.objects.filter(est_actif=True)
+    elif entreprise and user is not None and getattr(user, 'is_authenticated', False):
+        from stock.access import queryset_depots_visibles, queryset_points_vente_visibles
+
+        depots = queryset_depots_visibles(user, entreprise, False)
+        pvs = queryset_points_vente_visibles(user, entreprise, False).filter(
+            depot_source__isnull=False,
+        ).order_by('depot_source_id', 'nom')
+        d = {}
+        depot_ids_allowed = set(depots.values_list('pk', flat=True))
+        for pv in pvs:
+            ds = pv.depot_source_id
+            if ds is not None and ds in depot_ids_allowed:
+                d.setdefault(ds, []).append(pv.pk)
+        return json.dumps({str(k): v for k, v in d.items()})
     elif entreprise:
         branches = entreprise.branches.filter(est_actif=True)
     else:
         return json.dumps({})
+
     d = {}
     qs = PointVente.objects.filter(
         branche__in=branches,
@@ -385,7 +402,7 @@ def creer_commande(request):
     redir = _exiger_entreprise_si_besoin(request, admin, entreprise)
     if redir:
         return redir
-    form = OrdreAchatForm(request.POST or None, entreprise=entreprise, admin=admin)
+    form = OrdreAchatForm(request.POST or None, entreprise=entreprise, admin=admin, user=request.user)
     if request.method == 'POST' and form.is_valid():
         commande = form.save(commit=False)
         # Admin : l'entreprise est déduite du fournisseur choisi
@@ -402,7 +419,7 @@ def creer_commande(request):
         'actif': 'commandes',
         'titre': 'Nouveau bon de commande',
         'entreprise_affichage': None if admin else entreprise,
-        'pdv_par_depot_json': _pdv_ids_par_depot_json(entreprise, admin),
+        'pdv_par_depot_json': _pdv_ids_par_depot_json(entreprise, admin, request.user),
     }
     return render(request, 'achat/commandes/form.html', ctx)
 
@@ -418,7 +435,7 @@ def modifier_commande(request, pk):
         if redir:
             return redir
         commande = get_object_or_404(OrdreAchat, pk=pk, entreprise=entreprise, statut='BROUILLON')
-    form = OrdreAchatForm(request.POST or None, instance=commande, entreprise=entreprise, admin=admin)
+    form = OrdreAchatForm(request.POST or None, instance=commande, entreprise=entreprise, admin=admin, user=request.user)
     if request.method == 'POST' and form.is_valid():
         form.save()
         messages.success(request, "Commande mise à jour.")
@@ -429,7 +446,7 @@ def modifier_commande(request, pk):
         'titre': 'Modifier la commande',
         'commande': commande,
         'entreprise_affichage': None if admin else entreprise,
-        'pdv_par_depot_json': _pdv_ids_par_depot_json(entreprise, admin),
+        'pdv_par_depot_json': _pdv_ids_par_depot_json(entreprise, admin, request.user),
     }
     return render(request, 'achat/commandes/form.html', ctx)
 
@@ -1265,6 +1282,7 @@ def creer_reception(request, ordre_pk):
             commande=commande,
             entreprise=entreprise,
             admin=admin,
+            user=request.user,
         )
         if form.is_valid():
             cleaned = form.cleaned_data
@@ -1422,6 +1440,7 @@ def creer_reception(request, ordre_pk):
             commande=commande,
             entreprise=entreprise,
             admin=admin,
+            user=request.user,
         )
 
     ctx = {
@@ -1471,6 +1490,7 @@ def creer_reception_simple(request):
             commande=None,
             entreprise=entreprise,
             admin=form_scope_admin,
+            user=request.user,
         )
         ligne_rows = _ligne_rows_reception_simple_from_post(request, ligne_indices)
 
@@ -1601,6 +1621,7 @@ def creer_reception_simple(request):
         commande=None,
         entreprise=entreprise,
         admin=form_scope_admin,
+        user=request.user,
     )
     ligne_rows = _ligne_rows_reception_simple_blank(ligne_indices)
     locs = locations_qs_global()

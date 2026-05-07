@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<style>
+    .page-nouvelle-proforma .select2-container { width: 100% !important; }
+    .page-nouvelle-proforma .select2-container .select2-selection--single { min-height: 2.875rem; border-radius: 0.375rem; padding-top: 0.2rem; }
+</style>
+<div class="content page-nouvelle-proforma pb-5">
+    <nav class="mb-3" aria-label="Fil de navigation">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'facturation:liste-factures' %}" class="text-decoration-none">Vente</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'facturation:liste-proformas' %}" class="text-decoration-none">Proformas</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Nouvelle</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex gap-3 align-items-start mb-4">
+        <div class="flex-shrink-0">
+            <span class="avatar avatar-lg bg-warning bg-opacity-15 text-warning rounded-3 d-flex align-items-center justify-content-center" style="width: 3rem; height: 3rem;">
+                <i class="ti ti-file-plus fs-3"></i>
+            </span>
+        </div>
+        <div>
+            <h1 class="fs-4 fw-bold mb-1">Nouvelle facture proforma</h1>
+            <p class="text-muted small mb-0">L'offre sera créée en statut <strong>En attente</strong> et soumise au manager pour approbation.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white border-bottom py-3 px-4">
+                    <span class="fw-bold text-muted small text-uppercase" style="letter-spacing:.05em;">Informations de la proforma</span>
+                </div>
+                <div class="card-body px-4 py-4">
+                    <form method="post" action="{% url 'facturation:nouvelle-proforma' %}" id="form-nouvelle-proforma">
+                        {% csrf_token %}
+
+                        {% for e in form.non_field_errors %}
+                        <div class="alert alert-danger py-2">{{ e }}</div>
+                        {% endfor %}
+
+                        {# Branche masquée (champ hidden) si utilisateur normal #}
+                        {{ form.branche }}
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {% if branche_forcee %}
+                                <label class="form-label fw-semibold">Branche</label>
+                                <div class="form-control bg-body-secondary text-muted" tabindex="-1">{{ branche_forcee.nom }}</div>
+                                <div class="form-text">Branche associée à votre compte.</div>
+                                {% else %}
+                                <label class="form-label fw-semibold" for="{{ form.branche.id_for_label }}">{{ form.branche.label }}</label>
+                                {% render_field form.branche class="form-select" %}
+                                {% for e in form.branche.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="{{ form.date_validite.id_for_label }}">{{ form.date_validite.label }}</label>
+                                {% render_field form.date_validite class="form-control" %}
+                                {% for e in form.date_validite.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="{{ form.client_selection.id_for_label }}">{{ form.client_selection.label }}</label>
+                                {% render_field form.client_selection %}
+                                <div class="form-text">{{ form.client_selection.help_text }}</div>
+                                {% for e in form.client_selection.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="{{ form.devise.id_for_label }}">{{ form.devise.label }}</label>
+                                {% render_field form.devise class="form-select" id="id_devise_proforma" %}
+                                {% for e in form.devise.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+                            <button type="submit" class="btn btn-warning rounded-pill px-5 text-dark fw-semibold">
+                                <i class="ti ti-check me-1"></i>Créer la proforma
+                            </button>
+                            <a href="{% url 'facturation:liste-proformas' %}" class="btn btn-outline-secondary rounded-pill px-4">Annuler</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <aside class="col-xl-5">
+            <div class="card border-0 bg-light rounded-3">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="rounded-circle bg-warning bg-opacity-15 text-warning p-2"><i class="ti ti-info-circle fs-5"></i></span>
+                        <span class="fw-bold small text-uppercase text-muted" style="letter-spacing:.05em;">Fonctionnement</span>
+                    </div>
+                    <ol class="small text-muted mb-0 ps-3 d-flex flex-column gap-2">
+                        <li>Créez la proforma avec l'entête (branche, client, devise, date de validité).</li>
+                        <li>Ajoutez les lignes de produits avec les quantités et prix négociés.</li>
+                        <li>Le manager reçoit la proforma <strong>En attente</strong> et peut l'<strong>approuver</strong> ou la <strong>rejeter</strong>.</li>
+                        <li>Si approuvée, vous pouvez la convertir en <strong>facture brouillon</strong> pour lancer la vente.</li>
+                    </ol>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+(function () {
+    var urlClients = '{% url "facturation:clients-autocomplete-proforma" %}';
+    var sel = document.getElementById('id_client_selection_proforma');
+    if (!sel || typeof jQuery === 'undefined') return;
+    jQuery(sel).select2({
+        width: '100%',
+        placeholder: 'Rechercher par nom, code ou téléphone…',
+        allowClear: true,
+        minimumInputLength: 2,
+        ajax: {
+            url: urlClients,
+            delay: 280,
+            data: function (params) { return { q: params.term || '' }; },
+            processResults: function (data) { return { results: data.results || [] }; }
+        },
+        language: { inputTooShort: function () { return 'Saisissez au moins 2 caractères…'; } }
+    });
+})();
+</script>
+{% endblock %}

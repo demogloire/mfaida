@@ -1,0 +1,25 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Rapport de présences{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Rapport de présences</div>
+<div class="periode">{{ mois }}/{{ annee }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Présents</div><div class="kpi-val text-success">{{ synthese.nb_present }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Retards</div><div class="kpi-val text-warning">{{ synthese.nb_retard }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Absences</div><div class="kpi-val text-danger">{{ synthese.nb_absent }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Congés</div><div class="kpi-val" style="color:#0288d1">{{ synthese.nb_conge }}</div></div>
+</div>
+<table>
+  <tr><th>Employé</th><th class="text-right">Présents</th><th class="text-right">Retards</th><th class="text-right">Absences</th><th class="text-right">Congés</th><th class="text-right">Total</th></tr>
+  {% for s in stats %}
+  <tr>
+    <td>{{ s.employe.prenom }} {{ s.employe.nom }}</td>
+    <td class="text-right text-success">{{ s.present }}</td>
+    <td class="text-right text-warning">{{ s.retard }}</td>
+    <td class="text-right text-danger">{{ s.absent }}</td>
+    <td class="text-right" style="color:#0288d1">{{ s.conge }}</td>
+    <td class="text-right">{{ s.total }}</td>
+  </tr>
+  {% empty %}<tr><td colspan="6">Aucun employé</td></tr>{% endfor %}
+</table>
+{% endblock %}

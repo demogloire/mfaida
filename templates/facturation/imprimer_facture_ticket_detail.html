@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Ticket détaillé {{ facture.numero_facture }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #f4f5f7; color: #111; }
+
+        .toolbar {
+            padding: .75rem 1rem; background: #1e293b; color: #fff;
+            display: flex; gap: .5rem; flex-wrap: wrap;
+            justify-content: center; align-items: center;
+        }
+        .toolbar button {
+            font: inherit; cursor: pointer; padding: .45rem 1rem;
+            border-radius: 999px; border: 0; font-size: .875rem;
+        }
+        .btn-print { background: #3b82f6; color: #fff; }
+        .btn-close { background: #334155; color: #fff; }
+
+        .ticket-wrap { max-width: 80mm; margin: .75rem auto; padding: .5rem .75rem .75rem; }
+        .ticket {
+            background: #fff; padding: .65rem .55rem .8rem; border-radius: 4px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            font-family: Consolas,"Courier New",ui-monospace,monospace;
+            font-size: 11px; line-height: 1.45;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            html, body { background: #fff !important; }
+            .ticket-wrap { margin: 0; padding: 0; max-width: none; }
+            .ticket { box-shadow: none !important; border-radius: 0 !important; padding: 0 .15rem !important; }
+        }
+        @page { size: 80mm auto; margin: 2mm; }
+
+        h1.shop { font-size: 12px; margin: .2rem 0 .3rem; text-align: center; letter-spacing: .02em; }
+        .muted  { opacity: .72; }
+        .center { text-align: center; }
+        .right  { text-align: right; }
+        .dash   { border: 0; border-top: 1px dashed #333; margin: .5rem 0; }
+        .dash-dot { border: 0; border-top: 1px dotted #bbb; margin: .3rem 0; }
+        .mono   { letter-spacing: .02em; }
+        .row    { margin: .12rem 0; word-break: break-word; }
+        strong.big { font-size: 13px; }
+
+        .ticket-logo { text-align: center; margin-bottom: .3rem; }
+        .ticket-logo img { max-height: 14mm; max-width: 68mm; display: inline-block; object-fit: contain; }
+
+        /* Ligne produit */
+        .prod-name   { font-weight: 700; margin-top: .3rem; word-break: break-word; }
+        .prod-prix   { display: flex; justify-content: space-between; margin: .08rem 0 .1rem; }
+        .prod-remise { font-size: 10px; opacity: .75; text-align: right; }
+
+        /* Bloc informations produit */
+        .prod-info {
+            border-left: 2px solid #d0d7e3;
+            padding: .2rem .4rem;
+            margin: .18rem 0 .1rem;
+            font-size: 10px;
+        }
+        .prod-info .lbl { opacity: .65; display: inline-block; min-width: 5ch; }
+
+        /* Emplacement */
+        .prod-empl {
+            font-size: 10px; opacity: .7;
+            display: flex; flex-wrap: wrap; gap: .15rem;
+            margin: .08rem 0 .2rem;
+        }
+        .prod-empl .badge {
+            background: #f0f4ff;
+            border: 1px solid #c7d3f0;
+            border-radius: 3px;
+            padding: 0 .3rem;
+            font-size: 9px;
+        }
+
+        /* Totaux */
+        .totals { width: 100%; border-collapse: collapse; }
+        .totals td { padding: .1rem 0; }
+        .totals .lab { opacity: .82; }
+
+        /* Vendeur */
+        .vendeur-block { font-size: 10px; margin: .1rem 0 .2rem; }
+        .vendeur-block .titre { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+    </style>
+</head>
+<body>
+<div class="toolbar no-print">
+    <span class="mono" style="margin-right:auto;font-size:.8rem;opacity:.9">
+        Ticket détaillé (~80 mm) — Lots &amp; Emplacements
+    </span>
+    <button type="button" class="btn-print" onclick="window.print()">Imprimer</button>
+    <button type="button" class="btn-close mono" onclick="window.close();">Fermer</button>
+    <small class="muted mono" style="width:100%;text-align:center;">Papier continu / ticket thermique recommandé</small>
+</div>
+
+<div class="ticket-wrap">
+<article class="ticket">
+
+    <!-- ── En-tête entreprise ── -->
+    {% if entreprise.logo %}
+    <div class="ticket-logo"><img src="{{ entreprise.logo.url }}" alt=""></div>
+    {% endif %}
+    <h1 class="shop mono">{{ entreprise.nom }}</h1>
+    <div class="center muted mono" style="font-size:10px;">
+        {% if entreprise.adresse_siege %}<div>{{ entreprise.adresse_siege }}</div>{% endif %}
+        {% if entreprise.telephone %}<div>Tél.&nbsp;{{ entreprise.telephone }}</div>{% endif %}
+        {% if entreprise.email %}<div>{{ entreprise.email }}</div>{% endif %}
+        {% if entreprise.rccm %}<div>RCCM&nbsp;{{ entreprise.rccm }}</div>{% endif %}
+        {% if entreprise.idnat %}<div>ID nat.&nbsp;{{ entreprise.idnat }}</div>{% endif %}
+        {% if entreprise.numero_impot %}<div>N°&nbsp;impôt&nbsp;{{ entreprise.numero_impot }}</div>{% endif %}
+    </div>
+
+    <div class="dash"></div>
+
+    <!-- ── Point de vente ── -->
+    <div class="center muted mono" style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Point de vente</div>
+    <div class="center mono" style="font-weight:700;margin:.1rem 0;">{{ facture.point_vente.nom }}</div>
+    {% if facture.point_vente.adresse %}<div class="center muted mono" style="font-size:10px;">{{ facture.point_vente.adresse }}</div>{% endif %}
+    {% if facture.point_vente.telephone %}<div class="center muted mono" style="font-size:10px;">Tél.&nbsp;{{ facture.point_vente.telephone }}</div>{% endif %}
+
+    <div class="dash"></div>
+
+    <!-- ── Référence facture ── -->
+    <div class="row center mono">{{ facture.get_statut_display }}</div>
+    <div class="row center muted mono">{{ facture.date_facture|date:"d/m/Y H:i" }}</div>
+    <div class="row mono"><strong>#</strong>&nbsp;{{ facture.numero_facture }}</div>
+
+    <div class="dash"></div>
+
+    <!-- ── Client ── -->
+    <div class="row muted mono" style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Client</div>
+    <div class="row mono" style="font-weight:700;">{{ facture.client.nom }}</div>
+    <div class="row muted mono" style="font-size:10px;">
+        {{ facture.client.get_type_client_display }} · {{ facture.client.code_client }}
+        {% if facture.client.est_client_passager %}&nbsp;· Passager{% endif %}
+    </div>
+    {% if facture.client.telephone %}<div class="row mono" style="font-size:10px;">Tél.&nbsp;{{ facture.client.telephone }}</div>{% endif %}
+    {% if facture.client.email %}<div class="row muted mono" style="font-size:10px;">{{ facture.client.email }}</div>{% endif %}
+    {% if facture.client.adresse %}<div class="row muted mono" style="font-size:10px;white-space:pre-line;">{{ facture.client.adresse }}</div>{% endif %}
+
+    <div class="dash"></div>
+
+    <!-- ── Lignes produits avec détails ── -->
+    <div class="muted mono" style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem;">Produits</div>
+
+    {% for l in lignes %}
+    {% with mv=l.mouvement_stock %}
+
+    <!-- Nom du produit -->
+    <div class="prod-name mono">{{ l.produit.libelle_ligne_achat|default:l.produit.nom }}</div>
+
+    <!-- Quantité × Prix unitaire → Sous-total TTC -->
+    <div class="prod-prix mono">
+        <span class="muted">{{ l.quantite }}&nbsp;×&nbsp;{{ l.prix_unitaire_ht }}&nbsp;HT</span>
+        <span style="font-weight:700;">{{ l.sous_total_ttc }}&nbsp;{{ facture.devise.symbole }}</span>
+    </div>
+    {% if l.remise %}
+    <div class="prod-remise mono">Remise : – {{ l.remise }}</div>
+    {% endif %}
+    {% if l.tva_montant %}
+    <div class="prod-remise mono">TVA : {{ l.tva_montant }}</div>
+    {% endif %}
+
+    <!-- ·· Informations personnelles du produit (lot, dates, marque…) ·· -->
+    {% if mv %}
+    {% if mv.lot_batch or mv.marque or mv.conditionnement or mv.unite or mv.dateproduction or mv.dateexpiration %}
+    <div class="prod-info mono">
+        {% if mv.lot_batch %}
+        <div><span class="lbl">Lot&nbsp;:</span>&nbsp;{{ mv.lot_batch }}</div>
+        {% endif %}
+        {% if mv.marque %}
+        <div><span class="lbl">Marque&nbsp;:</span>&nbsp;{{ mv.marque }}</div>
+        {% endif %}
+        {% if mv.conditionnement %}
+        <div><span class="lbl">Cond.&nbsp;:</span>&nbsp;{{ mv.conditionnement }}</div>
+        {% endif %}
+        {% if mv.unite %}
+        <div><span class="lbl">Unité&nbsp;:</span>&nbsp;{{ mv.unite }}</div>
+        {% endif %}
+        {% if mv.dateproduction %}
+        <div><span class="lbl">Prod.&nbsp;:</span>&nbsp;{{ mv.dateproduction|date:"d/m/Y" }}</div>
+        {% endif %}
+        {% if mv.dateexpiration %}
+        <div><span class="lbl">Exp.&nbsp;:</span>&nbsp;<strong>{{ mv.dateexpiration|date:"d/m/Y" }}</strong></div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ·· Emplacement / localisation du stock ·· -->
+    {% if mv.location or mv.location_code or mv.depot or mv.pointvente %}
+    <div class="prod-empl mono">
+        <span class="muted" style="font-size:9px;">Emplacement&nbsp;:</span>
+        {% if mv.location %}
+        <span class="badge">{{ mv.location }}</span>
+        {% elif mv.location_code %}
+        <span class="badge">{{ mv.location_code }}</span>
+        {% endif %}
+        {% if mv.depot %}
+        <span class="badge">{{ mv.depot.nom }}</span>
+        {% endif %}
+        {% if mv.pointvente %}
+        <span class="badge">{{ mv.pointvente.nom }}</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% endif %}{# /mv #}
+
+    {% if not forloop.last %}
+    <div class="dash-dot"></div>
+    {% endif %}
+    {% endwith %}
+    {% empty %}
+    <div class="row center muted">Aucune ligne</div>
+    {% endfor %}
+
+    <div class="dash"></div>
+
+    <!-- ── Totaux ── -->
+    <table class="totals mono">
+        <tr><td class="lab">Total HT</td><td class="right">{{ facture.total_ht }}</td></tr>
+        {% if facture.total_tva %}
+        <tr><td class="lab">Total TVA</td><td class="right">{{ facture.total_tva }}</td></tr>
+        {% endif %}
+        <tr><td colspan="2"><div class="dash" style="margin:.2rem 0;"></div></td></tr>
+        <tr>
+            <td><strong>TOTAL TTC</strong></td>
+            <td class="right"><strong class="big">{{ facture.total_ttc }}&nbsp;{{ facture.devise.symbole }}</strong></td>
+        </tr>
+        <tr><td class="lab">Payé</td><td class="right">{{ facture.montant_paye }}</td></tr>
+        {% if facture.reste_a_payer %}
+        <tr><td class="lab">Reste à payer</td><td class="right" style="font-weight:700;color:#c0392b;">{{ facture.reste_a_payer }}</td></tr>
+        {% endif %}
+        <tr><td class="lab">Paiement</td><td class="right">{{ facture.get_mode_paiement_display }}</td></tr>
+        {% if facture.taux_echange_appliqué and facture.taux_echange_appliqué != 1 %}
+        <tr><td class="lab muted">Taux</td><td class="right muted">{{ facture.taux_echange_appliqué }}</td></tr>
+        {% endif %}
+    </table>
+
+    <div class="dash"></div>
+
+    <!-- ── Vendeur & localisation ── -->
+    <div class="vendeur-block mono">
+        <div class="titre">Vendeur</div>
+        <div style="font-weight:700;">{% firstof facture.vendeur.get_full_name facture.vendeur.username %}</div>
+        <div class="muted" style="font-size:10px;">
+            {% if facture.vendeur.email %}{{ facture.vendeur.email }}<br>{% endif %}
+        </div>
+        <div class="titre" style="margin-top:.2rem;">Point de vente</div>
+        <div style="font-weight:700;">{{ facture.point_vente.nom }}</div>
+        {% if facture.point_vente.adresse %}
+        <div class="muted" style="font-size:10px;">{{ facture.point_vente.adresse }}</div>
+        {% endif %}
+        {% if facture.point_vente.telephone %}
+        <div class="muted" style="font-size:10px;">Tél.&nbsp;{{ facture.point_vente.telephone }}</div>
+        {% endif %}
+    </div>
+
+    <div class="dash"></div>
+    <div class="center muted mono" style="font-size:10px;">Merci de votre confiance&nbsp;!</div>
+    <div class="center muted mono" style="font-size:9px;margin-top:.15rem;">{{ entreprise.nom }}</div>
+
+</article>
+</div>
+</body>
+</html>

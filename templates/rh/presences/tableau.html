@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item active">Présences</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">
+        <i class="bi bi-grid-3x3 text-primary me-2"></i>Tableau des Présences
+      </h4>
+      <p class="text-muted small mb-0">{{ nom_mois }} {{ annee }} — {{ lignes|length }} employé(s) actif(s)</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'rh:pointage-rapide' %}" class="btn btn-primary">
+        <i class="bi bi-check2-all me-1"></i>Pointage du jour
+      </a>
+      <a href="{% url 'rh:liste-conges' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-calendar2-week me-1"></i>Congés
+      </a>
+    </div>
+  </div>
+
+  <!-- Navigation mois -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2 d-flex align-items-center justify-content-between">
+      <a href="?annee={{ mois_prev.0 }}&mois={{ mois_prev.1 }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left me-1"></i>{{ mois_prev.1 }}/{{ mois_prev.0 }}
+      </a>
+      <div class="text-center">
+        <span class="fw-bold fs-5">{{ nom_mois }} {{ annee }}</span>
+        <div class="small text-muted">{{ nb_jours }} jours</div>
+      </div>
+      <a href="?annee={{ mois_next.0 }}&mois={{ mois_next.1 }}" class="btn btn-sm btn-outline-secondary">
+        {{ mois_next.1 }}/{{ mois_next.0 }}<i class="bi bi-chevron-right ms-1"></i>
+      </a>
+    </div>
+  </div>
+
+  <!-- Légende -->
+  <div class="d-flex gap-3 mb-3 flex-wrap small">
+    {% for code, lib in statuts %}
+    <span class="d-flex align-items-center gap-1">
+      <span class="rounded px-2 py-0 fw-bold
+        {% if code == 'PRESENT' %}bg-success text-white
+        {% elif code == 'RETARD' %}bg-warning text-dark
+        {% elif code == 'ABSENT' %}bg-danger text-white
+        {% elif code == 'CONGE' %}bg-info text-dark
+        {% elif code == 'FERIE' %}bg-secondary text-white
+        {% endif %}" style="font-size:11px">
+        {{ code|slice:":1" }}
+      </span>
+      <span class="text-muted">{{ lib }}</span>
+    </span>
+    {% endfor %}
+    <span class="d-flex align-items-center gap-1">
+      <span class="rounded px-2 py-0 fw-bold bg-light text-muted border" style="font-size:11px">·</span>
+      <span class="text-muted">Non saisi</span>
+    </span>
+  </div>
+
+  <!-- Tableau -->
+  {% if lignes %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive" style="overflow-x:auto">
+        <table class="table table-bordered align-middle mb-0" style="font-size:12px;min-width:900px">
+          <thead class="table-dark">
+            <tr>
+              <th class="text-nowrap px-3" style="min-width:180px;position:sticky;left:0;background:#212529;z-index:2">
+                Employé
+              </th>
+              {% for d in dates_mois %}
+              <th class="text-center px-0" style="min-width:30px;width:30px"
+                  title="{{ d|date:'l d F' }}">
+                {{ d.day }}
+              </th>
+              {% endfor %}
+              <th class="text-center px-1" title="Présents" style="min-width:28px">P</th>
+              <th class="text-center px-1" title="Retards"  style="min-width:28px">R</th>
+              <th class="text-center px-1" title="Absents"  style="min-width:28px">A</th>
+              <th class="text-center px-1" title="Congés"   style="min-width:28px">C</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ligne in lignes %}
+            <tr>
+              <td class="px-3" style="position:sticky;left:0;background:#fff;z-index:1;white-space:nowrap">
+                <div class="d-flex align-items-center gap-2">
+                  {% if ligne.employe.photo %}
+                  <img src="{{ ligne.employe.photo.url }}" class="rounded-circle"
+                       width="22" height="22" style="object-fit:cover">
+                  {% else %}
+                  <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold"
+                       style="width:22px;height:22px;font-size:8px;flex-shrink:0">
+                    {{ ligne.employe.prenom|slice:":1" }}{{ ligne.employe.nom|slice:":1" }}
+                  </div>
+                  {% endif %}
+                  <span class="fw-semibold">{{ ligne.employe.prenom }} {{ ligne.employe.nom }}</span>
+                </div>
+              </td>
+              {% for cell in ligne.jours %}
+              <td class="text-center p-0" style="height:30px">
+                {% if cell.presence %}
+                <a href="{% url 'rh:pointer-presence' employe_pk=ligne.employe.pk %}?date={{ cell.date|date:'Y-m-d' }}"
+                   class="d-flex align-items-center justify-content-center w-100 h-100 text-decoration-none fw-semibold"
+                   style="font-size:11px;
+                   {% if cell.presence.statut == 'PRESENT' %}background:#d1e7dd;color:#0f5132{% endif %}
+                   {% if cell.presence.statut == 'RETARD' %}background:#fff3cd;color:#664d03{% endif %}
+                   {% if cell.presence.statut == 'ABSENT' %}background:#f8d7da;color:#842029{% endif %}
+                   {% if cell.presence.statut == 'CONGE' %}background:#cff4fc;color:#055160{% endif %}
+                   {% if cell.presence.statut == 'FERIE' %}background:#e2e3e5;color:#41464b{% endif %}"
+                   title="{{ cell.presence.get_statut_display }}{% if cell.presence.note %} — {{ cell.presence.note }}{% endif %}">
+                  {{ cell.presence.statut|slice:":1" }}
+                </a>
+                {% else %}
+                <a href="{% url 'rh:pointer-presence' employe_pk=ligne.employe.pk %}?date={{ cell.date|date:'Y-m-d' }}"
+                   class="d-flex align-items-center justify-content-center w-100 h-100 text-decoration-none text-muted"
+                   style="background:#f8f9fa;font-size:14px" title="Saisir présence">·</a>
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td class="text-center fw-semibold small" style="color:#0f5132">{{ ligne.nb_presents }}</td>
+              <td class="text-center fw-semibold small" style="color:#664d03">{{ ligne.nb_retards }}</td>
+              <td class="text-center fw-semibold small" style="color:#842029">{{ ligne.nb_absents }}</td>
+              <td class="text-center fw-semibold small" style="color:#055160">{{ ligne.nb_conges }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="mt-2 small text-muted">
+    <i class="bi bi-info-circle me-1"></i>Cliquez sur une cellule pour modifier la présence.
+  </div>
+
+  {% else %}
+  <div class="card border-0 shadow-sm">
+    <div class="text-center py-5">
+      <i class="bi bi-people display-4 text-muted opacity-50"></i>
+      <p class="text-muted mt-3 mb-0">Aucun employé actif trouvé.</p>
+      <a href="{% url 'rh:creer-employe' %}" class="btn btn-primary btn-sm mt-3">
+        <i class="bi bi-plus-lg me-1"></i>Ajouter un employé
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

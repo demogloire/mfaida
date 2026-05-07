@@ -1,0 +1,26 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Créances impayées{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Créances impayées</div>
+<div class="periode">Au {{ today|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">0–30 j</div><div class="kpi-val text-success">{{ tranches.0_30|length }} fact.</div></div>
+  <div class="kpi-box"><div class="kpi-label">31–60 j</div><div class="kpi-val text-warning">{{ tranches.31_60|length }} fact.</div></div>
+  <div class="kpi-box"><div class="kpi-label">61–90 j</div><div class="kpi-val text-danger">{{ tranches.61_90|length }} fact.</div></div>
+  <div class="kpi-box"><div class="kpi-label">+90 j</div><div class="kpi-val text-danger">{{ tranches.plus_90|length }} fact.</div></div>
+  <div class="kpi-box"><div class="kpi-label">Total dû</div><div class="kpi-val text-danger">{{ total_du|floatformat:2 }}</div></div>
+</div>
+<table>
+  <tr><th>Facture</th><th>Client</th><th>PDV</th><th class="text-right">TTC</th><th class="text-right">Payé</th><th class="text-right">Solde dû</th><th>Date</th></tr>
+  {% for f in qs %}
+  <tr>
+    <td>{{ f.numero_facture }}</td><td>{{ f.client.nom }}</td><td>{{ f.point_vente.nom }}</td>
+    <td class="text-right">{{ f.total_ttc|floatformat:2 }}</td>
+    <td class="text-right text-success">{{ f.montant_paye|floatformat:2 }}</td>
+    <td class="text-right text-danger">{{ f.reste_a_payer|floatformat:2 }}</td>
+    <td>{{ f.date_facture|date:"d/m/Y" }}</td>
+  </tr>
+  {% empty %}<tr><td colspan="7">Aucune créance</td></tr>{% endfor %}
+  {% if qs %}<tr style="background:#fce4ec;font-weight:bold"><td colspan="5">TOTAL DÛ</td><td class="text-right text-danger">{{ total_du|floatformat:2 }}</td><td></td></tr>{% endif %}
+</table>
+{% endblock %}

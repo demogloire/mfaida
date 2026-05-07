@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .appro-card { transition: box-shadow .15s; }
+  .appro-card:hover { box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.1) !important; }
+  .count-badge { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+  .item-row { border-left: 3px solid transparent; transition: border-color .15s, background .15s; }
+  .item-row:hover { background: rgba(0,0,0,.025); border-left-color: var(--row-color, #6c757d); }
+</style>
+
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="Fil de navigation">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item active">Approbations en attente</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête -->
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start flex-grow-1 min-w-0">
+      <span class="avatar avatar-lg rounded-3 d-flex align-items-center justify-content-center
+                   {% if total > 0 %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %}"
+            style="width:3rem;height:3rem;flex-shrink:0;">
+        <i class="ti ti-checks fs-3"></i>
+      </span>
+      <div class="min-w-0">
+        <h1 class="fs-4 fw-bold mb-1 lh-sm">Approbations en attente</h1>
+        <p class="text-muted small mb-0">
+          {% if total == 0 %}
+            <span class="text-success"><i class="ti ti-circle-check me-1"></i>Aucune approbation en attente.</span>
+          {% else %}
+            <strong class="text-danger">{{ total }}</strong> élément{% if total > 1 %}s{% endif %} en attente de votre décision.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2" role="alert">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- Cartes de résumé -->
+  <div class="row g-3 mb-4">
+    {% for s in sections %}
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm appro-card h-100">
+        <div class="card-body d-flex align-items-center gap-3 py-3">
+          <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0
+                       bg-{{ s.couleur }} bg-opacity-10 text-{{ s.couleur }}"
+               style="width:3rem;height:3rem;">
+            <i class="ti {{ s.icone }} fs-4"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="count-badge text-{{ s.couleur }}">{{ s.count }}</div>
+            <div class="small text-muted fw-medium">{{ s.titre }}</div>
+          </div>
+          {% if s.count > 0 %}
+          <span class="ms-auto badge rounded-pill bg-danger">{{ s.count }}</span>
+          {% else %}
+          <i class="ms-auto ti ti-circle-check text-success fs-5"></i>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Sections détail -->
+  {% for s in sections %}
+  <div class="card border-0 shadow-sm mb-4">
+    <!-- En-tête section -->
+    <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="rounded-2 d-flex align-items-center justify-content-center
+                     bg-{{ s.couleur }} bg-opacity-10 text-{{ s.couleur }}"
+              style="width:2rem;height:2rem;">
+          <i class="ti {{ s.icone }}"></i>
+        </span>
+        <div>
+          <span class="fw-semibold">{{ s.titre }}</span>
+          {% if s.count > 0 %}
+          <span class="badge bg-danger ms-2">{{ s.count }}</span>
+          {% endif %}
+          <div class="text-muted small">{{ s.description }}</div>
+        </div>
+      </div>
+    </div>
+
+    {% if s.count == 0 %}
+    <div class="card-body text-center text-muted py-5">
+      <i class="ti ti-circle-check fs-2 text-success d-block mb-2"></i>
+      Aucun élément en attente dans cette catégorie.
+    </div>
+    {% else %}
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-light">
+            <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+              <th class="ps-4 py-3">N° Pièce</th>
+              <th class="py-3">Client</th>
+              <th class="py-3 d-none d-md-table-cell">Point de vente / Branche</th>
+              <th class="py-3 d-none d-lg-table-cell">Soumis le</th>
+              <th class="text-end py-3">Montant TTC</th>
+              <th class="py-3 pe-4"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in s.items %}
+            <tr class="item-row" style="--row-color:
+                {% if s.couleur == 'primary' %}#0d6efd
+                {% elif s.couleur == 'warning' %}#ffc107
+                {% else %}#6c757d{% endif %};">
+
+              {% if s.type == 'proforma' %}
+              <td class="ps-4 fw-semibold font-monospace">{{ item.numero_proforma }}</td>
+              <td>{{ item.client.nom }}</td>
+              <td class="d-none d-md-table-cell text-muted">{{ item.branche.nom|default:"—" }}</td>
+              <td class="d-none d-lg-table-cell text-muted">
+                {{ item.soumis_le|date:"d/m/Y H:i"|default:"—" }}
+              </td>
+              <td class="text-end font-monospace">{{ item.total_ttc|floatformat:2 }}</td>
+              <td class="pe-4 text-end">
+                <a href="{% url 'facturation:detail-proforma' item.pk %}"
+                   class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                  <i class="ti ti-eye me-1"></i>Examiner
+                </a>
+              </td>
+
+              {% elif s.type == 'retour' %}
+              <td class="ps-4 fw-semibold font-monospace">{{ item.numero_retour }}</td>
+              <td>{{ item.client.nom }}</td>
+              <td class="d-none d-md-table-cell text-muted">{{ item.point_vente.nom|default:"—" }}</td>
+              <td class="d-none d-lg-table-cell text-muted">
+                {{ item.soumis_le|date:"d/m/Y H:i"|default:"—" }}
+              </td>
+              <td class="text-end font-monospace">{{ item.total_ttc|floatformat:2 }} {{ item.devise.code }}</td>
+              <td class="pe-4 text-end">
+                <a href="{% url 'facturation:detail-retour' item.pk %}"
+                   class="btn btn-sm btn-outline-warning rounded-pill px-3">
+                  <i class="ti ti-eye me-1"></i>Examiner
+                </a>
+              </td>
+              {% endif %}
+
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if s.count > 20 %}
+      <div class="card-footer bg-white text-muted small text-center py-2">
+        Affichage des 20 premiers — {{ s.count }} au total.
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

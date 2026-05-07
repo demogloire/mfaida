@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Facture {{ facture.numero_facture }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #e8ecf1; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #1a1f2e; }
+        .toolbar {
+            padding: .75rem 1rem;
+            background: #1e293b;
+            color: #fff;
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .toolbar button {
+            font: inherit;
+            cursor: pointer;
+            padding: .5rem 1.25rem;
+            border-radius: 999px;
+            border: 0;
+            font-size: .875rem;
+        }
+        .btn-print { background: #3b82f6; color: #fff; }
+        .btn-close { background: #334155; color: #fff; }
+        .sheet-wrap { padding: 1rem 1rem 2rem; }
+        .sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: #fff;
+            padding: 18mm 20mm;
+            box-shadow: 0 12px 40px rgba(0,0,0,.08);
+        }
+        @media print {
+            .no-print { display: none !important; }
+            html, body { background: #fff !important; }
+            .sheet-wrap { padding: 0; }
+            .sheet {
+                box-shadow: none !important;
+                width: auto;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+            }
+        }
+        @page {
+            size: A4 portrait;
+            margin: 14mm;
+        }
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1.5rem;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        .brand {
+            flex: 1;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            min-width: 0;
+        }
+        .brand-logo-wrap { flex-shrink: 0; }
+        .brand-logo {
+            display: block;
+            max-height: 88px;
+            max-width: 200px;
+            width: auto;
+            object-fit: contain;
+        }
+        .brand-body { flex: 1; min-width: 0; }
+        .brand-body h1 {
+            margin: 0 0 .25rem;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .brand-body > p.addr { white-space: pre-line; margin: .15rem 0; font-size: .8rem; color: #475569; line-height: 1.4; max-width: 340px; }
+        .brand-body > p.contact { margin: .15rem 0; font-size: .8rem; color: #475569; }
+        .brand-legals { margin-top: .45rem; font-size: .68rem; color: #64748b; line-height: 1.45; max-width: 340px; }
+        .fact-title {
+            text-align: right;
+        }
+        .fact-title h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #1d4ed8;
+        }
+        .fact-meta { font-size: .8rem; color: #64748b; margin-top: .35rem; }
+        .pill {
+            display: inline-block;
+            padding: .2rem .6rem;
+            border-radius: 999px;
+            font-size: .7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .pill-done { background: #dcfce7; color: #166534; }
+        .pill-draft { background: #fef9c3; color: #854d0e; }
+        .pill-queue { background: #ffedd5; color: #9a3412; }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem .75rem;
+            margin-bottom: 1rem;
+        }
+        @media screen and (max-width:720px){ .sheet { padding: 12mm 10mm;} .grid-2 { grid-template-columns: 1fr; } .top { flex-direction: column; } .fact-title { text-align: left; } }
+        @media screen and (max-width:520px) { .brand { flex-direction: column; align-items: center; text-align: center; } .brand-body > p.addr, .brand-legals { max-width: none; } }
+        .lbl { font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; margin-bottom: .15rem; }
+        .val { font-size: .9rem; font-weight: 500; color: #0f172a; }
+        table.lines { width: 100%; border-collapse: collapse; font-size: .82rem; margin: 1rem 0 .5rem; }
+        table.lines th {
+            text-align: left;
+            padding: .5rem .4rem;
+            border-bottom: 2px solid #e2e8f0;
+            color: #64748b;
+            font-weight: 600;
+            font-size: .62rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        table.lines th.num, table.lines td.num { text-align: right; }
+        table.lines td { padding: .45rem .4rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        .totals-panel {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: .35rem .6rem;
+            max-width: 280px;
+            margin-left: auto;
+            margin-top: .75rem;
+            font-size: .82rem;
+        }
+        .totals-panel dt { grid-column: 1; margin: 0; color: #64748b; }
+        .totals-panel dd { grid-column: 2; margin: 0; text-align: right; font-weight: 600; color: #0f172a; }
+        .totals-panel dd.grand-total {
+            font-size: 1.05rem;
+            color: #1d4ed8;
+        }
+        .foot-note { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; font-size: .72rem; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="toolbar no-print">
+        <span style="margin-right:auto;font-size:.875rem;font-weight:600;opacity:.95">Aperçu format A4</span>
+        <button type="button" class="btn-print" onclick="window.print()">Imprimer ou PDF</button>
+        <button type="button" class="btn-close" onclick="window.close();">Fermer</button>
+    </div>
+    <div class="sheet-wrap">
+        <div class="sheet">
+            <header class="top">
+                <div class="brand">
+                    {% if entreprise.logo %}
+                    <div class="brand-logo-wrap">
+                        <img src="{{ entreprise.logo.url }}" alt="" class="brand-logo">
+                    </div>
+                    {% endif %}
+                    <div class="brand-body">
+                        <h1>{{ entreprise.nom }}</h1>
+                        {% if entreprise.adresse_siege %}<p class="addr">{{ entreprise.adresse_siege }}</p>{% endif %}
+                        {% if entreprise.telephone %}<p class="contact"><strong>Tél.</strong>&nbsp;{{ entreprise.telephone }}</p>{% endif %}
+                        {% if entreprise.email %}<p class="contact"><strong>E-mail</strong>&nbsp;{{ entreprise.email }}</p>{% endif %}
+                        {% if entreprise.rccm or entreprise.idnat or entreprise.numero_impot %}
+                        <div class="brand-legals">
+                            {% if entreprise.rccm %}<span><strong>RCCM</strong>&nbsp;: {{ entreprise.rccm }}</span><br>{% endif %}
+                            {% if entreprise.idnat %}<span><strong>ID national</strong>&nbsp;: {{ entreprise.idnat }}</span><br>{% endif %}
+                            {% if entreprise.numero_impot %}<span><strong>N° impôt</strong>&nbsp;: {{ entreprise.numero_impot }}</span>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="fact-title">
+                    <span class="pill {% if facture.statut == 'VALIDEE' %}pill-done{% elif facture.statut == 'ANNULEE' %}bg-danger text-white{% elif facture.statut == 'EN_CAISSE' %}pill-queue{% else %}pill-draft{% endif %}">{{ facture.get_statut_display }}</span>
+                    <h2>FACTURE</h2>
+                    <div class="fact-meta">{{ facture.numero_facture }}</div>
+                    <div class="fact-meta">{{ facture.date_facture|date:"d/m/Y à H:i" }}</div>
+                </div>
+            </header>
+
+            <div class="grid-2">
+                <div>
+                    <div class="lbl">Émetteur</div>
+                    <div class="val">{{ facture.point_vente.branche.nom }}</div>
+                    <div style="margin-top:.4rem;font-size:.75rem;color:#64748b">Point de vente : {{ facture.point_vente.nom }}</div>
+                </div>
+                <div>
+                    <div class="lbl">Client facturé</div>
+                    <div class="val">{{ facture.client.nom }}</div>
+                    <div style="margin-top:.4rem;font-size:.75rem;color:#64748b">
+                        {{ facture.client.get_type_client_display }} · {{ facture.client.code_client }}
+                        {% if facture.client.est_client_passager %}· passager{% endif %}
+                    </div>
+                    {% if facture.client.telephone %}<div style="margin-top:.25rem;font-size:.75rem;color:#64748b">Tél.&nbsp;{{ facture.client.telephone }}</div>{% endif %}
+                    {% if facture.client.email %}<div style="font-size:.75rem;color:#64748b">{{ facture.client.email }}</div>{% endif %}
+                    {% if facture.client.adresse %}<div class="addr" style="margin-top:.35rem;font-size:.76rem;line-height:1.45;color:#475569">{{ facture.client.adresse }}</div>{% endif %}
+                </div>
+                <div>
+                    <div class="lbl">Devise · taux conservé</div>
+                    <div class="val">{{ facture.devise.code }} ({{ facture.devise.symbole }}) — taux&nbsp;{{ facture.taux_echange_appliqué }}</div>
+                </div>
+                <div>
+                    <div class="lbl">Paiement</div>
+                    <div class="val">{{ facture.get_mode_paiement_display }}</div>
+                </div>
+            </div>
+
+            <table class="lines">
+                <thead>
+                    <tr>
+                        <th style="width:32%">Article</th>
+                        <th class="num">Qté</th>
+                        <th class="num">PU&nbsp;HT</th>
+                        <th class="num">Sous-total&nbsp;HT</th>
+                        <th class="num">TVA</th>
+                        <th class="num">Sous-total&nbsp;TTC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in lignes %}
+                    <tr>
+                        <td>{{ l.produit.libelle_ligne_achat }}</td>
+                        <td class="num">{{ l.quantite }}</td>
+                        <td class="num">{{ l.prix_unitaire_ht }}</td>
+                        <td class="num">{{ l.sous_total_ht }}</td>
+                        <td class="num">{% if l.tva_montant %}{{ l.tva_montant }}{% else %}—{% endif %}</td>
+                        <td class="num">{{ l.sous_total_ttc }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" style="text-align:center;color:#94a3b8;">Aucune ligne sur cette pièce.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <dl class="totals-panel">
+                <dt>Total HT</dt>
+                <dd>{{ facture.total_ht }}</dd>
+                {% if facture.total_tva %}
+                <dt>Total TVA</dt>
+                <dd>{{ facture.total_tva }}</dd>
+                {% endif %}
+                <dt style="align-self:end;padding-top:.35rem;font-weight:700;color:#475569;font-size:.75rem;text-transform:none;letter-spacing:0">TOTAL TTC</dt>
+                <dd class="grand-total" style="align-self:end;padding-top:.35rem">{{ facture.total_ttc }} {{ facture.devise.symbole }}</dd>
+                <dt>Montant payé</dt>
+                <dd>{{ facture.montant_paye }}</dd>
+                <dt>Reste à payer</dt>
+                <dd>{{ facture.reste_a_payer }}</dd>
+            </dl>
+
+            <footer class="foot-note">
+                Vendeur : {% firstof facture.vendeur.get_full_name facture.vendeur.username %} —
+                Pièce créée depuis M-Faida. Le taux conservé reflète celui figurant sur la facture au moment de l’enregistrement.
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

@@ -5,6 +5,7 @@ from django.views.generic import RedirectView
 
 from . import export_views
 from . import views
+from . import transfert_views
 
 app_name = 'stock'
 
@@ -272,4 +273,19 @@ urlpatterns = [
         views.inventaire_cloturer,
         name='inventaire-cloturer',
     ),
+
+    # ── Alertes stock ────────────────────────────────────────────────────
+    path('alertes/faible-stock/',    views.faible_stock,       name='faible-stock'),
+    path('alertes/en-expiration/',   views.produits_expiration, name='produits-expiration'),
+
+    # ── Transferts de stock ───────────────────────────────────────────────
+    path('transferts/', transfert_views.liste_transferts, name='liste-transferts'),
+    path('transferts/nouveau/', transfert_views.nouveau_transfert, name='nouveau-transfert'),
+    path('transferts/api/produits-source/', transfert_views.api_produits_source, name='api-produits-source'),
+    path('transferts/api/lots-source/', transfert_views.api_lots_source, name='api-lots-source'),
+    path('transferts/<int:pk>/', transfert_views.detail_transfert, name='detail-transfert'),
+    path('transferts/<int:pk>/lignes/', transfert_views.ajouter_ligne_transfert, name='ajouter-ligne-transfert'),
+    path('transferts/<int:pk>/lignes/<int:ligne_pk>/supprimer/', transfert_views.supprimer_ligne_transfert, name='supprimer-ligne-transfert'),
+    path('transferts/<int:pk>/valider/', transfert_views.valider_transfert, name='valider-transfert'),
+    path('transferts/<int:pk>/annuler/', transfert_views.annuler_transfert, name='annuler-transfert'),
 ]

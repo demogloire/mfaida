@@ -21,12 +21,117 @@ import json
 from django.core.paginator import Paginator
 from django.db.models import Q
 
+from utilisateur.decorators import login_requis
+
 # Create your views here.
 
+@login_requis
 def Dashboard(request):
-    context={}
-    return render(request,'entreprise/dashboard.html', context)
+    from datetime import date
+    from decimal import Decimal
+    from django.db.models import Sum, Count, Q
+    from django.db.models.functions import Coalesce
+    from django.db.models import Value, DecimalField
+    from stock.access import get_entreprise_utilisateur, utilisateur_est_admin, queryset_points_vente_visibles
 
+    user       = request.user
+    entreprise = get_entreprise_utilisateur(user)
+    admin      = utilisateur_est_admin(user)
+    pdvs       = queryset_points_vente_visibles(user, entreprise, admin)
+    today      = date.today()
+
+    # ── Ventes aujourd'hui ────────────────────────────────────────────────
+    from facturation.models import Facture
+    fact_today = Facture.objects.filter(
+        point_vente__in=pdvs, statut='VALIDEE', date_facture__date=today
+    )
+    ca_jour   = fact_today.aggregate(t=Coalesce(Sum('total_ttc'), Value(0), output_field=DecimalField()))['t']
+    nb_fact   = fact_today.count()
+
+    # Ventes mois courant
+    fact_mois = Facture.objects.filter(
+        point_vente__in=pdvs, statut='VALIDEE',
+        date_facture__date__year=today.year, date_facture__date__month=today.month
+    )
+    ca_mois   = fact_mois.aggregate(t=Coalesce(Sum('total_ttc'), Value(0), output_field=DecimalField()))['t']
+    paye_mois = fact_mois.aggregate(t=Coalesce(Sum('montant_paye'), Value(0), output_field=DecimalField()))['t']
+    du_mois   = fact_mois.aggregate(t=Coalesce(Sum('reste_a_payer'), Value(0), output_field=DecimalField()))['t']
+
+    # ── Caisse ouverte ────────────────────────────────────────────────────
+    from caisse.models import SessionCaisse, TransactionCaisse
+    sessions_ouvertes = SessionCaisse.objects.filter(point_vente__in=pdvs, statut='OUVERTE').count()
+    encaiss_jour = TransactionCaisse.objects.filter(
+        session__point_vente__in=pdvs, type_transaction='ENCAISSEMENT', date_transaction__date=today
+    ).aggregate(t=Coalesce(Sum('montant'), Value(0), output_field=DecimalField()))['t']
+
+    # ── Stock alertes ─────────────────────────────────────────────────────
+    from stock.models import Stock, MouvementStock
+    from datetime import timedelta
+    nb_ruptures    = Stock.objects.filter(pointdevente__in=pdvs, quantite_reelle__lte=0).count()
+    nb_faible      = Stock.objects.filter(pointdevente__in=pdvs, quantite_reelle__gt=0).count()  # simplifié
+    nb_expirations = MouvementStock.objects.filter(
+        pointvente__in=pdvs,
+        dateexpiration__isnull=False,
+        dateexpiration__lte=today + timedelta(days=30),
+        quantite_active__gt=0,
+    ).count()
+
+    # ── RH en attente ─────────────────────────────────────────────────────
+    nb_conges_att = 0
+    nb_bulletins_att = 0
+    nb_avances_att = 0
+    try:
+        from rh.models import Conge, BulletinPaie, AvanceSalaire
+        branches_ids = pdvs.values_list('branche_id', flat=True).distinct()
+        nb_conges_att   = Conge.objects.filter(employe__branche_id__in=branches_ids, statut='DEMANDE').count()
+        nb_bulletins_att = BulletinPaie.objects.filter(employe__branche_id__in=branches_ids, statut='BROUILLON').count()
+        nb_avances_att  = AvanceSalaire.objects.filter(employe__branche_id__in=branches_ids, statut='APPROUVEE').count()
+    except Exception:
+        pass
+
+    # ── Dépenses mois ────────────────────────────────────────────────────
+    from depenses.models import Depense
+    dep_mois = Depense.objects.filter(
+        point_vente__in=pdvs, statut='VALIDEE',
+        date_depense__date__year=today.year, date_depense__date__month=today.month
+    ).aggregate(t=Coalesce(Sum('montant'), Value(0), output_field=DecimalField()))['t']
+
+    # ── Factures récentes ─────────────────────────────────────────────────
+    factures_recentes = Facture.objects.filter(
+        point_vente__in=pdvs, statut='VALIDEE'
+    ).select_related('client', 'point_vente').order_by('-date_facture')[:8]
+
+    # ── Bénéfice estimé du mois ───────────────────────────────────────────
+    from facturation.models import LigneFacture
+    lignes_mois = LigneFacture.objects.filter(
+        facture__point_vente__in=pdvs, facture__statut='VALIDEE',
+        facture__date_facture__date__year=today.year,
+        factura__date_facture__date__month=today.month,
+    ) if False else []  # computed below to avoid double query
+    # Simpler: benefice brut ~ ca_mois - dep_mois (approx)
+    benefice_approx = ca_mois - dep_mois
+
+    context = {
+        'today': today,
+        # Ventes
+        'ca_jour': ca_jour, 'nb_fact': nb_fact,
+        'ca_mois': ca_mois, 'paye_mois': paye_mois, 'du_mois': du_mois,
+        # Caisse
+        'sessions_ouvertes': sessions_ouvertes, 'encaiss_jour': encaiss_jour,
+        # Stock
+        'nb_ruptures': nb_ruptures, 'nb_expirations': nb_expirations,
+        # RH
+        'nb_conges_att': nb_conges_att, 'nb_bulletins_att': nb_bulletins_att, 'nb_avances_att': nb_avances_att,
+        # Finance
+        'dep_mois': dep_mois, 'benefice_approx': benefice_approx,
+        # Listes
+        'factures_recentes': factures_recentes,
+        'pdvs': pdvs,
+        'entreprise': entreprise,
+    }
+    return render(request, 'entreprise/dashboard.html', context)
+
+@login_requis
 def Information(request):
     form = EntrepriseForm()
     context = {"form": form, "info": "active", "subdrop": ""}
@@ -52,11 +157,13 @@ def Information(request):
 
     return render(request, 'entreprise/info.html', context)
 
+@login_requis
 def ListEntreprise(request):
     q=Entreprise.objects.filter(user=request.user).all()
     context={"info":"active","listentreprise":  q}
     return render(request,'entreprise/liste_entreprise.html', context)
 
+@login_requis
 @require_POST
 def EntrepriseStatus(request, pk):
     entreprise = get_object_or_404(Entreprise, pk=pk, user=request.user)
@@ -69,6 +176,7 @@ def EntrepriseStatus(request, pk):
         messages.success(request, "Entreprise est activée")
     return render(request, 'entreprise/partial/modifier/taggle.html', {'entreprise': entreprise})
 
+@login_requis
 def ModifierEntreprise(request, pk):
     entreprise = get_object_or_404(Entreprise, pk=pk, user=request.user)
     form = EntrepriseForm(instance=entreprise)
@@ -96,6 +204,7 @@ def ModifierEntreprise(request, pk):
 
 ############### BRANCHE ###########################
 
+@login_requis
 def BrancheAjouter(request):
     form=BrancheForm(request=request)
     context={"branche1":True,"subdrop":True,"branch":True,"form":form}
@@ -115,11 +224,13 @@ def BrancheAjouter(request):
 
     return render(request,'branche/info.html',context)
 
+@login_requis
 def ListeDeBranche(request):
     q = Branche.objects.filter(entreprise__user=request.user).select_related('entreprise')
     context={"branche1":True,"subdrop":True,"branch":True,"listebranche":q}
     return render(request,'branche/branche.html', context)
 
+@login_requis
 def BrancheStatus(request, pk):
     branches = get_object_or_404(Branche, pk=pk, entreprise__user=request.user)
 
@@ -135,6 +246,7 @@ def BrancheStatus(request, pk):
     context={"branche1":True,"subdrop":True,"branch":True,"listebranche":q}
     return render(request,'branche/partial/liste-loop.html', context)
 
+@login_requis
 def ModifierBranche(request, pk):
     branches = get_object_or_404(Branche, pk=pk, entreprise__user=request.user)
     form = BrancheForm(instance=branches)
@@ -153,6 +265,7 @@ def ModifierBranche(request, pk):
             return redirect('entreprise:branche-liste')
     return render(request,'branche/maj.html', context)
 
+@login_requis
 def Etagere(request, pk):
 
     form=EtagereForm(branche_id=pk)
@@ -187,11 +300,13 @@ def Etagere(request, pk):
             context = {"branche1":True,"subdrop":True,"branch":True,"form":form, "pk":pk}
     return render(request, 'etagere/ajouter.html', context)
 
+@login_requis
 def ListeLocation(request, pk):
     q = Location.objects.filter(branche_id=pk, branche__entreprise__user=request.user).select_related('branche')
     context={"branche1":True,"subdrop":True,"branch":True,"locations":q, "pk":pk}
     return render(request,'etagere/liste.html', context)
 
+@login_requis
 def EtagereModifier(request, pk, branche_id):
     location = get_object_or_404(Location, pk=pk, branche__entreprise__user=request.user)
     form = EtagereForm(branche_id=branche_id, instance=location)
@@ -233,6 +348,7 @@ def EtagereModifier(request, pk, branche_id):
         context["form"]= EtagereForm(branche_id=branche_id, instance=location)
     return render(request, 'etagere/mod.html', context)
 
+@login_requis
 def UploadExcel(request, pk):
     form=UploadFile()
     context = {"branche1": True, "subdrop": True, "branch": True, "pk": pk, "form":form}
@@ -286,6 +402,7 @@ def UploadExcel(request, pk):
 
 ############### DEPOT ###########################
 
+@login_requis
 def AjouterDepot(request, pk):
     form=DepotForm(branche_id=pk)
     context={"branche1":True,"subdrop":True,"branch":True,"form":form, "branche_id":pk}
@@ -316,11 +433,13 @@ def AjouterDepot(request, pk):
                 return render(request, 'depot/partial/form_add.html', {"branche1":True,"subdrop":True,"branch":True,"form":form, "branche_id":pk})
     return render(request, 'depot/depot.html', context)
 
+@login_requis
 def ListeDepot(request, pk):
     q = Depot.objects.filter(branche_id=pk, branche__entreprise__user=request.user).select_related('branche')
     context={"branche1":True,"subdrop":True,"branch":True,"depots":q, "pk":pk}
     return render(request, 'depot/liste.html', context)
 
+@login_requis
 def ListeDepotTous(request):
     search = (request.GET.get("q") or "").strip()
     qs = Depot.objects.filter(branche__entreprise__user=request.user).select_related('branche', 'branche__entreprise')
@@ -348,6 +467,7 @@ def ListeDepotTous(request):
         return render(request, "depot/partial/lire_tous.html", context)
     return render(request, "depot/liste_tous.html", context)
 
+@login_requis
 def MajDepot(request, pk):
     #Requête sur le depôt.
     depot_unique=get_object_or_404(Depot, pk=pk, branche__entreprise__user=request.user)
@@ -379,6 +499,7 @@ def MajDepot(request, pk):
 
 ############### POINT DE VENTE ###########################
 
+@login_requis
 def AjouterPoindeVente(request, pk):
     params={"branche":pk,"user_id":request.user}
     form=PoinDeVenteForm(params=params)
@@ -404,11 +525,13 @@ def AjouterPoindeVente(request, pk):
     return render(request, 'pvente/pvente.html', context)
 
 
+@login_requis
 def ListePVente(request, pk):
     q = PointVente.objects.filter(branche_id=pk, branche__entreprise__user=request.user).select_related('branche', 'depot_source')
     context={"branche1":True,"subdrop":True,"branch":True,"pventes":q, "pk":pk}
     return render(request, 'pvente/liste.html', context)
 
+@login_requis
 def ListePVenteTous(request):
     search = (request.GET.get("q") or "").strip()
     qs = PointVente.objects.filter(branche__entreprise__user=request.user).select_related('branche', 'depot_source', 'branche__entreprise')
@@ -431,6 +554,7 @@ def ListePVenteTous(request):
     return render(request, "pvente/liste_tous.html", context)
 
 
+@login_requis
 def MajPDVente(request, pk):
     #Requête sur le depôt.
     pdvente_unique=get_object_or_404(PointVente, pk=pk, branche__entreprise__user=request.user)
@@ -456,6 +580,7 @@ def MajPDVente(request, pk):
 
 ############### DEVISE ###########################
 
+@login_requis
 def DeviseAjouter(request):
     form = DeviseForm(request=request)
     context = {"devise": True, "form": form}
@@ -477,6 +602,7 @@ def DeviseAjouter(request):
     return render(request, "devise/devise.html", context)
 
 
+@login_requis
 def DeviseListe(request):
     search = (request.GET.get("q") or "").strip()
     qs = Devise.objects.filter(entreprise__user=request.user).select_related("entreprise")
@@ -497,6 +623,7 @@ def DeviseListe(request):
     return render(request, "devise/liste.html", context)
 
 
+@login_requis
 def DeviseMaj(request, pk):
     devise_obj = get_object_or_404(Devise, pk=pk, entreprise__user=request.user)
     form = DeviseForm(instance=devise_obj, request=request)
@@ -520,6 +647,7 @@ def DeviseMaj(request, pk):
     return render(request, "devise/modifier.html", context)
 
 
+@login_requis
 @require_POST
 def DeviseSupprimer(request, pk):
     devise_obj = get_object_or_404(Devise, pk=pk, entreprise__user=request.user)

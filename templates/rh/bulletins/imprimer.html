@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Bulletin de paie — {{ bulletin.employe }} — {{ bulletin.nom_mois }} {{ bulletin.periode_annee }}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Arial,sans-serif; font-size:11px; color:#1a1a1a; background:#fff; }
+
+    .toolbar { background:#343a40; color:#fff; padding:10px 20px; display:flex; align-items:center; gap:12px; }
+    .toolbar button { background:#fff; color:#343a40; border:none; padding:6px 14px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; }
+    .toolbar .title { flex:1; font-size:13px; }
+    @media print { .toolbar { display:none; } }
+
+    .page { max-width:210mm; margin:0 auto; padding:15mm 15mm 20mm; }
+
+    /* En-tête */
+    .entete { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #1a237e; padding-bottom:10px; margin-bottom:14px; }
+    .logo-zone img { height:50px; }
+    .logo-zone .nom-soc { font-size:16px; font-weight:700; color:#1a237e; }
+    .logo-zone .info-soc { font-size:10px; color:#555; margin-top:3px; }
+    .ref-zone { text-align:right; }
+    .ref-zone .titre-bulletin { font-size:15px; font-weight:700; color:#1a237e; text-transform:uppercase; letter-spacing:1px; }
+    .ref-zone .sous-titre { font-size:11px; color:#555; margin-top:4px; }
+    .ref-zone .num { font-size:12px; font-weight:600; color:#444; margin-top:2px; }
+
+    /* Identité agent */
+    .identite { display:flex; gap:20px; background:#f5f7ff; border:1px solid #dce0f5; border-radius:6px; padding:12px 16px; margin-bottom:14px; }
+    .id-bloc { flex:1; }
+    .id-label { font-size:9px; text-transform:uppercase; color:#888; margin-bottom:2px; }
+    .id-val { font-weight:600; font-size:11px; }
+
+    /* Tableau présences */
+    .section-titre { font-size:10px; text-transform:uppercase; font-weight:700; color:#1a237e; border-bottom:1px solid #dce0f5; margin-bottom:8px; padding-bottom:4px; margin-top:14px; }
+    .presences-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:4px; }
+    .pres-cell { text-align:center; padding:8px; border:1px solid #e0e0e0; border-radius:4px; }
+    .pres-cell .nb { font-size:20px; font-weight:700; }
+    .pres-cell .lbl { font-size:9px; color:#666; }
+    .pres-cell.success { background:#f0fff4; border-color:#b7dfc5; }
+    .pres-cell.info    { background:#f0f8ff; border-color:#b3d4ef; }
+    .pres-cell.danger  { background:#fff5f5; border-color:#f5c6cb; }
+    .pres-cell .nb.success { color:#155724; }
+    .pres-cell .nb.info    { color:#0c5460; }
+    .pres-cell .nb.danger  { color:#721c24; }
+
+    /* Tableau de paie */
+    table.paie { width:100%; border-collapse:collapse; margin-top:6px; }
+    table.paie th { background:#1a237e; color:#fff; padding:6px 10px; font-size:10px; text-align:left; }
+    table.paie th.right { text-align:right; }
+    table.paie td { padding:5px 10px; border-bottom:1px solid #e8e8e8; font-size:11px; }
+    table.paie td.right { text-align:right; }
+    table.paie tr.section-header td { background:#f5f5f5; font-weight:700; font-size:10px; color:#444; text-transform:uppercase; padding:4px 10px; }
+    table.paie tr.total-row td { background:#1a237e; color:#fff; font-weight:700; font-size:12px; padding:8px 10px; }
+    table.paie tr.sous-total td { background:#eef2ff; font-weight:600; }
+    .plus  { color:#155724; }
+    .moins { color:#721c24; }
+
+    /* Bas de page */
+    .signatures { display:grid; grid-template-columns:1fr 1fr; gap:30px; margin-top:24px; }
+    .sig-zone { border-top:1px solid #ccc; padding-top:8px; }
+    .sig-label { font-size:10px; color:#555; }
+    .sig-space { height:30px; }
+    .footer-print { text-align:center; font-size:9px; color:#aaa; margin-top:20px; border-top:1px solid #eee; padding-top:8px; }
+  </style>
+</head>
+<body>
+
+<!-- Barre impression -->
+<div class="toolbar">
+  <span class="title">Bulletin de paie — {{ bulletin.employe }} — {{ bulletin.nom_mois }} {{ bulletin.periode_annee }}</span>
+  <button onclick="window.print()">🖨 Imprimer</button>
+  <button onclick="window.close()">✕ Fermer</button>
+</div>
+
+<div class="page">
+
+  <!-- En-tête -->
+  <div class="entete">
+    <div class="logo-zone">
+      {% if entreprise.logo %}
+      <img src="{{ entreprise.logo.url }}" alt="logo">
+      {% endif %}
+      <div class="nom-soc">{{ entreprise.nom }}</div>
+      <div class="info-soc">
+        {% if entreprise.telephone %}{{ entreprise.telephone }}{% endif %}
+        {% if entreprise.email %} · {{ entreprise.email }}{% endif %}
+        {% if entreprise.adresse %}<br>{{ entreprise.adresse }}{% endif %}
+      </div>
+    </div>
+    <div class="ref-zone">
+      <div class="titre-bulletin">Bulletin de Paie</div>
+      <div class="sous-titre">{{ bulletin.nom_mois }} {{ bulletin.periode_annee }}</div>
+      <div class="num">{{ bulletin.numero }}</div>
+      <div style="margin-top:6px;font-size:10px">
+        Édité le {{ today|date:"d/m/Y à H:i" }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Identité agent -->
+  <div class="identite">
+    <div class="id-bloc">
+      <div class="id-label">Matricule</div>
+      <div class="id-val">{{ bulletin.employe.matricule }}</div>
+    </div>
+    <div class="id-bloc">
+      <div class="id-label">Nom & Prénom</div>
+      <div class="id-val">{{ bulletin.employe.prenom }} {{ bulletin.employe.nom }}</div>
+    </div>
+    <div class="id-bloc">
+      <div class="id-label">Poste</div>
+      <div class="id-val">{{ bulletin.contrat.titre_poste|default:"—" }}</div>
+    </div>
+    <div class="id-bloc">
+      <div class="id-label">Département</div>
+      <div class="id-val">{{ bulletin.contrat.departement.nom|default:"—" }}</div>
+    </div>
+    <div class="id-bloc">
+      <div class="id-label">Type contrat</div>
+      <div class="id-val">{{ bulletin.contrat.get_type_contrat_display|default:"—" }}</div>
+    </div>
+  </div>
+
+  <!-- Présences -->
+  <div class="section-titre">Présences — {{ bulletin.nom_mois }} {{ bulletin.periode_annee }}</div>
+  <div class="presences-grid">
+    <div class="pres-cell success">
+      <div class="nb success">{{ bulletin.jours_prestes }}</div>
+      <div class="lbl">Jours prestés</div>
+      <div class="lbl">sur {{ bulletin.jours_ouvrables }} ouvrables</div>
+    </div>
+    <div class="pres-cell info">
+      <div class="nb info">{{ bulletin.jours_conges }}</div>
+      <div class="lbl">Jours de congé</div>
+    </div>
+    <div class="pres-cell danger">
+      <div class="nb danger">{{ bulletin.jours_absences }}</div>
+      <div class="lbl">Jours d'absence</div>
+    </div>
+  </div>
+
+  <!-- Tableau de paie -->
+  <div class="section-titre" style="margin-top:18px">Détail du calcul</div>
+  <table class="paie">
+    <thead>
+      <tr>
+        <th style="width:60%">Libellé</th>
+        <th class="right" style="width:20%">Montant</th>
+        <th class="right" style="width:20%">Devise</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Salaire -->
+      <tr class="section-header">
+        <td colspan="3">Rémunération de base</td>
+      </tr>
+      <tr>
+        <td>Salaire de base (référence)</td>
+        <td class="right">{{ bulletin.salaire_base_ref|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+      <tr class="sous-total">
+        <td>Salaire brut ({{ bulletin.salaire_base_ref|floatformat:2 }} ÷ {{ bulletin.jours_ouvrables }} × {{ bulletin.jours_prestes }})</td>
+        <td class="right">{{ bulletin.salaire_brut|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+
+      <!-- Avantages -->
+      {% if lignes_avantages %}
+      <tr class="section-header">
+        <td colspan="3">Avantages & Allocations</td>
+      </tr>
+      {% for l in lignes_avantages %}
+      <tr>
+        <td><span class="plus">+</span> {{ l.libelle }}</td>
+        <td class="right plus">{{ l.montant|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="sous-total">
+        <td>Sous-total avantages</td>
+        <td class="right plus">+ {{ bulletin.allocations|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+      {% endif %}
+
+      <!-- Retenues diverses -->
+      {% if bulletin.retenues > 0 %}
+      <tr class="section-header">
+        <td colspan="3">Retenues diverses</td>
+      </tr>
+      {% for l in lignes_retenues %}
+      {% if not l.avance %}
+      <tr>
+        <td><span class="moins">−</span> {{ l.libelle }}</td>
+        <td class="right moins">{{ l.montant|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+      <tr class="sous-total">
+        <td>Sous-total retenues</td>
+        <td class="right moins">- {{ bulletin.retenues|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+      {% endif %}
+
+      <!-- Retenues avances -->
+      {% if bulletin.retenues_avances > 0 %}
+      <tr class="section-header">
+        <td colspan="3">Retenues sur avances</td>
+      </tr>
+      {% for l in lignes_retenues %}
+      {% if l.avance %}
+      <tr>
+        <td><span class="moins">−</span> {{ l.libelle }}</td>
+        <td class="right moins">{{ l.montant|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+      <tr class="sous-total">
+        <td>Sous-total retenues avances</td>
+        <td class="right moins">- {{ bulletin.retenues_avances|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+      {% endif %}
+
+      <!-- Net -->
+      <tr class="total-row">
+        <td>NET À PAYER</td>
+        <td class="right">{{ bulletin.salaire_net|floatformat:2 }}</td>
+        <td class="right">{{ bulletin.devise.code|default:"" }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Note -->
+  {% if bulletin.note %}
+  <div style="margin-top:12px;padding:8px 12px;background:#fffde7;border-left:3px solid #ffc107;font-size:10px">
+    <strong>Note :</strong> {{ bulletin.note }}
+  </div>
+  {% endif %}
+
+  <!-- Signatures -->
+  <div class="signatures">
+    <div class="sig-zone">
+      <div class="sig-label">Signature de l'employé</div>
+      <div class="sig-space"></div>
+      <div style="font-size:10px;color:#666">{{ bulletin.employe.prenom }} {{ bulletin.employe.nom }}</div>
+    </div>
+    <div class="sig-zone">
+      <div class="sig-label">Responsable RH / Direction</div>
+      <div class="sig-space"></div>
+      {% if bulletin.valide_par %}
+      <div style="font-size:10px;color:#666">{{ bulletin.valide_par }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="footer-print">
+    Document généré par M-Faida · {{ today|date:"d/m/Y à H:i" }} ·
+    Statut : {{ bulletin.get_statut_display }}
+  </div>
+
+</div>
+</body>
+</html>

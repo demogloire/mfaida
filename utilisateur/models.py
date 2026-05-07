@@ -5,9 +5,28 @@ from entreprise.models import Branche, Entreprise, Depot, PointVente
 
 
 class Role(models.Model):
+    class FamilleMetier(models.TextChoices):
+        MANAGER = 'MANAGER', 'Manager entreprise'
+        ASSISTANT_MANAGER = 'ASSISTANT_MANAGER', 'Assistant manager entreprise'
+        CAISSIER = 'CAISSIER', 'Caissier (point de vente)'
+        VENDEUR = 'VENDEUR', 'Vendeur (point de vente)'
+        MAGASINIER = 'MAGASINIER', 'Magasinier (dépôt)'
+        FINANCIER = 'FINANCIER', 'Financier'
+        COMPTABLE = 'COMPTABLE', 'Comptable'
+        LOGISTICIEN = 'LOGISTICIEN', 'Logisticien'
+        RESSOURCES_HUMAINES = 'RESSOURCES_HUMAINES', 'Ressources humaines (entreprise)'
+
     entreprise = models.ForeignKey(Entreprise, on_delete=models.CASCADE, related_name='roles')
     nom = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    famille_metier = models.CharField(
+        max_length=24,
+        choices=FamilleMetier.choices,
+        blank=True,
+        default='',
+        verbose_name='famille métier',
+        help_text="Type de poste pour proposer les accès types ; peut être affine par les permissions du rôle.",
+    )
 
     class Meta:
         verbose_name = "Rôle"
@@ -79,9 +98,8 @@ class Profil(AbstractUser):
 
     def a_la_permission(self, code_permission):
         """Vérifie si l'utilisateur possède une permission via son rôle."""
-        if not self.role:
-            return False
-        return self.role.permissions.filter(permission__code=code_permission).exists()
+        from utilisateur.acces_metier import utilisateur_peut_permission
+        return utilisateur_peut_permission(self, code_permission)
 
     def a_acces_depot(self, depot_id, permission='peut_voir'):
         """Vérifie si l'utilisateur a une permission donnée sur un dépôt."""

@@ -27,6 +27,11 @@ urlpatterns = [
     path('achat/', include('achat.urls')),
     path('stock/', include('stock.urls')),
     path('facturation/', include('facturation.urls')),
+    path('rh/', include('rh.urls')),
+    path('depenses/', include('depenses.urls')),
+    path('finance/', include('finance.urls')),
+    path('rapports/', include('rapports.urls')),
+    path('caisse/', include('caisse.urls')),
 ]
 
 if settings.DEBUG:

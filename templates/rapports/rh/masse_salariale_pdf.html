@@ -1,0 +1,18 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Masse salariale{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Masse salariale</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Bulletins</div><div class="kpi-val">{{ bulletins|length }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Total brut</div><div class="kpi-val">{{ total_brut|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Retenues</div><div class="kpi-val text-danger">{{ total_retenues|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Total net</div><div class="kpi-val text-success">{{ total_net|floatformat:2 }}</div></div>
+</div>
+<div class="section-title">Bulletins de paie</div>
+<table>
+  <tr><th>Employé</th><th>Période</th><th class="text-right">Brut</th><th class="text-right">Retenues</th><th class="text-right">Net</th><th>Statut</th></tr>
+  {% for b in bulletins %}<tr><td>{{ b.employe.prenom }} {{ b.employe.nom }}</td><td>{{ b.periode_mois }}/{{ b.periode_annee }}</td><td class="text-right">{{ b.salaire_brut|floatformat:2 }}</td><td class="text-right text-danger">{{ b.retenues|floatformat:2 }}</td><td class="text-right text-success">{{ b.salaire_net|floatformat:2 }}</td><td><span class="badge {% if b.statut == 'PAYE' %}badge-success{% elif b.statut == 'VALIDE' %}badge-warning{% else %}badge-danger{% endif %}">{{ b.get_statut_display }}</span></td></tr>{% empty %}<tr><td colspan="6">Aucun bulletin</td></tr>{% endfor %}
+  {% if bulletins %}<tr style="background:#e3f2fd;font-weight:bold"><td colspan="2">TOTAL</td><td class="text-right">{{ total_brut|floatformat:2 }}</td><td class="text-right text-danger">{{ total_retenues|floatformat:2 }}</td><td class="text-right text-success">{{ total_net|floatformat:2 }}</td><td></td></tr>{% endif %}
+</table>
+{% endblock %}

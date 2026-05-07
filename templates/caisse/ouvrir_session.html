@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5" style="max-width:600px;">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'caisse:dashboard' %}" class="text-decoration-none">Caisse</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'caisse:liste-sessions' %}" class="text-decoration-none">Sessions</a></li>
+      <li class="breadcrumb-item active">Ouvrir</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex gap-3 align-items-start mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success flex-shrink-0" style="width:3rem;height:3rem;">
+      <i class="ti ti-door-enter fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-1">Ouvrir une session</h1>
+      <p class="text-muted small mb-0">Renseignez le fond de caisse de départ.</p>
+    </div>
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Point de vente <span class="text-danger">*</span></label>
+          <select name="point_vente" class="form-select" required>
+            <option value="">— Choisir —</option>
+            {% for p in pdvs %}
+            <option value="{{ p.pk }}">{{ p.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Devise <span class="text-danger">*</span></label>
+          <select name="devise" class="form-select" required>
+            {% for d in devises %}
+            <option value="{{ d.pk }}">{{ d.nom }} ({{ d.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Fond de caisse à l'ouverture</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="ti ti-coin"></i></span>
+            <input type="number" name="fond_ouverture" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
+          </div>
+          <div class="form-text">Montant en espèces déjà présent dans la caisse.</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success px-4">
+            <i class="ti ti-door-enter me-1"></i>Ouvrir la session
+          </button>
+          <a href="{% url 'caisse:dashboard' %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

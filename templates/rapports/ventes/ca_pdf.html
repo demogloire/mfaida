@@ -1,0 +1,22 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Chiffre d'affaires{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Chiffre d'affaires</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Factures</div><div class="kpi-val">{{ synthese.nb_factures }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">CA TTC</div><div class="kpi-val">{{ synthese.total_ttc|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Encaissé</div><div class="kpi-val text-success">{{ synthese.total_paye|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Solde dû</div><div class="kpi-val text-danger">{{ synthese.total_du|floatformat:2 }}</div></div>
+</div>
+<div class="section-title">Évolution mensuelle</div>
+<table>
+  <tr><th>Mois</th><th class="text-right">CA TTC</th><th class="text-right">Encaissé</th><th class="text-right">Nb factures</th></tr>
+  {% for m in mensuel %}<tr><td>{{ m.mois|date:"M Y" }}</td><td class="text-right">{{ m.ca|floatformat:2 }}</td><td class="text-right text-success">{{ m.paye|floatformat:2 }}</td><td class="text-right">{{ m.nb }}</td></tr>{% empty %}<tr><td colspan="4">Aucune donnée</td></tr>{% endfor %}
+</table>
+<div class="section-title">Par point de vente</div>
+<table>
+  <tr><th>PDV</th><th class="text-right">CA TTC</th><th class="text-right">Nb factures</th></tr>
+  {% for p in par_pdv %}<tr><td>{{ p.point_vente__nom }}</td><td class="text-right">{{ p.ca|floatformat:2 }}</td><td class="text-right">{{ p.nb }}</td></tr>{% empty %}<tr><td colspan="3">Aucune donnée</td></tr>{% endfor %}
+</table>
+{% endblock %}

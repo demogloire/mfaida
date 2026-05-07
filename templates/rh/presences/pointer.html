@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:tableau-presences' %}?annee={{ jour.year }}&mois={{ jour.month }}" class="text-decoration-none">Présences</a></li>
+      <li class="breadcrumb-item active">Saisir présence</li>
+    </ol>
+  </nav>
+
+  <h4 class="fw-bold mb-4">
+    <i class="bi bi-pencil-square text-primary me-2"></i>Saisir une présence
+  </h4>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="row g-4">
+
+      <!-- Formulaire -->
+      <div class="col-lg-7">
+
+        <!-- Info employé + date (non éditable) -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body d-flex align-items-center gap-3">
+            {% if employe.photo %}
+            <img src="{{ employe.photo.url }}" class="rounded-circle shadow-sm"
+                 width="56" height="56" style="object-fit:cover">
+            {% else %}
+            <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold"
+                 style="width:56px;height:56px;font-size:18px">
+              {{ employe.prenom|slice:":1" }}{{ employe.nom|slice:":1" }}
+            </div>
+            {% endif %}
+            <div>
+              <div class="fw-bold fs-5">{{ employe.prenom }} {{ employe.nom }}</div>
+              <div class="text-muted">{{ employe.contrat_set.first.titre_poste|default:"—" }}</div>
+            </div>
+            <div class="ms-auto text-end">
+              <div class="fw-bold text-primary fs-5">{{ jour|date:"d" }}</div>
+              <div class="small text-muted">{{ jour|date:"F Y" }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statut -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-check2-circle text-primary me-2"></i>Statut de présence</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-2">
+              {% for code, lib in statuts %}
+              <div class="col-6 col-md-4">
+                <label class="statut-card border rounded-3 p-3 text-center w-100 d-flex flex-column align-items-center gap-2"
+                       style="cursor:pointer;transition:all .2s">
+                  <input type="radio" name="statut" value="{{ code }}" class="d-none statut-radio"
+                         {% if presence.statut == code %}checked{% endif %}>
+                  {% if code == 'PRESENT' %}
+                  <i class="bi bi-check-circle fs-3 text-success"></i>
+                  {% elif code == 'RETARD' %}
+                  <i class="bi bi-clock-history fs-3 text-warning"></i>
+                  {% elif code == 'ABSENT' %}
+                  <i class="bi bi-x-circle fs-3 text-danger"></i>
+                  {% elif code == 'CONGE' %}
+                  <i class="bi bi-calendar2-check fs-3 text-info"></i>
+                  {% elif code == 'FERIE' %}
+                  <i class="bi bi-flag fs-3 text-secondary"></i>
+                  {% endif %}
+                  <span class="small fw-semibold">{{ lib }}</span>
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Horaires -->
+        <div class="card border-0 shadow-sm mb-4" id="cardHoraires">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-clock text-primary me-2"></i>Horaires <span class="text-muted small">(facultatif)</span></h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Heure d'arrivée</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light"><i class="bi bi-box-arrow-in-right text-muted"></i></span>
+                  <input type="time" name="heure_arrivee" class="form-control"
+                         value="{% if presence.heure_arrivee %}{{ presence.heure_arrivee|time:'H:i' }}{% endif %}">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Heure de départ</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light"><i class="bi bi-box-arrow-right text-muted"></i></span>
+                  <input type="time" name="heure_depart" class="form-control"
+                         value="{% if presence.heure_depart %}{{ presence.heure_depart|time:'H:i' }}{% endif %}">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-chat-text text-primary me-2"></i>Note <span class="text-muted small">(facultatif)</span></h6>
+          </div>
+          <div class="card-body">
+            <input type="text" name="note" class="form-control" maxlength="200"
+                   placeholder="Motif d'absence, remarque..." value="{{ presence.note }}">
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-save me-1"></i>Enregistrer
+          </button>
+          <a href="{% url 'rh:tableau-presences' %}?annee={{ jour.year }}&mois={{ jour.month }}"
+             class="btn btn-outline-secondary">Retour au tableau</a>
+        </div>
+
+      </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-5">
+        <div class="position-sticky" style="top:80px">
+
+          <!-- Statut sélectionné -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-primary text-white py-3">
+              <h6 class="mb-0 fw-semibold"><i class="bi bi-eye me-2"></i>Aperçu</h6>
+            </div>
+            <div class="card-body text-center py-4">
+              <div id="previewIcon" class="display-4 mb-2">
+                {% if presence.statut == 'PRESENT' %}<i class="bi bi-check-circle text-success"></i>
+                {% elif presence.statut == 'RETARD' %}<i class="bi bi-clock-history text-warning"></i>
+                {% elif presence.statut == 'ABSENT' %}<i class="bi bi-x-circle text-danger"></i>
+                {% elif presence.statut == 'CONGE' %}<i class="bi bi-calendar2-check text-info"></i>
+                {% elif presence.statut == 'FERIE' %}<i class="bi bi-flag text-secondary"></i>
+                {% endif %}
+              </div>
+              <div id="previewLabel" class="fw-bold fs-5">{{ presence.get_statut_display }}</div>
+              <div class="text-muted small mt-1">{{ jour|date:"l d F Y" }}</div>
+            </div>
+          </div>
+
+          <!-- Présences récentes de l'employé -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3">
+              <h6 class="mb-0 fw-semibold small text-uppercase text-muted">Dernières présences</h6>
+            </div>
+            <div class="card-body p-0">
+              {% for p in employe.presences.all|slice:":7" %}
+              <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                <span class="small">{{ p.date|date:"d/m/Y" }}</span>
+                <span class="badge rounded-pill
+                  {% if p.statut == 'PRESENT' %}bg-success
+                  {% elif p.statut == 'RETARD' %}bg-warning text-dark
+                  {% elif p.statut == 'ABSENT' %}bg-danger
+                  {% elif p.statut == 'CONGE' %}bg-info text-dark
+                  {% else %}bg-secondary{% endif %}"
+                  style="font-size:10px">
+                  {{ p.get_statut_display }}
+                </span>
+              </div>
+              {% empty %}
+              <div class="text-center py-3 text-muted small">Aucune présence enregistrée.</div>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </form>
+
+</div>
+
+<script>
+const icons = {
+  'PRESENT': '<i class="bi bi-check-circle text-success"></i>',
+  'RETARD':  '<i class="bi bi-clock-history text-warning"></i>',
+  'ABSENT':  '<i class="bi bi-x-circle text-danger"></i>',
+  'CONGE':   '<i class="bi bi-calendar2-check text-info"></i>',
+  'FERIE':   '<i class="bi bi-flag text-secondary"></i>',
+};
+const labels = {
+{% for code, lib in statuts %}
+  '{{ code }}': '{{ lib }}',
+{% endfor %}
+};
+
+function updateSelection() {
+  const selected = document.querySelector('.statut-radio:checked');
+  document.querySelectorAll('.statut-card').forEach(c => {
+    c.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+  });
+  if (selected) {
+    selected.closest('.statut-card').classList.add('border-primary');
+    document.getElementById('previewIcon').innerHTML = icons[selected.value] || '';
+    document.getElementById('previewLabel').textContent = labels[selected.value] || selected.value;
+    // Masquer horaires si absent/congé/férié
+    const showHoraires = ['PRESENT','RETARD'].includes(selected.value);
+    document.getElementById('cardHoraires').style.opacity = showHoraires ? '1' : '.5';
+  }
+}
+
+document.querySelectorAll('.statut-radio').forEach(r => {
+  r.addEventListener('change', updateSelection);
+});
+document.addEventListener('DOMContentLoaded', updateSelection);
+</script>
+{% endblock %}

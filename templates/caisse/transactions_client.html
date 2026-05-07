@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'caisse:dashboard' %}" class="text-decoration-none">Caisse</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'caisse:liste-clients' %}" class="text-decoration-none">Clients</a></li>
+      <li class="breadcrumb-item active">{{ client.nom }}</li>
+    </ol>
+  </nav>
+
+  <!-- En-tête -->
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+    <div class="d-flex gap-3 align-items-start">
+      <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0 fw-bold fs-5" style="width:3rem;height:3rem;">
+        {{ client.nom|first|upper }}
+      </span>
+      <div>
+        <h1 class="fs-4 fw-bold mb-1">{{ client.nom }}</h1>
+        <div class="text-muted small d-flex flex-wrap gap-2">
+          <span><i class="ti ti-id me-1"></i>{{ client.code_client }}</span>
+          {% if client.telephone %}<span><i class="ti ti-phone me-1"></i>{{ client.telephone }}</span>{% endif %}
+          {% if client.email %}<span><i class="ti ti-mail me-1"></i>{{ client.email }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+    <a href="{{ request.META.HTTP_REFERER|default:'#' }}" class="btn btn-outline-secondary btn-sm flex-shrink-0">
+      <i class="ti ti-arrow-left me-1"></i>Retour
+    </a>
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="text-muted small mb-1">Transactions</div>
+        <div class="fw-bold fs-4">{{ transactions|length }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3 border-success border-2">
+        <div class="text-muted small mb-1">Total encaissé</div>
+        <div class="fw-bold fs-4 text-success">{{ total_encaisse }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3 border-danger border-2">
+        <div class="text-muted small mb-1">Total remboursé</div>
+        <div class="fw-bold fs-4 text-danger">{{ total_decaisse }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3 border-primary border-2">
+        <div class="text-muted small mb-1">Solde net</div>
+        <div class="fw-bold fs-4 text-primary">{{ total_encaisse|add:"-"|add:total_decaisse }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-6 col-md-3">
+      <select name="type" class="form-select form-select-sm">
+        <option value="">Tous types</option>
+        {% for code, label in types %}
+        <option value="{{ code }}" {% if filt_type == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <select name="pdv" class="form-select form-select-sm">
+        <option value="">Tous PDV</option>
+        {% for p in pdvs %}
+        <option value="{{ p.pk }}" {% if filt_pdv == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <button type="submit" class="btn btn-sm btn-secondary"><i class="ti ti-filter me-1"></i>Filtrer</button>
+      {% if filt_type or filt_pdv %}<a href="{% url 'caisse:transactions-client' client.pk %}" class="btn btn-sm btn-outline-secondary">Réinit.</a>{% endif %}
+    </div>
+  </form>
+
+  <!-- Tableau -->
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+            <th class="ps-4 py-3">N°</th>
+            <th class="py-3">Date</th>
+            <th class="py-3">Point de vente</th>
+            <th class="py-3">Type</th>
+            <th class="py-3">Mode</th>
+            <th class="py-3">Référence document</th>
+            <th class="pe-4 py-3 text-end">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tx in transactions %}
+          <tr>
+            <td class="ps-4 font-monospace text-muted small">{{ tx.numero }}</td>
+            <td class="text-muted">{{ tx.date_transaction|date:"d/m/Y H:i" }}</td>
+            <td class="text-muted">
+              <a href="{% url 'caisse:detail-session' tx.session.pk %}" class="text-decoration-none">
+                {{ tx.session.point_vente.nom }}
+              </a>
+            </td>
+            <td>
+              {% if tx.type_transaction == 'ENCAISSEMENT' %}
+                <span class="badge bg-success bg-opacity-15 text-success">Encaiss.</span>
+              {% elif tx.type_transaction == 'DECAISSEMENT' %}
+                <span class="badge bg-danger bg-opacity-15 text-danger">Décaiss.</span>
+              {% elif tx.type_transaction == 'DEPOT' %}
+                <span class="badge bg-info bg-opacity-15 text-info">Dépôt</span>
+              {% else %}
+                <span class="badge bg-warning bg-opacity-15 text-warning">Retrait</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ modes_labels|default_if_none:tx.mode_paiement }}</td>
+            <td class="text-muted">
+              {% if tx.facture %}
+                <i class="ti ti-file-invoice me-1 text-info"></i>
+                <a href="{% url 'facturation:detail-facture' tx.facture.pk %}" class="text-decoration-none">{{ tx.facture.numero_facture }}</a>
+              {% elif tx.retour_vente %}
+                <i class="ti ti-arrow-back-up me-1 text-warning"></i>
+                <a href="{% url 'facturation:detail-retour' tx.retour_vente.pk %}" class="text-decoration-none">{{ tx.retour_vente.numero_retour }}</a>
+              {% elif tx.depense %}
+                <i class="ti ti-receipt-off me-1 text-danger"></i>{{ tx.depense.numero_depense }}
+              {% else %}
+                <span class="text-muted">{{ tx.motif|truncatechars:40 }}</span>
+              {% endif %}
+            </td>
+            <td class="pe-4 text-end fw-semibold {% if tx.type_transaction == 'ENCAISSEMENT' or tx.type_transaction == 'DEPOT' %}text-success{% else %}text-danger{% endif %}">
+              {% if tx.type_transaction == 'ENCAISSEMENT' or tx.type_transaction == 'DEPOT' %}+{% else %}–{% endif %}{{ tx.montant }}
+              <small class="text-muted fw-normal">{{ tx.devise }}</small>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-5">
+            <i class="ti ti-mood-empty fs-2 d-block mb-2 opacity-40"></i>
+            Aucune transaction pour ce client.
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

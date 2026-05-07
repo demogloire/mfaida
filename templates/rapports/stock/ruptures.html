@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rapports:hub' %}" class="text-decoration-none">Rapports</a></li>
+      <li class="breadcrumb-item active">Ruptures de stock</li>
+    </ol>
+  </nav>
+  <h1 class="fs-4 fw-bold mb-4"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Ruptures &amp; faible stock</h1>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #dc3545 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">En rupture (qté = 0)</div>
+        <div class="fw-bold fs-3 text-danger">{{ critique|length }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm p-3 text-center" style="border-top:3px solid #ff9800 !important">
+        <div class="text-muted small fw-semibold" style="font-size:10px">Stock faible (sous seuil)</div>
+        <div class="fw-bold fs-3 text-warning">{{ faible|length }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if critique %}
+  <h6 class="fw-bold text-danger mb-2"><i class="bi bi-x-circle me-1"></i>En rupture totale</h6>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light"><tr><th>Produit</th><th>Catégorie</th><th>PDV</th><th class="text-end">Quantité</th></tr></thead>
+          <tbody>
+            {% for s in critique %}
+            <tr>
+              <td class="fw-semibold">{{ s.produit.nom }}</td>
+              <td class="small text-muted">{{ s.produit.sous_categorie.nom|default:"—" }}</td>
+              <td class="small text-muted">{{ s.pointdevente.nom|default:"—" }}</td>
+              <td class="text-end fw-bold text-danger">{{ s.quantite_reelle|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if faible %}
+  <h6 class="fw-bold text-warning mb-2"><i class="bi bi-exclamation-circle me-1"></i>Stock faible (sous seuil d'alerte)</h6>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light"><tr><th>Produit</th><th>Catégorie</th><th>PDV</th><th class="text-end">Quantité</th><th class="text-end">Seuil</th></tr></thead>
+          <tbody>
+            {% for s in faible %}
+            <tr>
+              <td class="fw-semibold">{{ s.produit.nom }}</td>
+              <td class="small text-muted">{{ s.produit.sous_categorie.nom|default:"—" }}</td>
+              <td class="small text-muted">{{ s.pointdevente.nom|default:"—" }}</td>
+              <td class="text-end fw-bold text-warning">{{ s.quantite_reelle|floatformat:2 }}</td>
+              <td class="text-end small text-muted">{{ s.produit.stock_alerte|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not critique and not faible %}
+  <div class="text-center py-5 text-muted"><i class="bi bi-check-circle-fill text-success fs-1 d-block mb-2"></i>Aucune rupture détectée</div>
+  {% endif %}
+</div>
+{% endblock %}

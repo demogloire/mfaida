@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'rh:hub' %}" class="text-decoration-none">RH</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'rh:liste-avances' %}" class="text-decoration-none">Avances</a></li>
+      <li class="breadcrumb-item active">{{ avance.numero }}</li>
+    </ol>
+  </nav>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="row g-4">
+
+    <!-- Colonne principale -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="bg-warning bg-opacity-10 text-warning rounded-2 d-flex align-items-center justify-content-center" style="width:2.2rem;height:2.2rem;">
+              <i class="ti ti-coin fs-5"></i>
+            </span>
+            <h5 class="fw-bold mb-0">{{ avance.numero }}</h5>
+          </div>
+          <!-- Badge statut -->
+          {% if avance.statut == 'DEMANDE' %}
+            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fs-12">Demandée</span>
+          {% elif avance.statut == 'APPROUVEE' %}
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-12">Approuvée</span>
+          {% elif avance.statut == 'DECAISSEE' %}
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12">Décaissée</span>
+          {% elif avance.statut == 'REMBOURSEE' %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle fs-12">Remboursée</span>
+          {% elif avance.statut == 'REJETEE' %}
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-12">Rejetée</span>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <dl class="row small mb-0">
+            <dt class="col-sm-4 text-muted">Employé</dt>
+            <dd class="col-sm-8 fw-semibold">{{ avance.employe }}</dd>
+
+            <dt class="col-sm-4 text-muted">Montant</dt>
+            <dd class="col-sm-8 fw-bold fs-5">
+              {{ avance.montant|floatformat:2 }} <small class="text-muted fw-normal">{{ avance.devise.code }}</small>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Point de vente</dt>
+            <dd class="col-sm-8">{{ avance.point_vente.nom }}</dd>
+
+            <dt class="col-sm-4 text-muted">Motif</dt>
+            <dd class="col-sm-8">{{ avance.motif|default:"—" }}</dd>
+
+            <dt class="col-sm-4 text-muted">Demandée par</dt>
+            <dd class="col-sm-8">{{ avance.demande_par.get_full_name|default:avance.demande_par.username }}
+              <span class="text-muted">— {{ avance.date_demande|date:"d/m/Y à H:i" }}</span>
+            </dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Historique workflow -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-2">
+          <h6 class="fw-bold mb-0 small">Suivi du traitement</h6>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+
+            <!-- Étape 1 : Demande -->
+            <li class="list-group-item d-flex align-items-start gap-3 py-3">
+              <span class="mt-1 text-success"><i class="ti ti-circle-check fs-5"></i></span>
+              <div>
+                <div class="fw-semibold">Demande soumise</div>
+                <div class="text-muted">
+                  {{ avance.date_demande|date:"d/m/Y à H:i" }} —
+                  {{ avance.demande_par.get_full_name|default:avance.demande_par.username }}
+                </div>
+              </div>
+            </li>
+
+            <!-- Étape 2 : Approbation -->
+            <li class="list-group-item d-flex align-items-start gap-3 py-3">
+              {% if avance.statut == 'DEMANDE' %}
+                <span class="mt-1 text-muted"><i class="ti ti-clock-hour-4 fs-5"></i></span>
+                <div class="text-muted">En attente d'approbation…</div>
+              {% elif avance.statut == 'REJETEE' %}
+                <span class="mt-1 text-danger"><i class="ti ti-circle-x fs-5"></i></span>
+                <div>
+                  <div class="fw-semibold text-danger">Rejetée</div>
+                  <div class="text-muted">
+                    {{ avance.date_approbation|date:"d/m/Y à H:i" }} —
+                    {{ avance.approuve_par.get_full_name|default:avance.approuve_par.username }}
+                  </div>
+                  {% if avance.note_approbation %}
+                  <div class="mt-1 fst-italic">« {{ avance.note_approbation }} »</div>
+                  {% endif %}
+                </div>
+              {% else %}
+                <span class="mt-1 text-success"><i class="ti ti-circle-check fs-5"></i></span>
+                <div>
+                  <div class="fw-semibold">Approuvée</div>
+                  <div class="text-muted">
+                    {{ avance.date_approbation|date:"d/m/Y à H:i" }} —
+                    {{ avance.approuve_par.get_full_name|default:avance.approuve_par.username }}
+                  </div>
+                  {% if avance.note_approbation %}
+                  <div class="mt-1 fst-italic text-muted">« {{ avance.note_approbation }} »</div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </li>
+
+            <!-- Étape 3 : Décaissement -->
+            {% if avance.statut != 'REJETEE' %}
+            <li class="list-group-item d-flex align-items-start gap-3 py-3">
+              {% if avance.statut == 'DECAISSEE' or avance.statut == 'REMBOURSEE' %}
+                <span class="mt-1 text-success"><i class="ti ti-circle-check fs-5"></i></span>
+                <div>
+                  <div class="fw-semibold">Décaissée</div>
+                  <div class="text-muted">
+                    {{ avance.date_decaissement|date:"d/m/Y à H:i" }} —
+                    {{ avance.decaisse_par.get_full_name|default:avance.decaisse_par.username }}
+                  </div>
+                  {% if avance.transaction_caisse %}
+                  <div class="mt-1 small text-muted">Transaction : <strong>{{ avance.transaction_caisse.numero }}</strong></div>
+                  {% endif %}
+                </div>
+              {% else %}
+                <span class="mt-1 text-muted"><i class="ti ti-clock-hour-4 fs-5"></i></span>
+                <div class="text-muted">Paiement en attente de décaissement…</div>
+              {% endif %}
+            </li>
+
+            <!-- Étape 4 : Remboursement -->
+            <li class="list-group-item d-flex align-items-start gap-3 py-3">
+              {% if avance.statut == 'REMBOURSEE' %}
+                <span class="mt-1 text-success"><i class="ti ti-circle-check fs-5"></i></span>
+                <div class="fw-semibold">Remboursée</div>
+              {% else %}
+                <span class="mt-1 text-muted"><i class="ti ti-clock-hour-4 fs-5"></i></span>
+                <div class="text-muted">Remboursement en attente…</div>
+              {% endif %}
+            </li>
+            {% endif %}
+
+          </ul>
+        </div>
+      </div>
+    </div><!-- /col principale -->
+
+    <!-- Colonne actions -->
+    <div class="col-lg-4">
+
+      <!-- Actions selon statut -->
+      {% if avance.statut == 'DEMANDE' and peut_approuver %}
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-bottom py-2">
+          <h6 class="fw-bold mb-0 small">Décision</h6>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{% url 'rh:approuver-avance' avance.pk %}">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label small fw-medium">Note (facultatif)</label>
+              <textarea name="note_approbation" class="form-control form-control-sm" rows="2"
+                        placeholder="Commentaire…"></textarea>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" name="action" value="approuver"
+                      class="btn btn-success btn-sm flex-fill">
+                <i class="ti ti-check me-1"></i>Approuver
+              </button>
+              <button type="submit" name="action" value="rejeter"
+                      class="btn btn-danger btn-sm flex-fill">
+                <i class="ti ti-x me-1"></i>Rejeter
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if avance.statut == 'APPROUVEE' %}
+      <div class="card border-0 shadow-sm border-warning mb-3" style="border-left:3px solid #ffc107 !important;">
+        <div class="card-body">
+          <p class="small mb-3">
+            <i class="ti ti-alert-triangle text-warning me-1"></i>
+            Cette avance est approuvée. Procédez au décaissement depuis la caisse du PDV
+            <strong>{{ avance.point_vente.nom }}</strong>.
+          </p>
+          <form method="post" action="{% url 'rh:decaisser-avance' avance.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning btn-sm w-100">
+              <i class="ti ti-cash me-1"></i>Décaisser {{ avance.montant|floatformat:0 }} {{ avance.devise.code }}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if avance.statut == 'DECAISSEE' %}
+      <div class="card border-0 shadow-sm border-success mb-3" style="border-left:3px solid #198754 !important;">
+        <div class="card-body">
+          <p class="small mb-3">
+            <i class="ti ti-check text-success me-1"></i>
+            Marquer cette avance comme intégralement remboursée (déduction sur bulletin de paie effectuée).
+          </p>
+          <form method="post" action="{% url 'rh:rembourser-avance' avance.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-sm w-100">
+              <i class="ti ti-circle-check me-1"></i>Marquer remboursée
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Récapitulatif financier -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-2">
+          <h6 class="fw-bold mb-0 small">Récapitulatif</h6>
+        </div>
+        <div class="card-body small">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Montant demandé</span>
+            <span class="fw-semibold">{{ avance.montant|floatformat:2 }} {{ avance.devise.code }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">PDV / Caisse</span>
+            <span>{{ avance.point_vente.nom }}</span>
+          </div>
+          {% if avance.transaction_caisse %}
+          <hr class="my-2">
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Transaction caisse</span>
+            <span class="fw-semibold text-primary">{{ avance.transaction_caisse.numero }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div><!-- /col actions -->
+  </div>
+</div>
+{% endblock %}

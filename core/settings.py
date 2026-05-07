@@ -51,7 +51,10 @@ INSTALLED_APPS = [
     'stock',
     'facturation',
     'finance',
-    'rh'
+    'rapports',
+    'rh',
+    'depenses',
+    'caisse',
 ]
 
 MIDDLEWARE = [
@@ -61,6 +64,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'utilisateur.middleware.ControleModulesMetierMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
     'utilisateur.middleware.HtmxMessageMiddleware',
@@ -79,6 +83,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'facturation.context_processors.approbations_en_attente',
+                'core.context_processors.header_context',
             ],
         },
     },

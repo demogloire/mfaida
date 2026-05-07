@@ -1,0 +1,15 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Avances sur salaire{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Avances sur salaire</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<div class="kpi-row">
+  <div class="kpi-box"><div class="kpi-label">Total décaissé</div><div class="kpi-val text-danger">{{ total_decaisse|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Total remboursé</div><div class="kpi-val text-success">{{ total_rembourse|floatformat:2 }}</div></div>
+  <div class="kpi-box"><div class="kpi-label">Solde restant dû</div><div class="kpi-val text-warning">{{ solde_restant|floatformat:2 }}</div></div>
+</div>
+<table>
+  <tr><th>Numéro</th><th>Employé</th><th class="text-right">Montant</th><th>Devise</th><th>Date</th><th>Statut</th></tr>
+  {% for a in qs %}<tr><td>{{ a.numero }}</td><td>{{ a.employe.prenom }} {{ a.employe.nom }}</td><td class="text-right">{{ a.montant|floatformat:2 }}</td><td>{{ a.devise.code }}</td><td>{{ a.date_demande|date:"d/m/Y" }}</td><td>{{ a.get_statut_display }}</td></tr>{% empty %}<tr><td colspan="6">Aucune avance</td></tr>{% endfor %}
+</table>
+{% endblock %}

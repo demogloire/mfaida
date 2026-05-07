@@ -1,0 +1,339 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="Fil de navigation">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'facturation:liste-retours' %}" class="text-decoration-none">Ventes retournées</a></li>
+      <li class="breadcrumb-item active">{{ retour.numero_retour }}</li>
+    </ol>
+  </nav>
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2" role="alert">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- ─── Fiche principale ─── -->
+    <div class="col-12 col-lg-8">
+
+      <!-- En-tête statut + actions -->
+      <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white d-flex align-items-center justify-content-between flex-wrap gap-2 py-3">
+          <div>
+            <span class="fw-bold font-monospace fs-5">{{ retour.numero_retour }}</span>
+            {% if retour.statut == 'BROUILLON' %}
+              <span class="badge bg-warning text-dark ms-2">Brouillon</span>
+            {% elif retour.statut == 'EN_ATTENTE' %}
+              <span class="badge bg-info text-dark ms-2">En attente d'approbation</span>
+            {% elif retour.statut == 'APPROUVE' %}
+              <span class="badge bg-success ms-2">Approuvé</span>
+            {% elif retour.statut == 'REJETE' %}
+              <span class="badge bg-danger ms-2">Rejeté</span>
+            {% elif retour.statut == 'ANNULE' %}
+              <span class="badge bg-secondary ms-2">Annulé</span>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            {# ── Vendeur : soumettre au manager ── #}
+            {% if retour.statut == 'BROUILLON' %}
+              <form method="post" action="{% url 'facturation:soumettre-retour' retour.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm"
+                        onclick="return confirm('Soumettre ce retour au manager pour approbation ?')">
+                  <i class="ti ti-send me-1"></i>Soumettre au manager
+                </button>
+              </form>
+              <form method="post" action="{% url 'facturation:annuler-retour' retour.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm"
+                        onclick="return confirm('Annuler ce retour ?')">
+                  <i class="ti ti-trash me-1"></i>Supprimer
+                </button>
+              </form>
+            {% endif %}
+
+            {# ── Manager : approuver ou rejeter ── #}
+            {% if retour.statut == 'EN_ATTENTE' and peut_approuver %}
+              <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalApprouver">
+                <i class="ti ti-check me-1"></i>Approuver
+              </button>
+              <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalRejeter">
+                <i class="ti ti-x me-1"></i>Rejeter
+              </button>
+            {% endif %}
+
+            {# ── Retour rejeté : possibilité d'annuler ── #}
+            {% if retour.statut == 'REJETE' %}
+              <form method="post" action="{% url 'facturation:annuler-retour' retour.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-secondary btn-sm"
+                        onclick="return confirm('Archiver (annuler) ce retour rejeté ?')">
+                  <i class="ti ti-archive me-1"></i>Archiver
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card-body">
+          <dl class="row row-cols-2 g-3 mb-0">
+            <div class="col">
+              <dt class="small text-muted fw-normal">Facture d'origine</dt>
+              <dd class="mb-0 fw-semibold font-monospace">
+                <a href="{% url 'facturation:detail-facture' retour.facture_origine.pk %}">{{ retour.facture_origine.numero_facture }}</a>
+              </dd>
+            </div>
+            <div class="col">
+              <dt class="small text-muted fw-normal">Client</dt>
+              <dd class="mb-0 fw-semibold">{{ retour.client.nom }}</dd>
+            </div>
+            <div class="col">
+              <dt class="small text-muted fw-normal">Point de vente</dt>
+              <dd class="mb-0">{{ retour.point_vente.nom }}</dd>
+            </div>
+            <div class="col">
+              <dt class="small text-muted fw-normal">Date de création</dt>
+              <dd class="mb-0 text-muted">{{ retour.date_retour|date:"d/m/Y H:i" }}</dd>
+            </div>
+            <div class="col">
+              <dt class="small text-muted fw-normal">Saisi par</dt>
+              <dd class="mb-0">{{ retour.vendeur.get_full_name|default:retour.vendeur.username }}</dd>
+            </div>
+            <div class="col">
+              <dt class="small text-muted fw-normal">Devise</dt>
+              <dd class="mb-0">{{ retour.devise.code }}</dd>
+            </div>
+            {% if retour.motif %}
+            <div class="col-12">
+              <dt class="small text-muted fw-normal">Motif du retour</dt>
+              <dd class="mb-0" style="white-space:pre-line">{{ retour.motif }}</dd>
+            </div>
+            {% endif %}
+          </dl>
+        </div>
+
+        {# Commentaire manager visible si décision prise #}
+        {% if retour.commentaire_manager and retour.statut in 'APPROUVE REJETE' %}
+        <div class="card-footer bg-white border-top">
+          <p class="small mb-1 text-muted">
+            <i class="ti ti-message-circle me-1"></i>
+            Commentaire de {{ retour.approuve_par.get_full_name|default:retour.approuve_par.username }}
+            ({{ retour.date_approbation|date:"d/m/Y H:i" }}) :
+          </p>
+          <p class="mb-0 small fst-italic">{{ retour.commentaire_manager }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Lignes retournées -->
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white fw-semibold small py-3 px-4">Articles retournés</div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light">
+              <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+                <th class="ps-4 py-3">Produit</th>
+                <th class="text-center py-3">Qté retournée</th>
+                <th class="text-end py-3">P.U. HT</th>
+                <th class="text-end py-3">S/Total HT</th>
+                <th class="text-end pe-4 py-3">S/Total TTC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lig in retour.lignes.all %}
+              <tr>
+                <td class="ps-4 fw-semibold">{{ lig.produit.nom }}</td>
+                <td class="text-center text-muted">{{ lig.quantite_retournee|floatformat:2 }}</td>
+                <td class="text-end font-monospace">{{ lig.prix_unitaire_ht|floatformat:2 }}</td>
+                <td class="text-end font-monospace">{{ lig.sous_total_ht|floatformat:2 }}</td>
+                <td class="text-end pe-4 font-monospace fw-semibold">{{ lig.sous_total_ttc|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Totaux séparés du tableau pour une meilleure lisibilité -->
+        <div class="border-top px-4 py-3">
+          <div class="row justify-content-end">
+            <div class="col-12 col-sm-6 col-md-5 col-lg-6">
+              <div class="d-flex justify-content-between align-items-center py-1 small text-muted">
+                <span>Total HT</span>
+                <span class="font-monospace">{{ retour.total_ht|floatformat:2 }} {{ retour.devise.code }}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center py-1 small text-muted">
+                <span>TVA</span>
+                <span class="font-monospace">{{ retour.total_tva|floatformat:2 }} {{ retour.devise.code }}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center py-2 border-top mt-1">
+                <span class="fw-bold fs-5">Total TTC</span>
+                <span class="fw-bold font-monospace text-danger" style="font-size:1.6rem;line-height:1.2;">
+                  {{ retour.total_ttc|floatformat:2 }} {{ retour.devise.code }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Sidebar ─── -->
+    <div class="col-12 col-lg-4">
+
+      {# Dépense liée (après approbation) #}
+      {% if depense_liee %}
+      <div class="card shadow-sm border-0 mb-3 border-start border-4 border-danger">
+        <div class="card-header bg-white fw-semibold small py-3">
+          <i class="ti ti-cash-off me-1 text-danger"></i>Dépense caisse générée
+        </div>
+        <div class="card-body small">
+          <p class="mb-1">
+            <span class="text-muted">N° :</span>
+            <a href="{% url 'depenses:detail-depense' depense_liee.pk %}" class="fw-semibold">
+              {{ depense_liee.numero_depense }}
+            </a>
+          </p>
+          <p class="mb-1">
+            <span class="text-muted">Montant :</span>
+            <strong class="text-danger">{{ depense_liee.montant|floatformat:2 }} {{ depense_liee.devise.code }}</strong>
+          </p>
+          <p class="mb-0">
+            <span class="text-muted">Statut :</span>
+            {% if depense_liee.statut == 'VALIDEE' %}
+              <span class="badge bg-success">Validée</span>
+            {% elif depense_liee.statut == 'ANNULEE' %}
+              <span class="badge bg-secondary">Annulée</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">En attente caisse</span>
+            {% endif %}
+          </p>
+          {% if depense_liee.statut == 'BROUILLON' %}
+          <a href="{% url 'depenses:detail-depense' depense_liee.pk %}" class="btn btn-sm btn-outline-danger w-100 mt-2">
+            <i class="ti ti-cash me-1"></i>Traiter la sortie de fonds
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Workflow -->
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white fw-semibold small py-3">Workflow</div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex gap-2 align-items-start py-3 {% if retour.statut == 'BROUILLON' %}fw-bold bg-warning bg-opacity-10{% endif %}">
+              <i class="ti ti-pencil text-warning mt-1"></i>
+              <div>
+                <div>1. Brouillon</div>
+                <div class="text-muted fw-normal small">Vendeur saisit les lignes à retourner.</div>
+              </div>
+            </li>
+            <li class="list-group-item d-flex gap-2 align-items-start py-3 {% if retour.statut == 'EN_ATTENTE' %}fw-bold bg-info bg-opacity-10{% endif %}">
+              <i class="ti ti-clock text-info mt-1"></i>
+              <div>
+                <div>2. En attente d'approbation</div>
+                <div class="text-muted fw-normal small">Soumis au manager le {% if retour.soumis_le %}{{ retour.soumis_le|date:"d/m/Y H:i" }}{% else %}—{% endif %}.</div>
+              </div>
+            </li>
+            <li class="list-group-item d-flex gap-2 align-items-start py-3 {% if retour.statut == 'APPROUVE' %}fw-bold bg-success bg-opacity-10{% endif %}">
+              <i class="ti ti-check text-success mt-1"></i>
+              <div>
+                <div>3. Approuvé par le manager</div>
+                <div class="text-muted fw-normal small">Stock réintégré — dépense créée en caisse.</div>
+              </div>
+            </li>
+            <li class="list-group-item d-flex gap-2 align-items-start py-3">
+              <i class="ti ti-cash text-danger mt-1"></i>
+              <div>
+                <div>4. Sortie de fonds (caisse)</div>
+                <div class="text-muted fw-normal small">La caisse valide la dépense et remet les fonds au client.</div>
+              </div>
+            </li>
+            {% if retour.statut == 'REJETE' %}
+            <li class="list-group-item d-flex gap-2 align-items-start py-3 fw-bold bg-danger bg-opacity-10">
+              <i class="ti ti-x text-danger mt-1"></i>
+              <div>
+                <div>Rejeté</div>
+                <div class="text-muted fw-normal small">Par {{ retour.approuve_par.get_full_name|default:retour.approuve_par.username }} le {{ retour.date_approbation|date:"d/m/Y" }}.</div>
+              </div>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── Modal Approuver ─── #}
+{% if retour.statut == 'EN_ATTENTE' and peut_approuver %}
+<div class="modal fade" id="modalApprouver" tabindex="-1" aria-labelledby="modalApprouverLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" action="{% url 'facturation:approuver-retour' retour.pk %}">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header border-bottom-0">
+          <h5 class="modal-title text-success" id="modalApprouverLabel">
+            <i class="ti ti-check-circle me-1"></i>Approuver le retour
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-3">
+            En approuvant, le stock sera réintégré immédiatement et une <strong>dépense de remboursement</strong>
+            de <strong class="text-danger">{{ retour.total_ttc|floatformat:2 }} {{ retour.devise.code }}</strong>
+            sera créée en brouillon pour traitement par la caisse.
+          </p>
+          <div>
+            <label class="form-label small fw-semibold">Commentaire (optionnel)</label>
+            <textarea name="commentaire_manager" rows="3" class="form-control"
+                      placeholder="Note pour le vendeur ou la caisse…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success px-4">
+            <i class="ti ti-check me-1"></i>Confirmer l'approbation
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ─── Modal Rejeter ─── #}
+<div class="modal fade" id="modalRejeter" tabindex="-1" aria-labelledby="modalRejeterLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" action="{% url 'facturation:rejeter-retour' retour.pk %}">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header border-bottom-0">
+          <h5 class="modal-title text-danger" id="modalRejeterLabel">
+            <i class="ti ti-x-circle me-1"></i>Rejeter le retour
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div>
+            <label class="form-label small fw-semibold">Motif du rejet <span class="text-danger">*</span></label>
+            <textarea name="commentaire_manager" rows="3" class="form-control" required
+                      placeholder="Expliquez la raison du rejet…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-danger px-4">
+            <i class="ti ti-x me-1"></i>Confirmer le rejet
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

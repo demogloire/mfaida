@@ -199,16 +199,14 @@ def _liste_stocks_synthese_context(request, lieu):
             | Q(produit__code_barre__icontains=q)
         )
 
-    agr = base.values('produit_id').annotate(physique=Sum('quantite_reelle'))
-    prod_ids = [a['produit_id'] for a in agr if a['produit_id']]
+    agr_list = list(base.values('produit_id').annotate(physique=Sum('quantite_reelle')))
+    agr_by_pid = {
+        a['produit_id']: a['physique'] if a['physique'] is not None else Decimal('0')
+        for a in agr_list
+        if a['produit_id']
+    }
 
-    ec_base = StockMiseAEcart.objects.filter(
-        produit__entreprise=entreprise,
-        actif=True,
-    )
-    if prod_ids:
-        ec_base = ec_base.filter(produit_id__in=prod_ids)
-
+    ec_base = StockMiseAEcart.objects.filter(produit__entreprise=entreprise, actif=True)
     if lieu == 'depot':
         ec_base = ec_base.filter(depot__in=depots, pointdevente__isnull=True)
         if request.GET.get('depot'):
@@ -217,16 +215,19 @@ def _liste_stocks_synthese_context(request, lieu):
         ec_base = ec_base.filter(pointdevente__in=pvs)
         if request.GET.get('point_vente'):
             ec_base = ec_base.filter(pointdevente_id=request.GET.get('point_vente'))
+    if q:
+        ec_base = ec_base.filter(
+            Q(produit__nom__icontains=q)
+            | Q(produit__sku__icontains=q)
+            | Q(produit__code_barre__icontains=q)
+        )
 
     ec_map = {
         row['produit_id']: row['t'] or Decimal('0')
         for row in ec_base.values('produit_id').annotate(t=Sum('quantite'))
     }
 
-    mouv = MouvementStock.objects.filter(
-        produit__entreprise=entreprise,
-        quantite_active__gt=0,
-    )
+    mouv = MouvementStock.objects.filter(produit__entreprise=entreprise, quantite_active__gt=0)
     if lieu == 'depot':
         mouv = mouv.filter(depot__in=depots, pointvente__isnull=True)
         if depot_pk:
@@ -242,33 +243,45 @@ def _liste_stocks_synthese_context(request, lieu):
             | Q(produit__code_barre__icontains=q)
         )
 
-    mouv_agr = mouv.values('produit_id').annotate(
-        qty_lots=Sum('quantite_active'),
-        val_lots=Sum(
-            ExpressionWrapper(
-                F('quantite_active') * F('prix_unitaire'),
-                output_field=DecimalField(max_digits=24, decimal_places=6),
-            )
-        ),
+    mouv_agr = list(
+        mouv.values('produit_id').annotate(
+            qty_lots=Sum('quantite_active'),
+            val_lots=Sum(
+                ExpressionWrapper(
+                    F('quantite_active') * F('prix_unitaire'),
+                    output_field=DecimalField(max_digits=24, decimal_places=6),
+                )
+            ),
+        )
     )
+    active_by_pid = {
+        row['produit_id']: row['qty_lots'] if row['qty_lots'] is not None else Decimal('0')
+        for row in mouv_agr
+    }
+
     pu_map = {}
     for row in mouv_agr:
         qty_l = row['qty_lots'] or Decimal('0')
         if qty_l > 0:
             pu_map[row['produit_id']] = (row['val_lots'] or Decimal('0')) / qty_l
 
-    produits_bulk = Produit.objects.in_bulk(prod_ids)
+    all_pids = set(agr_by_pid) | set(active_by_pid) | set(ec_map.keys())
+    produits_bulk = Produit.objects.filter(pk__in=all_pids, entreprise=entreprise).in_bulk()
+
     lignes = []
     total_valeur_ecart = Decimal('0')
     total_valeur_disponible = Decimal('0')
-    for a in agr:
-        pid = a['produit_id']
+    for pid in all_pids:
         p = produits_bulk.get(pid)
         if not p:
             continue
-        phy = a['physique'] or Decimal('0')
+        phy_stock = agr_by_pid.get(pid, Decimal('0'))
+        qty_act = active_by_pid.get(pid, Decimal('0'))
+        phy = phy_stock
+        if phy <= Decimal('0') and qty_act > Decimal('0'):
+            phy = qty_act
         ec = ec_map.get(pid, Decimal('0'))
-        if phy <= 0 and ec <= 0:
+        if phy <= Decimal('0') and ec <= Decimal('0'):
             continue
         disp = phy - ec
         pu = pu_map.get(pid)
@@ -1555,3 +1568,225 @@ def inventaire_cloturer(request, pk):
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect('stock:detail-inventaire', pk=pk)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Faible stock
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_requis
+def faible_stock(request):
+    from django.db.models import Sum
+    from entreprise.models import Produit as _Produit
+    from utilisateur.acces_metier import utilisateur_peut_permission
+
+    user       = request.user
+    entreprise = get_entreprise_utilisateur(user)
+    admin      = utilisateur_est_admin(user)
+
+    peut_depot = utilisateur_peut_permission(user, 'acces_stock_depot')
+    peut_pdv   = utilisateur_peut_permission(user, 'acces_stock_pdv')
+
+    if not peut_depot and not peut_pdv:
+        messages.error(request, 'Accès refusé.')
+        return redirect('entreprise:dashboard')
+
+    from entreprise.models import Depot as _Depot, PointVente as _PDV
+
+    # Listes d'emplacements accessibles à cet utilisateur (filtre rôle + AccesDepot/PDV)
+    depots_qs = (
+        queryset_depots_visibles(user, entreprise, admin)
+        if peut_depot else _Depot.objects.none()
+    )
+    pdvs_qs = (
+        queryset_points_vente_visibles(user, entreprise, admin)
+        if peut_pdv else _PDV.objects.none()
+    )
+
+    # Paramètres de filtre
+    q         = (request.GET.get('q')         or '').strip()
+    depot_fk  = (request.GET.get('depot')     or '').strip()
+    pdv_fk    = (request.GET.get('pdv')       or '').strip()
+    lieu_type = (request.GET.get('lieu_type') or '').strip()
+
+    # IDs autorisés pour ce user
+    depot_ids_ok = list(depots_qs.values_list('pk', flat=True))
+    pdv_ids_ok   = list(pdvs_qs.values_list('pk', flat=True))
+
+    # Queryset de base Stock limité aux emplacements autorisés
+    qs_stock = Stock.objects.select_related('produit', 'depot', 'pointdevente')
+    if peut_depot and peut_pdv:
+        qs_stock = qs_stock.filter(
+            Q(depot_id__in=depot_ids_ok, pointdevente__isnull=True) |
+            Q(pointdevente_id__in=pdv_ids_ok)
+        )
+    elif peut_depot:
+        qs_stock = qs_stock.filter(depot_id__in=depot_ids_ok, pointdevente__isnull=True)
+    else:
+        qs_stock = qs_stock.filter(pointdevente_id__in=pdv_ids_ok)
+
+    # Filtre emplacement précis (vérifie que c'est dans les IDs autorisés)
+    if depot_fk.isdigit() and int(depot_fk) in depot_ids_ok:
+        qs_stock = qs_stock.filter(depot_id=int(depot_fk))
+    if pdv_fk.isdigit() and int(pdv_fk) in pdv_ids_ok:
+        qs_stock = qs_stock.filter(pointdevente_id=int(pdv_fk))
+    if lieu_type == 'depot' and peut_depot:
+        qs_stock = qs_stock.filter(pointdevente__isnull=True)
+    elif lieu_type == 'pdv' and peut_pdv:
+        qs_stock = qs_stock.filter(pointdevente__isnull=False)
+
+    totaux_map = {
+        r['produit_id']: r['total_reel']
+        for r in qs_stock.values('produit_id').annotate(total_reel=Sum('quantite_reelle'))
+    }
+
+    produits_qs = (
+        _Produit.objects
+        .filter(pk__in=totaux_map.keys())
+        .select_related('sous_categorie')
+    )
+
+    alertes = []
+    for p in produits_qs.order_by('nom'):
+        if q and q.lower() not in p.nom.lower():
+            continue
+        total = totaux_map.get(p.pk, 0) or 0
+        if total < p.stock_alerte:
+            emplacements = (
+                qs_stock.filter(produit=p)
+                .select_related('depot', 'pointdevente')
+                .order_by('quantite_reelle')
+            )
+            alertes.append({
+                'produit':      p,
+                'total':        total,
+                'seuil':        p.stock_alerte,
+                'deficit':      p.stock_alerte - total,
+                'emplacements': emplacements,
+            })
+
+    return render(request, 'stock/alertes/faible_stock.html', {
+        'alertes':    alertes,
+        'actif':      'faible-stock',
+        'filt_q':     q,
+        'filt_depot': depot_fk,
+        'filt_pdv':   pdv_fk,
+        'filt_lieu':  lieu_type,
+        'depots':     depots_qs,
+        'pdvs':       pdvs_qs,
+        'peut_depot': peut_depot,
+        'peut_pdv':   peut_pdv,
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Produits en expiration
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_requis
+def produits_expiration(request):
+    from datetime import date
+    from entreprise.models import Depot as _Depot, PointVente as _PDV
+    from utilisateur.acces_metier import utilisateur_peut_permission
+
+    user        = request.user
+    entreprise  = get_entreprise_utilisateur(user)
+    admin       = utilisateur_est_admin(user)
+    aujourd_hui = date.today()
+
+    peut_depot = utilisateur_peut_permission(user, 'acces_stock_depot')
+    peut_pdv   = utilisateur_peut_permission(user, 'acces_stock_pdv')
+
+    if not peut_depot and not peut_pdv:
+        messages.error(request, 'Accès refusé.')
+        return redirect('entreprise:dashboard')
+
+    # Listes d'emplacements accessibles à cet utilisateur
+    from entreprise.models import Depot as _Depot, PointVente as _PDV
+    depots_qs = (
+        queryset_depots_visibles(user, entreprise, admin)
+        if peut_depot else _Depot.objects.none()
+    )
+    pdvs_qs = (
+        queryset_points_vente_visibles(user, entreprise, admin)
+        if peut_pdv else _PDV.objects.none()
+    )
+
+    depot_ids_ok = list(depots_qs.values_list('pk', flat=True))
+    pdv_ids_ok   = list(pdvs_qs.values_list('pk', flat=True))
+
+    # Paramètres de filtre
+    q         = (request.GET.get('q')         or '').strip()
+    depot_fk  = (request.GET.get('depot')     or '').strip()
+    pdv_fk    = (request.GET.get('pdv')       or '').strip()
+    lieu_type = (request.GET.get('lieu_type') or '').strip()
+
+    # Queryset de base limité aux emplacements autorisés
+    qs = (
+        MouvementStock.objects
+        .filter(dateexpiration__isnull=False, quantite_active__gt=0)
+        .select_related('produit', 'depot', 'pointvente')
+    )
+    if peut_depot and peut_pdv:
+        qs = qs.filter(
+            Q(depot_id__in=depot_ids_ok, pointvente__isnull=True) |
+            Q(pointvente_id__in=pdv_ids_ok)
+        )
+    elif peut_depot:
+        qs = qs.filter(depot_id__in=depot_ids_ok, pointvente__isnull=True)
+    else:
+        qs = qs.filter(pointvente_id__in=pdv_ids_ok)
+
+    # Filtres précis (vérification que l'ID est autorisé)
+    if depot_fk.isdigit() and int(depot_fk) in depot_ids_ok:
+        qs = qs.filter(depot_id=int(depot_fk))
+    if pdv_fk.isdigit() and int(pdv_fk) in pdv_ids_ok:
+        qs = qs.filter(pointvente_id=int(pdv_fk))
+    if lieu_type == 'depot' and peut_depot:
+        qs = qs.filter(pointvente__isnull=True)
+    elif lieu_type == 'pdv' and peut_pdv:
+        qs = qs.filter(pointvente__isnull=False)
+    if q:
+        qs = qs.filter(produit__nom__icontains=q)
+
+    lots = []
+    for mv in qs.order_by('dateexpiration'):
+        jours_restants = (mv.dateexpiration - aujourd_hui).days
+        duree_alerte   = mv.produit.vie
+        if jours_restants < duree_alerte:
+            emplacement = '—'
+            type_lieu   = '—'
+            if mv.pointvente_id and mv.pointvente:
+                emplacement = mv.pointvente.nom
+                type_lieu   = 'PDV'
+            elif mv.depot_id and mv.depot:
+                emplacement = mv.depot.nom
+                type_lieu   = 'Dépôt'
+            lots.append({
+                'mouvement':      mv,
+                'produit':        mv.produit,
+                'lot':            mv.lot_batch or '—',
+                'emplacement':    emplacement,
+                'type_lieu':      type_lieu,
+                'quantite':       mv.quantite_active,
+                'expiration':     mv.dateexpiration,
+                'jours_restants': jours_restants,
+                'jours_retard':   abs(jours_restants),
+                'duree_alerte':   duree_alerte,
+                'critique':       jours_restants <= 0,
+                'urgent':         0 < jours_restants <= max(1, duree_alerte // 3),
+            })
+
+    return render(request, 'stock/alertes/produits_expiration.html', {
+        'lots':       lots,
+        'actif':      'produits-expiration',
+        'filt_q':     q,
+        'filt_depot': depot_fk,
+        'filt_pdv':   pdv_fk,
+        'filt_lieu':  lieu_type,
+        'depots':     depots_qs,
+        'pdvs':       pdvs_qs,
+        'peut_depot': peut_depot,
+        'peut_pdv':   peut_pdv,
+        'today':      aujourd_hui,
+    })

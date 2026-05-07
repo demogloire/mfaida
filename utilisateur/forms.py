@@ -181,11 +181,12 @@ class CreationUtilisateurForm(UserCreationForm):
             w.attrs.setdefault('class', 'form-select')
             if htmx_entreprise_url:
                 w.attrs.update({
-                    'hx-get': htmx_entreprise_url,
+                    'hx-post': htmx_entreprise_url,
                     'hx-trigger': 'change',
                     'hx-target': '#form-container',
                     'hx-swap': 'innerHTML',
-                    'hx-include': 'this',
+                    'hx-include': 'closest form',
+                    'hx-vals': '{"entreprise_refresh": "1"}',
                 })
 
         eff = None
@@ -277,11 +278,12 @@ class ModificationUtilisateurForm(forms.ModelForm):
             w.attrs.setdefault('class', 'form-select')
             if htmx_entreprise_url:
                 w.attrs.update({
-                    'hx-get': htmx_entreprise_url,
+                    'hx-post': htmx_entreprise_url,
                     'hx-trigger': 'change',
                     'hx-target': '#form-container',
                     'hx-swap': 'innerHTML',
-                    'hx-include': 'this',
+                    'hx-include': 'closest form',
+                    'hx-vals': '{"entreprise_refresh": "1"}',
                 })
 
         eff = None
@@ -340,9 +342,19 @@ class ModificationUtilisateurForm(forms.ModelForm):
 class RoleForm(forms.ModelForm):
     class Meta:
         model = Role
-        fields = ['nom', 'description']
+        fields = ['nom', 'description', 'famille_metier']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
+            'famille_metier': forms.Select(
+                attrs={'class': 'form-select'},
+            ),
+        }
+        labels = {'famille_metier': 'Famille métier (accès types)'}
+        help_texts = {
+            'famille_metier': (
+                "Optionnel : en enregistrant, remplace les permissions du rôle par le jeu associé "
+                "à ce poste. Laissez vide pour conserver un rôle entièrement personnalisé."
+            ),
         }
 
     def __init__(self, *args, show_entreprise=False, entreprise_fixe=None, **kwargs):
@@ -351,6 +363,7 @@ class RoleForm(forms.ModelForm):
         entreprise_fixe : utilisé pour la validation d'unicité (nom + entreprise) quand le champ n'est pas affiché.
         """
         self._entreprise_fixe = entreprise_fixe
+        self._show_entreprise = show_entreprise
         super().__init__(*args, **kwargs)
         if show_entreprise:
             self.fields['entreprise'] = forms.ModelChoiceField(
@@ -382,8 +395,14 @@ class RoleForm(forms.ModelForm):
         instance = super().save(commit=False)
         if 'entreprise' in self.cleaned_data:
             instance.entreprise = self.cleaned_data['entreprise']
+        elif self._entreprise_fixe is not None:
+            instance.entreprise = self._entreprise_fixe
         if commit:
             instance.save()
+            from .metiers import synchroniser_permissions_role
+            fm = (self.cleaned_data.get('famille_metier') or '').strip()
+            if fm:
+                synchroniser_permissions_role(instance, fm, remplacer=True)
         return instance
 
 

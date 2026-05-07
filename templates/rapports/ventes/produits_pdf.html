@@ -1,0 +1,18 @@
+{% extends 'rapports/base_pdf.html' %}
+{% block titre %}Produits vendus{% endblock %}
+{% block contenu %}
+<div class="rapport-title">Analyse produits vendus</div>
+<div class="periode">Période : {{ debut|date:"d/m/Y" }} → {{ fin|date:"d/m/Y" }}</div>
+<table>
+  <tr><th>#</th><th>Produit</th><th>Catégorie</th><th class="text-right">Qté vendue</th><th class="text-right">CA HT</th></tr>
+  {% for l in lignes %}
+  <tr>
+    <td>{{ forloop.counter }}</td>
+    <td>{{ l.produit__nom }}</td>
+    <td>{{ l.produit__sous_categorie__nom|default:"—" }}</td>
+    <td class="text-right">{{ l.qte_vendue|floatformat:0 }}</td>
+    <td class="text-right">{{ l.ca_ht|floatformat:2 }}</td>
+  </tr>
+  {% empty %}<tr><td colspan="5">Aucune vente</td></tr>{% endfor %}
+</table>
+{% endblock %}

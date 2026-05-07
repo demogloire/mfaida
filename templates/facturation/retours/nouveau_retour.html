@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .page-nouveau-retour .ls-03 { letter-spacing: 0.04em; }
+    .page-nouveau-retour .mono-piece { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+</style>
+<div class="content page-nouveau-retour pb-5">
+    <nav class="mb-3" aria-label="Fil de navigation">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item">
+                <a href="{% url 'facturation:liste-retours' %}" class="text-decoration-none">Ventes retournées</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Sélection facture</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-start mb-4">
+        <div class="d-flex gap-3 align-items-start flex-grow-1 min-w-0">
+            <div class="flex-shrink-0">
+                <span class="avatar avatar-lg bg-warning bg-opacity-10 text-warning rounded-3 d-flex align-items-center justify-content-center" style="width: 3rem; height: 3rem;">
+                    <i class="ti ti-arrow-back-up fs-3"></i>
+                </span>
+            </div>
+            <div class="min-w-0">
+                <h1 class="fs-4 fw-bold mb-1 lh-sm">Nouveau retour client</h1>
+                <p class="text-muted small mb-0 lh-base" style="max-width: 36rem;">
+                    Recherchez une <strong>facture validée</strong> pour initier un retour. La facture d'origine reste inchangée ; seul le stock est réintégré.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show small py-2" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <!-- Barre de recherche -->
+        <div class="card-header bg-white border-bottom py-3 px-4">
+            <form method="get" class="d-flex gap-2" action="{% url 'facturation:nouveau-retour' %}">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 py-2" aria-hidden="true">
+                        <i class="ti ti-search text-muted"></i>
+                    </span>
+                    <input type="search" name="q" value="{{ q }}"
+                           class="form-control border-start-0"
+                           placeholder="N° facture, nom du client…"
+                           autocomplete="off" autofocus>
+                </div>
+                <button type="submit" class="btn btn-primary flex-shrink-0 px-4">Rechercher</button>
+                {% if q %}
+                <a href="{% url 'facturation:nouveau-retour' %}" class="btn btn-outline-secondary flex-shrink-0">
+                    <i class="ti ti-x"></i>
+                </a>
+                {% endif %}
+            </form>
+            {% if not q %}
+            <p class="text-muted small mt-2 mb-0">
+                <i class="ti ti-info-circle me-1"></i>
+                Saisissez un numéro de facture ou un nom de client pour afficher les résultats.
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr class="small text-muted text-uppercase ls-03" style="font-size: .68rem;">
+                            <th class="ps-4">N° Facture</th>
+                            <th>Date</th>
+                            <th>Client</th>
+                            <th class="d-none d-md-table-cell">Point de vente</th>
+                            <th class="text-end pe-2">Total TTC</th>
+                            <th class="pe-4 w-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in factures %}
+                        <tr>
+                            <td class="ps-4">
+                                <span class="fw-semibold mono-piece text-body">{{ f.numero_facture }}</span>
+                            </td>
+                            <td class="text-nowrap small">
+                                <span class="fw-medium">{{ f.date_facture|date:"d/m/Y" }}</span>
+                                <span class="text-muted d-none d-md-inline">{{ f.date_facture|date:"H:i" }}</span>
+                            </td>
+                            <td>
+                                <div class="fw-medium">{{ f.client.nom }}</div>
+                                <div class="small text-muted">{{ f.client.code_client }}</div>
+                            </td>
+                            <td class="d-none d-md-table-cell small fw-medium">{{ f.point_vente.nom }}</td>
+                            <td class="text-end pe-2">
+                                <span class="fw-semibold">{{ f.total_ttc|floatformat:2 }}</span>
+                                <span class="text-muted small ms-1">{{ f.devise.symbole }}</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'facturation:detail-retour-init' f.pk %}"
+                                   class="btn btn-sm btn-warning rounded-pill px-3">
+                                    <i class="ti ti-arrow-back-up me-1"></i>Retourner
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-5">
+                                <i class="ti ti-mood-empty fs-2 d-block mb-2 opacity-40"></i>
+                                {% if q %}
+                                    Aucune facture validée trouvée pour <strong>« {{ q }} »</strong>.
+                                {% else %}
+                                    Utilisez la barre de recherche ci-dessus pour trouver une facture.
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

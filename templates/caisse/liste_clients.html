@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content pb-5">
+  <nav class="mb-3" aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{% url 'caisse:dashboard' %}" class="text-decoration-none">Caisse</a></li>
+      <li class="breadcrumb-item active">Comptes clients</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex gap-3 align-items-start mb-4">
+    <span class="rounded-3 d-flex align-items-center justify-content-center bg-info bg-opacity-10 text-info flex-shrink-0" style="width:3rem;height:3rem;">
+      <i class="ti ti-users fs-3"></i>
+    </span>
+    <div>
+      <h1 class="fs-4 fw-bold mb-1">Comptes clients</h1>
+      <p class="text-muted small mb-0">Factures, remboursements, dettes et historique par client.</p>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" id="formFiltres" class="card border-0 shadow-sm p-3 mb-4">
+    <div class="row g-2 align-items-end">
+      <!-- Autocomplete client -->
+      <div class="col-12 col-md-4">
+        <label class="form-label small fw-semibold mb-1">Recherche client</label>
+        <div class="position-relative">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="ti ti-search text-muted"></i></span>
+            <input type="text" id="inpClientAc" class="form-control border-start-0 ps-0"
+                   placeholder="Nom, code, téléphone…" autocomplete="off" value="{{ q }}">
+            <span class="input-group-text bg-white border-start-0 px-2" id="btnClearAc"
+                  style="cursor:pointer;display:{% if q %}flex{% else %}none{% endif %};">
+              <i class="ti ti-x small text-muted"></i>
+            </span>
+          </div>
+          <input type="hidden" name="q" id="inpClientQ" value="{{ q }}">
+          <div id="acDropdown" class="position-absolute w-100 border rounded-3 bg-white shadow-sm z-3 mt-1"
+               style="display:none;max-height:260px;overflow-y:auto;top:100%;left:0;"></div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-semibold mb-1">Point de vente</label>
+        <select name="pdv" id="selPdv" class="form-select">
+          <option value="">Tous</option>
+          {% for p in pdvs %}<option value="{{ p.pk }}" {% if filt_pdv == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nom }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-semibold mb-1">Solde</label>
+        <select name="dette" class="form-select">
+          <option value="">Tous</option>
+          <option value="1" {% if filt_dette == '1' %}selected{% endif %}>Avec dette</option>
+        </select>
+      </div>
+
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="ti ti-filter me-1"></i>Filtrer</button>
+        {% if q or filt_pdv or filt_dette %}
+        <a href="{% url 'caisse:liste-clients' %}" class="btn btn-outline-secondary"><i class="ti ti-refresh me-1"></i>Réinit.</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  <!-- KPIs globaux -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="text-muted small mb-1">Clients</div>
+        <div class="fw-bold fs-3">{{ totaux.nb_clients }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="text-muted small mb-1">Total facturé</div>
+        <div class="fw-bold fs-3">{{ totaux.total_facture }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="card border-0 shadow-sm text-center p-3 border-success border-2">
+        <div class="text-muted small mb-1">Total encaissé</div>
+        <div class="fw-bold fs-3 text-success">{{ totaux.total_paye }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card border-0 shadow-sm text-center p-3 border-danger border-2">
+        <div class="text-muted small mb-1">Total dettes</div>
+        <div class="fw-bold fs-3 text-danger">{{ totaux.total_dette }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card border-0 shadow-sm text-center p-3 border-warning border-2">
+        <div class="text-muted small mb-1">Total remboursé</div>
+        <div class="fw-bold fs-3 text-warning">{{ totaux.total_rembourse }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tableau clients -->
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr class="text-muted text-uppercase" style="font-size:.67rem;letter-spacing:.04em;">
+            <th class="ps-4 py-3">Client</th>
+            <th class="py-3 d-none d-md-table-cell">Téléphone</th>
+            <th class="py-3 text-center">Factures</th>
+            <th class="py-3 text-end">Total facturé</th>
+            <th class="py-3 text-end">Encaissé</th>
+            <th class="py-3 text-end">
+              <span class="text-danger">Dette</span>
+            </th>
+            <th class="py-3 text-end d-none d-lg-table-cell">Remboursé</th>
+            <th class="pe-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clients %}
+          <tr onclick="location.href='{% url 'caisse:compte-client' c.pk %}'" style="cursor:pointer;">
+            <td class="ps-4">
+              <div class="d-flex align-items-center gap-2">
+                <span class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold
+                             {% if c.total_dette > 0 %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %}"
+                      style="width:2.1rem;height:2.1rem;font-size:.75rem;">
+                  {{ c.nom|first|upper }}
+                </span>
+                <div>
+                  <div class="fw-semibold">{{ c.nom }}</div>
+                  <div class="text-muted" style="font-size:.72rem;">{{ c.code_client }}
+                    {% if c.est_client_passager %}<span class="ms-1 badge bg-secondary bg-opacity-15 text-secondary" style="font-size:.6rem;">Passager</span>{% endif %}
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="text-muted d-none d-md-table-cell">{{ c.telephone }}</td>
+            <td class="text-center">
+              <span class="badge rounded-pill bg-primary bg-opacity-15 text-primary px-2">{{ c.nb_factures }}</span>
+            </td>
+            <td class="text-end">{{ c.total_facture }}</td>
+            <td class="text-end text-success fw-semibold">{{ c.total_paye }}</td>
+            <td class="text-end fw-bold {% if c.total_dette > 0 %}text-danger{% else %}text-muted{% endif %}">
+              {% if c.total_dette > 0 %}
+              <span class="d-flex align-items-center justify-content-end gap-1">
+                <i class="ti ti-alert-circle" style="font-size:.85rem;"></i>{{ c.total_dette }}
+              </span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-end text-warning fw-semibold d-none d-lg-table-cell">
+              {% if c.total_rembourse > 0 %}{{ c.total_rembourse }}{% else %}—{% endif %}
+            </td>
+            <td class="pe-4">
+              <a href="{% url 'caisse:compte-client' c.pk %}" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="event.stopPropagation()">
+                Compte <i class="ti ti-arrow-right ms-1"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-5">
+            <i class="ti ti-mood-empty fs-2 d-block mb-2 opacity-40"></i>
+            Aucun client trouvé{% if q %} pour « {{ q }} »{% endif %}.
+          </td></tr>
+          {% endfor %}
+        </tbody>
+        {% if clients %}
+        <tfoot class="table-light fw-semibold border-top">
+          <tr style="font-size:.8rem;">
+            <td class="ps-4 py-3 text-muted text-uppercase" colspan="2">Totaux</td>
+            <td class="text-center py-3 text-primary">{{ totaux.nb_clients }}</td>
+            <td class="text-end py-3">{{ totaux.total_facture }}</td>
+            <td class="text-end py-3 text-success">{{ totaux.total_paye }}</td>
+            <td class="text-end py-3 text-danger">{{ totaux.total_dette }}</td>
+            <td class="text-end py-3 text-warning d-none d-lg-table-cell">{{ totaux.total_rembourse }}</td>
+            <td class="pe-4"></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block page_scripts %}
+<script>
+(function(){
+  const inp      = document.getElementById('inpClientAc');
+  const hidden   = document.getElementById('inpClientQ');
+  const dropdown = document.getElementById('acDropdown');
+  const btnClear = document.getElementById('btnClearAc');
+  const selPdv   = document.getElementById('selPdv');
+  const AC_URL   = "{% url 'caisse:api-autocomplete-clients' %}";
+  let timer = null;
+
+  btnClear.addEventListener('click', () => {
+    inp.value = hidden.value = '';
+    btnClear.style.display = 'none';
+    dropdown.style.display = 'none';
+    inp.focus();
+  });
+
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim();
+    hidden.value = q;
+    btnClear.style.display = q ? 'flex' : 'none';
+    clearTimeout(timer);
+    if (!q) { dropdown.style.display = 'none'; return; }
+    timer = setTimeout(() => fetch(AC_URL + '?q=' + encodeURIComponent(q) + (selPdv?.value ? '&pdv=' + selPdv.value : ''))
+      .then(r => r.json()).then(d => render(d.results || [])), 220);
+  });
+
+  document.addEventListener('click', e => {
+    if (!inp.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = 'none';
+  });
+
+  function render(results) {
+    dropdown.innerHTML = '';
+    if (!results.length) {
+      dropdown.innerHTML = '<div class="px-3 py-2 text-muted small">Aucun résultat</div>';
+    } else {
+      results.forEach(c => {
+        const d = document.createElement('div');
+        d.className = 'px-3 py-2 d-flex align-items-center gap-2';
+        d.style.cssText = 'cursor:pointer;';
+        d.innerHTML = `<span class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                             style="width:2rem;height:2rem;font-size:.72rem;">${esc(c.nom)[0].toUpperCase()}</span>
+          <div><div class="fw-semibold small">${esc(c.nom)}</div>
+          <div class="text-muted" style="font-size:.7rem;">${esc(c.code)}${c.tel?' · '+esc(c.tel):''}</div></div>`;
+        d.addEventListener('mouseenter', () => d.style.background = '#f0f4ff');
+        d.addEventListener('mouseleave', () => d.style.background = '');
+        d.addEventListener('mousedown', e => { e.preventDefault(); inp.value = hidden.value = c.nom; btnClear.style.display = 'flex'; dropdown.style.display = 'none'; document.getElementById('formFiltres').submit(); });
+        dropdown.appendChild(d);
+      });
+    }
+    dropdown.style.display = 'block';
+  }
+
+  inp.addEventListener('keydown', e => {
+    const items = [...dropdown.querySelectorAll('div[style*="cursor"]')];
+    let cur = dropdown.querySelector('.ac-active');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); const i = cur ? items.indexOf(cur)+1 : 0; if (cur) { cur.classList.remove('ac-active'); cur.style.background=''; } if (items[i]) { items[i].classList.add('ac-active'); items[i].style.background='#f0f4ff'; } }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); const i = cur ? items.indexOf(cur)-1 : items.length-1; if (cur) { cur.classList.remove('ac-active'); cur.style.background=''; } if (items[i]) { items[i].classList.add('ac-active'); items[i].style.background='#f0f4ff'; } }
+    else if (e.key === 'Enter' && cur) { e.preventDefault(); cur.dispatchEvent(new Event('mousedown')); }
+    else if (e.key === 'Escape') dropdown.style.display = 'none';
+  });
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+})();
+</script>
+{% endblock page_scripts %}
