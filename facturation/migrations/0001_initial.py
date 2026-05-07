@@ -12,6 +12,7 @@ class Migration(migrations.Migration):
         ('entreprise', '0002_fournisseur_produit_methode_gestion_produit_vie_and_more'),
         ('stock', '0001_initial'),
         ('utilisateur', '0002_profil_profil_id'),
+        ('tiers', '0001_initial'),
     ]
 
     operations = [
@@ -29,7 +30,7 @@ class Migration(migrations.Migration):
                 ('mode_paiement', models.CharField(choices=[('CASH', 'Espèces'), ('MOBILE_MONEY', 'Mobile Money'), ('CARTE', 'Carte Bancaire'), ('CREDIT', 'Crédit / À terme')], default='CASH', max_length=20)),
                 ('statut', models.CharField(choices=[('BROUILLON', 'Brouillon'), ('VALIDEE', 'Validée'), ('ANNULEE', 'Annulée')], default='BROUILLON', max_length=20)),
                 ('date_facture', models.DateTimeField(auto_now_add=True)),
-                ('client', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='factures', to='entreprise.client')),
+                ('client', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='factures', to='tiers.client')),
                 ('devise', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='entreprise.devise')),
                 ('point_vente', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='entreprise.pointvente')),
                 ('vendeur', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='utilisateur.profil')),
@@ -47,7 +48,7 @@ class Migration(migrations.Migration):
                 ('total_ttc', models.DecimalField(decimal_places=2, default=0.0, max_digits=15)),
                 ('statut', models.CharField(choices=[('EN_ATTENTE', 'En attente'), ('ACCEPTEE', 'Acceptée / Convertie'), ('EXPIREE', 'Expirée'), ('ANNULEE', 'Annulée')], default='EN_ATTENTE', max_length=20)),
                 ('branche', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='entreprise.branche')),
-                ('client', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='entreprise.client')),
+                ('client', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='tiers.client')),
                 ('devise', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='entreprise.devise')),
                 ('facture_definitive', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='facturation.facture')),
                 ('vendeur', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='utilisateur.profil')),
