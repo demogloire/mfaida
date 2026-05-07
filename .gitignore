@@ -21,6 +21,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
+staticfiles/
 
 # Migrations (optionnel - à retirer si vous voulez versionner les migrations)
 # */migrations/
@@ -40,6 +41,7 @@ desktop.ini
 # Variables d'environnement
 .env
 .env.*
+!.env.example
 secrets.py
 
 # Coverage

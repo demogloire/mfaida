@@ -2,10 +2,15 @@ asgiref==3.11.1
 Django==4.0
 django-htmx==1.27.0
 django-widget-tweaks==1.5.0
-mysqlclient==2.2.8
 pillow==12.1.1
 sqlparse==0.5.5
 tzdata==2025.3
 openpyxl==3.1.5
 reportlab==4.4.10
 qrcode==8.0
+
+# Production
+gunicorn==21.2.0
+psycopg2-binary==2.9.10
+dj-database-url==2.3.0
+whitenoise==6.9.0
