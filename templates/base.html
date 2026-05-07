@@ -285,7 +285,7 @@
 					</a>
 					<div class="dropdown-menu notifications" style="min-width:320px;">
 						<div class="topnav-dropdown-header d-flex align-items-center justify-content-between px-3 py-2">
-							<h6 class="mb-0 fw-semibold">Alertes systÃ¨me</h6>
+							<h6 class="mb-0 fw-semibold">Alertes système</h6>
 							{% if notifs_header.total > 0 %}
 							<span class="badge bg-danger rounded-pill">{{ notifs_header.total }}</span>
 							{% else %}
@@ -398,9 +398,9 @@
 				</li>
 				<!-- /Notifications -->
 
-				<!-- ParamÃ¨tres -->
+				<!-- Paramètres -->
 				<li class="nav-item nav-item-box">
-					<a href="{% url 'entreprise:entreprise-liste' %}" title="ParamÃ¨tres entreprise">
+					<a href="{% url 'entreprise:entreprise-liste' %}" title="Paramètres entreprise">
 						<i class="ti ti-settings"></i>
 					</a>
 				</li>
@@ -537,7 +537,7 @@
 					</a>
 				</div>
 				<div class="me-0">
-					<a href="{% url 'entreprise:entreprise-liste' %}" class="btn btn-sm btn-icon bg-light" title="ParamÃ¨tres">
+					<a href="{% url 'entreprise:entreprise-liste' %}" class="btn btn-sm btn-icon bg-light" title="Paramètres">
 						<i class="ti ti-settings"></i>
 					</a>
 				</div>
@@ -842,9 +842,9 @@
 									<li><a href="{% url 'user:journal-connexions' %}">Journal des connexions</a></li>
 								</ul>
 							</li>
-							<li class="submenu"><a href="javascript:void(0);" class="{% if actif_section == 'roles' %}active subdrop{% endif %}"><i class="ti ti-shield-half fs-16 me-2"></i><span>R&ocirc;les &amp; Permissions</span><span class="menu-arrow"></span></a>
+							<li class="submenu"><a href="javascript:void(0);" class="{% if actif_section == 'roles' %}active subdrop{% endif %}"><i class="ti ti-shield-half fs-16 me-2"></i><span>Rôles &amp; Permissions</span><span class="menu-arrow"></span></a>
 								<ul>
-									<li><a href="{% url 'user:liste-roles' %}" class="{% if actif == 'liste-roles' %}active{% endif %}">R&ocirc;les</a></li>
+									<li><a href="{% url 'user:liste-roles' %}" class="{% if actif == 'liste-roles' %}active{% endif %}">Rôles</a></li>
 									<li><a href="{% url 'user:liste-permissions' %}" class="{% if actif == 'liste-permissions' %}active{% endif %}">Permissions</a></li>
 								</ul>
 							</li>
@@ -1108,7 +1108,7 @@
 						{% endif %}
 						<li class="submenu">
 							<a href="javascript:void(0);"><i
-									class="ti ti-settings fs-16 me-2"></i><span>ParamÃ¨tre</span><span
+									class="ti ti-settings fs-16 me-2"></i><span>Paramètres</span><span
 									class="menu-arrow"></span></a>
 							<ul>
 							<li class="submenu">
@@ -1169,10 +1169,10 @@
 								</ul>
 							</li>
 							<li class="submenu">
-								<a href="javascript:void(0);"><span>RÃ´les &amp; Permissions</span><span
+								<a href="javascript:void(0);"><span>Rôles &amp; Permissions</span><span
 										class="menu-arrow"></span></a>
 								<ul>
-									<li><a href="{% url 'user:liste-roles' %}">RÃ´les</a></li>
+									<li><a href="{% url 'user:liste-roles' %}">Rôles</a></li>
 									<li><a href="{% url 'user:liste-permissions' %}">Permissions</a></li>
 								</ul>
 							</li>
