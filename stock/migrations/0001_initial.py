@@ -11,6 +11,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('utilisateur', '0002_profil_profil_id'),
         ('entreprise', '0002_fournisseur_produit_methode_gestion_produit_vie_and_more'),
+        ('achat', '__first__'),
     ]
 
     operations = [
@@ -54,7 +55,7 @@ class Migration(migrations.Migration):
                 ('date_creation', models.DateTimeField(auto_now_add=True)),
                 ('depot', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='entreprise.depot')),
                 ('effectue_par', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='utilisateur.profil')),
-                ('ligneordreachat', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='entreprise.ligneordreachat')),
+                ('ligneordreachat', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='achat.ligneordreachat')),
                 ('pointvente', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='entreprise.pointvente')),
                 ('produit', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='entreprise.produit')),
             ],
