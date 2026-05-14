@@ -362,7 +362,7 @@
 											</span>
 											<div class="flex-grow-1 ms-2">
 												<p class="noti-details mb-0">
-													<span class="noti-title fw-semibold">Avances Ã  décaisser</span>
+													<span class="noti-title fw-semibold">Avances à décaisser</span>
 												</p>
 												<p class="noti-time text-muted mb-0">{{ notifs_header.avances }} avance{{ notifs_header.avances|pluralize }} approuvée{{ notifs_header.avances|pluralize }}</p>
 											</div>
@@ -932,10 +932,10 @@
 										<li><a href="{% url 'stock:hub-stock' %}"><span>Sommaire stock</span></a></li>
 									{% if user|utilisateur_perm:'acces_stock_depot' %}
 									<li class="submenu">
-										<a href="javascript:void(0);"><span>DépÃ´t</span><span class="menu-arrow"></span></a>
+										<a href="javascript:void(0);"><span>Dépôt</span><span class="menu-arrow"></span></a>
 										<ul>
 											<li><a href="{% url 'stock:liste-stock-depot' %}"><span>Niveaux de stock (lots)</span></a></li>
-											<li><a href="{% url 'stock:liste-stock-depot-synthese' %}"><span>SynthÃ¨se par produit</span></a></li>
+											<li><a href="{% url 'stock:liste-stock-depot-synthese' %}"><span>Synthèse par produit</span></a></li>
 											<li><a href="{% url 'stock:liste-mouvements-depot' %}"><span>Mouvements</span></a></li>
 											<li><a href="{% url 'stock:correction-interne-depot' %}"><span>Corrections internes</span></a></li>
 											{% if user|utilisateur_perm:'acces_bons_ajustement' %}<li><a href="{% url 'stock:liste-bons-ajustement-depot' %}"><span>Bons d'ajustement</span></a></li>{% endif %}
@@ -949,11 +949,11 @@
 										<a href="javascript:void(0);"><span>Point de vente</span><span class="menu-arrow"></span></a>
 										<ul>
 											<li><a href="{% url 'stock:liste-stock-pdv' %}"><span>Niveaux de stock (lots)</span></a></li>
-											<li><a href="{% url 'stock:liste-stock-pdv-synthese' %}"><span>SynthÃ¨se par produit</span></a></li>
+											<li><a href="{% url 'stock:liste-stock-pdv-synthese' %}"><span>Synthèse par produit</span></a></li>
 											<li><a href="{% url 'stock:liste-mouvements-pdv' %}"><span>Mouvements</span></a></li>
 											<li><a href="{% url 'stock:correction-interne-pdv' %}"><span>Corrections internes</span></a></li>
 											{% if user|utilisateur_perm:'acces_bons_ajustement' %}<li><a href="{% url 'stock:liste-bons-ajustement-pdv' %}"><span>Bons d'ajustement</span></a></li>{% endif %}
-											{% if user|utilisateur_perm:'acces_mise_a_ecart' %}<li><a href="{% url 'stock:mise-a-ecart-pdv' %}"><span>Mise Ã  l'écart</span></a></li>{% endif %}
+											{% if user|utilisateur_perm:'acces_mise_a_ecart' %}<li><a href="{% url 'stock:mise-a-ecart-pdv' %}"><span>Mise à  l'écart</span></a></li>{% endif %}
 											{% if user|utilisateur_perm:'acces_campagnes_inventaire' %}<li><a href="{% url 'stock:liste-inventaires' %}?lieu=pv"><span>Campagnes d'inventaire</span></a></li>{% endif %}
 										</ul>
 									</li>
@@ -1009,12 +1009,12 @@
 								<li><a href="{% url 'rh:liste-bulletins' %}"><span>Bulletins de paie</span></a></li>
 								<li class="text-muted" style="padding:4px 16px">
 									<small class="d-flex align-items-center gap-1 text-warning">
-										<i class="ti ti-clock"></i> Plan comptable â€” BientÃ´t
+										<i class="ti ti-clock"></i> Plan comptable à bientôt
 									</small>
 								</li>
 								<li class="text-muted" style="padding:4px 16px">
 									<small class="d-flex align-items-center gap-1 text-warning">
-										<i class="ti ti-clock"></i> Journaux â€” BientÃ´t
+										<i class="ti ti-clock"></i> Journaux à bientôt
 									</small>
 								</li>
 							</ul>
@@ -1134,9 +1134,9 @@
 											<ul>
 												<li><a hx-get="{% url 'entreprise:branche-liste' %}" hx-target="body"
 														hx-push-url="true">Branche</a></li>
-												<li><a hx-get="{% url 'entreprise:depot-liste-tous' %}" hx-target="body" hx-push-url="true">DépÃ´t</a></li>
+												<li><a hx-get="{% url 'entreprise:depot-liste-tous' %}" hx-target="body" hx-push-url="true">Dépôt</a></li>
 												<li><a hx-get="{% url 'entreprise:pvente-liste-tous' %}" hx-target="body" hx-push-url="true">PDVente</a></li>
-												<li><a hx-get="{% url 'entreprise:branche-liste' %}" hx-target="body" hx-push-url="true">EtagÃ¨re</a></li>
+												<li><a hx-get="{% url 'entreprise:branche-liste' %}" hx-target="body" hx-push-url="true">Etagère</a></li>
 									<li><a hx-get="{% url 'entreprise:devise-liste' %}" hx-target="body" hx-push-url="true">Devise</a></li>
 										</ul>
 									</li>
