@@ -95,7 +95,10 @@ WSGI_APPLICATION = 'core.wsgi.application'
 _JAWSDB_URL = os.environ.get('JAWSDB_URL')
 if _JAWSDB_URL:
     _db = dj_database_url.parse(_JAWSDB_URL, conn_max_age=600)
-    _db['OPTIONS'] = {'charset': 'utf8mb4'}
+    _db['OPTIONS'] = {
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    }
     DATABASES = {'default': _db}
 else:
     DATABASES = {
