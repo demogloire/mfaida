@@ -4,6 +4,7 @@ Django settings for core project.
 
 from pathlib import Path
 import os
+import dj_database_url
 
 from django.contrib.messages import constants as message_constants
 
@@ -20,6 +21,10 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS_ENV = os.environ.get('ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS_ENV.split(',') if h.strip()] or ['*']
 
+CSRF_TRUSTED_ORIGINS_ENV = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if CSRF_TRUSTED_ORIGINS_ENV:
+    CSRF_TRUSTED_ORIGINS = [h.strip() for h in CSRF_TRUSTED_ORIGINS_ENV.split(',') if h.strip()]
+
 # ── Applications ──────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -28,6 +33,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'cloudinary',
+    'cloudinary_storage',
     'widget_tweaks',
     'django_htmx',
 
@@ -83,19 +90,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 # ── Base de données ────────────────────────────────────────────────────────────
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', 'm_faida'),
-        'USER': os.environ.get('DB_USER', 'root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        },
+# Sur Heroku, JAWSDB_URL est défini automatiquement par l'add-on JawsDB MySQL.
+# En local, on utilise MySQL via les variables DB_*.
+_JAWSDB_URL = os.environ.get('JAWSDB_URL')
+if _JAWSDB_URL:
+    _db = dj_database_url.parse(_JAWSDB_URL, conn_max_age=600)
+    _db['OPTIONS'] = {'charset': 'utf8mb4'}
+    DATABASES = {'default': _db}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'm_faida'),
+            'USER': os.environ.get('DB_USER', 'root'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            },
+        }
     }
-}
 
 # ── Validation des mots de passe ───────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
@@ -127,8 +142,20 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ── Fichiers media ─────────────────────────────────────────────────────────────
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# En production (Heroku), les fichiers uploadés sont stockés sur Cloudinary
+# car le système de fichiers Heroku est éphémère.
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    'API_KEY':    os.environ.get('CLOUDINARY_API_KEY', ''),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
+}
+
+if os.environ.get('CLOUDINARY_CLOUD_NAME'):
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    MEDIA_URL = '/media/'
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ── Divers ─────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
